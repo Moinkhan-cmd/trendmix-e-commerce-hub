@@ -1,7 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import CategoryCard from "@/components/CategoryCard";
-import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { Sparkles, Gem, Shirt, Package } from "lucide-react";
 import productCosmetics from "@/assets/product-cosmetics.jpg";
@@ -41,93 +40,14 @@ const Index = () => {
     },
   ];
 
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Luxury Coral Lipstick - Matte Finish",
-      price: 599,
-      originalPrice: 899,
-      image: productCosmetics,
-      rating: 4.8,
-      reviews: 234,
-      badge: "Bestseller",
-    },
-    {
-      id: 2,
-      name: "Elegant Gold Necklace Set",
-      price: 1299,
-      originalPrice: 1799,
-      image: productJewelry,
-      rating: 4.9,
-      reviews: 189,
-      badge: "New",
-    },
-    {
-      id: 3,
-      name: "Premium Patterned Socks Collection",
-      price: 399,
-      originalPrice: 599,
-      image: productSocks,
-      rating: 4.7,
-      reviews: 312,
-    },
-    {
-      id: 4,
-      name: "Fashion Accessories Bundle",
-      price: 799,
-      originalPrice: 1199,
-      image: productAccessories,
-      rating: 4.6,
-      reviews: 156,
-      badge: "Deal",
-    },
-    {
-      id: 5,
-      name: "Rose Gold Earring Collection",
-      price: 899,
-      originalPrice: 1299,
-      image: productJewelry,
-      rating: 4.8,
-      reviews: 198,
-    },
-    {
-      id: 6,
-      name: "Designer Bangles Set",
-      price: 1099,
-      originalPrice: 1599,
-      image: productAccessories,
-      rating: 4.9,
-      reviews: 145,
-      badge: "Trending",
-    },
-    {
-      id: 7,
-      name: "Premium Makeup Palette",
-      price: 1499,
-      originalPrice: 2199,
-      image: productCosmetics,
-      rating: 4.7,
-      reviews: 267,
-    },
-    {
-      id: 8,
-      name: "Casual Fashion Socks - 5 Pair Pack",
-      price: 499,
-      originalPrice: 799,
-      image: productSocks,
-      rating: 4.6,
-      reviews: 423,
-    },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-1">
         <Hero />
 
-        <section className="container py-16 md:py-20">
+        <section id="categories" className="container py-16 md:py-20">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
               Shop by Category
@@ -151,14 +71,15 @@ const Index = () => {
                 Featured Products
               </h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Handpicked items just for you
+                Products will appear here once you add them from the admin panel.
               </p>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
+            <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
+              <p className="text-sm text-muted-foreground">No products yet.</p>
+              <p className="mt-2 text-sm">
+                Go to <span className="font-medium">Admin → Products</span> to add your first product.
+              </p>
             </div>
           </div>
         </section>
