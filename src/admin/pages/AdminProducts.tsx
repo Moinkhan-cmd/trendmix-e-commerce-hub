@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -48,7 +49,7 @@ const emptyForm = {
   price: "",
   categoryId: "",
   description: "",
-  stock: "",
+  stock: "in",
   published: true,
   imageUrls: [""],
 };
@@ -100,7 +101,7 @@ export default function AdminProducts() {
       price: String(p.price ?? ""),
       categoryId: p.categoryId ?? "",
       description: p.description ?? "",
-      stock: String(p.stock ?? ""),
+      stock: Number(p.stock ?? 0) > 0 ? "in" : "out",
       published: Boolean(p.published),
       imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [""],
     });
@@ -111,8 +112,7 @@ export default function AdminProducts() {
     if (!form.name.trim()) return "Product name is required";
     const price = Number(form.price);
     if (!Number.isFinite(price) || price < 0) return "Price must be a valid number";
-    const stock = Number(form.stock);
-    if (!Number.isFinite(stock) || stock < 0) return "Stock must be a valid number";
+    if (form.stock !== "in" && form.stock !== "out") return "Stock is required";
     if (!form.categoryId) return "Category is required";
     const urls = form.imageUrls.map((u) => u.trim()).filter(Boolean);
     if (urls.length === 0) return "At least 1 Image URL is required";
@@ -127,7 +127,7 @@ export default function AdminProducts() {
     }
 
     const price = Number(form.price);
-    const stock = Number(form.stock);
+    const stock = form.stock === "in" ? 1 : 0;
     const urls = form.imageUrls.map((u) => u.trim()).filter(Boolean);
     const cat = categoryById.get(form.categoryId);
 
@@ -301,8 +301,21 @@ export default function AdminProducts() {
                 <Input id="price" inputMode="decimal" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock">Stock</Label>
-                <Input id="stock" inputMode="numeric" value={form.stock} onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} />
+                <Label>Stock</Label>
+                <RadioGroup
+                  value={form.stock}
+                  onValueChange={(v) => setForm((p) => ({ ...p, stock: v }))}
+                  className="grid gap-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="in" id="stock-in" />
+                    <Label htmlFor="stock-in">In stock</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="out" id="stock-out" />
+                    <Label htmlFor="stock-out">Out of stock</Label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
 
