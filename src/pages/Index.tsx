@@ -46,8 +46,6 @@ const Index = () => {
       <Navbar />
 
       <main className="flex-1">
-        <FeaturedProfileBanner />
-
         <Hero />
 
         <section id="categories" className="container py-16 md:py-20">
