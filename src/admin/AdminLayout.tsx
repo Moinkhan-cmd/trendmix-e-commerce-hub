@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BadgeDollarSign, Boxes, FolderKanban, LayoutDashboard, LogOut, Users, Settings } from "lucide-react";
+import { BadgeDollarSign, Boxes, FolderKanban, LayoutDashboard, LogOut, Users, Settings, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAdminAuth } from "@/admin/AdminAuthProvider";
@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { to: "/admin/categories", label: "Categories", icon: FolderKanban },
   { to: "/admin/orders", label: "Orders", icon: BadgeDollarSign },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/profile", label: "Profile", icon: UserCircle },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

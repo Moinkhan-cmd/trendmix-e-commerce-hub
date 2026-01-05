@@ -21,6 +21,7 @@ import AdminCategories from "@/admin/pages/AdminCategories";
 import AdminOrders from "@/admin/pages/AdminOrders";
 import AdminUsers from "@/admin/pages/AdminUsers";
 import AdminSettings from "@/admin/pages/AdminSettings";
+import AdminProfile from "@/admin/pages/AdminProfile";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="categories" element={<AdminCategories />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="users" element={<AdminUsers />} />
+                <Route path="profile" element={<AdminProfile />} />
                 <Route path="settings" element={<AdminSettings />} />
               </Route>
             </Route>
