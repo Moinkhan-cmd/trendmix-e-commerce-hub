@@ -1,9 +1,70 @@
+import { useEffect, useMemo, useState } from "react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { PersonalProfileDoc, SocialLink } from "@/lib/models";
+import { buildInstagramUrl, buildXUrl, inferPlatformFromUrl, normalizeUrl } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Github, Instagram, Linkedin, Link as LinkIcon, Sparkles, Twitter } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroBanner from "@/assets/hero-banner.jpg";
 
+type LinkItem = { href: string; label: string; platform: string };
+
+function iconFor(platform: string) {
+  switch (platform) {
+    case "instagram":
+      return Instagram;
+    case "x":
+    case "twitter":
+      return Twitter;
+    case "linkedin":
+      return Linkedin;
+    case "github":
+      return Github;
+    default:
+      return LinkIcon;
+  }
+}
+
+function linkItemsFromProfile(p: PersonalProfileDoc): LinkItem[] {
+  const items: LinkItem[] = [];
+  if (p.instagramId?.trim()) {
+    items.push({ href: buildInstagramUrl(p.instagramId), label: "Instagram", platform: "instagram" });
+  }
+  if (p.xId?.trim()) {
+    items.push({ href: buildXUrl(p.xId), label: "X", platform: "x" });
+  }
+  const links = Array.isArray(p.socialLinks) ? p.socialLinks : [];
+  for (const l of links) {
+    const raw = (l as SocialLink).url ?? "";
+    const href = normalizeUrl(raw);
+    if (!href) continue;
+    const platform = (l as any).platform || inferPlatformFromUrl(href) || "website";
+    const label = (l as any).label || platform;
+    items.push({ href, label, platform });
+  }
+  const seen = new Set<string>();
+  return items.filter((i) => (seen.has(i.href) ? false : (seen.add(i.href), true)));
+}
+
 const Hero = () => {
+  const [profile, setProfile] = useState<PersonalProfileDoc | null>(null);
+
+  useEffect(() => {
+    const ref = doc(db, "settings", "personalProfile");
+    return onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        setProfile(null);
+        return;
+      }
+      setProfile(snap.data() as PersonalProfileDoc);
+    });
+  }, []);
+
+  const featured = profile?.featured;
+  const showFeatured = Boolean(featured?.enabled && featured?.visible);
+  const socialItems = useMemo(() => (profile ? linkItemsFromProfile(profile) : []), [profile]);
+
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-br from-primary/5 via-secondary/5 to-background">
       {/* Background accents */}
@@ -13,6 +74,44 @@ const Hero = () => {
       </div>
 
       <div className="container relative py-16 md:py-24 lg:py-28">
+        {/* Featured Profile Block */}
+        {showFeatured && (
+          <div className="mb-10 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
+            {profile?.photoUrl && (
+              <img
+                src={profile.photoUrl}
+                alt="Featured profile"
+                className="h-20 w-20 rounded-full border-4 border-primary/20 object-cover shadow-lg"
+              />
+            )}
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold sm:text-2xl">{featured?.title || "Featured"}</h2>
+              {featured?.tagline && (
+                <p className="mt-1 text-muted-foreground">{featured.tagline}</p>
+              )}
+            </div>
+            {socialItems.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 sm:justify-end">
+                {socialItems.map((i) => {
+                  const Icon = iconFor(i.platform);
+                  return (
+                    <a
+                      key={i.href}
+                      href={i.href}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1.5 text-sm text-muted-foreground backdrop-blur hover:text-foreground hover:bg-muted/60 transition-colors"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="capitalize">{i.label}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <div className="flex flex-col justify-center space-y-7 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1.5 text-sm font-medium text-primary backdrop-blur self-center lg:self-start">
