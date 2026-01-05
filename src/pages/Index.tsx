@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import FeaturedProfileBanner from "@/components/FeaturedProfileBanner";
 import CategoryCard from "@/components/CategoryCard";
 import Footer from "@/components/Footer";
 import { Sparkles, Gem, Shirt, Package } from "lucide-react";
@@ -45,6 +46,8 @@ const Index = () => {
       <Navbar />
 
       <main className="flex-1">
+        <FeaturedProfileBanner />
+
         <Hero />
 
         <section id="categories" className="container py-16 md:py-20">
