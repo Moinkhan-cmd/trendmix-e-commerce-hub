@@ -59,7 +59,7 @@ export function sanitizeRichTextHtml(input: string): string {
   if (!input) return "";
   if (typeof DOMParser === "undefined") {
     // Best-effort fallback for non-browser environments.
-    return input.replace(/<script[\\s\\S]*?<\\/script>/gi, "");
+    return input.replace(/<script[\s\S]*?<\/script>/gi, "");
   }
 
   const allowedTags = new Set([
