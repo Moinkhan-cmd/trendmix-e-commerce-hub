@@ -46,3 +46,30 @@ export type UserDoc = {
   blocked: boolean;
   createdAt?: Timestamp;
 };
+
+export type SocialLink = {
+  url: string;
+  label?: string;
+  platform?: string;
+};
+
+export type PersonalProfileFeatured = {
+  enabled: boolean;
+  title: string;
+  tagline: string;
+  visible: boolean;
+};
+
+export type PersonalProfileDoc = {
+  email: string;
+  location: string;
+  instagramId?: string;
+  xId?: string;
+  socialLinks: SocialLink[];
+  bioHtml: string;
+  photoUrl?: string;
+  photoPath?: string;
+  featured: PersonalProfileFeatured;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+};
