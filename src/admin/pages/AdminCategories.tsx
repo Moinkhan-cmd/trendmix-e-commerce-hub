@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
@@ -9,11 +9,12 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { CategoryDoc } from "@/lib/models";
+import type { CategoryDoc, ProductDoc } from "@/lib/models";
 import { slugify } from "@/lib/slug";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Search, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 
 type WithId<T> = T & { id: string };
 
@@ -41,20 +43,58 @@ const emptyForm = {
   imageUrl: "",
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
+  const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<WithId<CategoryDoc> | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
 
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "categories"), (snap) => {
+    const unsubCategories = onSnapshot(collection(db, "categories"), (snap) => {
       setCategories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as CategoryDoc) })));
     });
-    return () => unsub();
+    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
+      setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
+    });
+    return () => {
+      unsubCategories();
+      unsubProducts();
+    };
   }, []);
+
+  // Count products per category
+  const productCountByCategory = useMemo(() => {
+    const map = new Map<string, number>();
+    products.forEach((p) => {
+      map.set(p.categoryId, (map.get(p.categoryId) || 0) + 1);
+    });
+    return map;
+  }, [products]);
+
+  const filteredCategories = useMemo(() => {
+    return categories.filter((c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.slug.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [categories, search]);
+
+  const totalPages = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE);
+  const paginatedCategories = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCategories.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredCategories, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const resetDialog = () => {
     setEditing(null);
@@ -119,6 +159,12 @@ export default function AdminCategories() {
   };
 
   const onDelete = async (c: WithId<CategoryDoc>) => {
+    const productCount = productCountByCategory.get(c.id) || 0;
+    if (productCount > 0) {
+      toast.error(`Cannot delete: ${productCount} product(s) are using this category`);
+      return;
+    }
+
     const ok = confirm(`Delete "${c.name}"?`);
     if (!ok) return;
 
@@ -135,11 +181,29 @@ export default function AdminCategories() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Categories</h1>
-          <p className="text-sm text-muted-foreground">Create, edit, and delete categories.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage product categories ({categories.length} total)
+          </p>
         </div>
         <Button onClick={openCreate}>Add category</Button>
       </div>
 
+      {/* Search */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search categories..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Categories Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">All categories</CardTitle>
@@ -149,41 +213,92 @@ export default function AdminCategories() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[60px]">Image</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Slug</TableHead>
-                  <TableHead>Image URL</TableHead>
+                  <TableHead className="text-center">Products</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.map((c) => (
+                {paginatedCategories.map((c) => (
                   <TableRow key={c.id}>
+                    <TableCell>
+                      {c.imageUrl ? (
+                        <img
+                          src={c.imageUrl}
+                          alt={c.name}
+                          className="h-10 w-10 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.slug}</TableCell>
-                    <TableCell className="max-w-[360px] truncate">{c.imageUrl}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">{c.slug}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="secondary">
+                        {productCountByCategory.get(c.id) || 0}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="sm" onClick={() => openEdit(c)}>
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => onDelete(c)}>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => onDelete(c)}
+                        disabled={(productCountByCategory.get(c.id) || 0) > 0}
+                      >
                         Delete
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
-                {categories.length === 0 && (
+                {paginatedCategories.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
-                      No categories yet.
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                      No categories found.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Add/Edit Dialog */}
       <Dialog open={open} onOpenChange={(v) => {
         setOpen(v);
         if (!v) resetDialog();
@@ -225,6 +340,14 @@ export default function AdminCategories() {
                 value={form.imageUrl}
                 onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
               />
+              {form.imageUrl.trim() && (
+                <img
+                  src={form.imageUrl.trim()}
+                  alt="Preview"
+                  className="h-20 w-20 rounded object-cover border mt-2"
+                  onError={(e) => (e.currentTarget.style.display = "none")}
+                />
+              )}
             </div>
           </div>
 

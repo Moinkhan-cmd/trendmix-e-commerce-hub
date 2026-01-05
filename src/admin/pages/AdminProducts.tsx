@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -41,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Search, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 
 type WithId<T> = T & { id: string };
 
@@ -49,10 +50,12 @@ const emptyForm = {
   price: "",
   categoryId: "",
   description: "",
-  stock: "in",
+  stock: "10",
   published: true,
   imageUrls: [""],
 };
+
+const ITEMS_PER_PAGE = 10;
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
@@ -61,8 +64,13 @@ export default function AdminProducts() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<WithId<ProductDoc> | null>(null);
-
   const [form, setForm] = useState({ ...emptyForm });
+
+  // Search, filter, and pagination
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStock, setFilterStock] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
@@ -84,6 +92,31 @@ export default function AdminProducts() {
     return map;
   }, [categories]);
 
+  // Filtered products
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = filterCategory === "all" || p.categoryId === filterCategory;
+      const matchesStock =
+        filterStock === "all" ||
+        (filterStock === "low" && (p.stock ?? 0) <= 5) ||
+        (filterStock === "out" && (p.stock ?? 0) === 0) ||
+        (filterStock === "in" && (p.stock ?? 0) > 0);
+      return matchesSearch && matchesCategory && matchesStock;
+    });
+  }, [products, search, filterCategory, filterStock]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProducts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterCategory, filterStock]);
+
   const resetDialog = () => {
     setEditing(null);
     setForm({ ...emptyForm });
@@ -101,7 +134,7 @@ export default function AdminProducts() {
       price: String(p.price ?? ""),
       categoryId: p.categoryId ?? "",
       description: p.description ?? "",
-      stock: Number(p.stock ?? 0) > 0 ? "in" : "out",
+      stock: String(p.stock ?? 0),
       published: Boolean(p.published),
       imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [""],
     });
@@ -112,7 +145,8 @@ export default function AdminProducts() {
     if (!form.name.trim()) return "Product name is required";
     const price = Number(form.price);
     if (!Number.isFinite(price) || price < 0) return "Price must be a valid number";
-    if (form.stock !== "in" && form.stock !== "out") return "Stock is required";
+    const stock = Number(form.stock);
+    if (!Number.isFinite(stock) || stock < 0) return "Stock must be a valid number";
     if (!form.categoryId) return "Category is required";
     const urls = form.imageUrls.map((u) => u.trim()).filter(Boolean);
     if (urls.length === 0) return "At least 1 Image URL is required";
@@ -127,7 +161,7 @@ export default function AdminProducts() {
     }
 
     const price = Number(form.price);
-    const stock = form.stock === "in" ? 1 : 0;
+    const stock = Number(form.stock);
     const urls = form.imageUrls.map((u) => u.trim()).filter(Boolean);
     const cat = categoryById.get(form.categoryId);
 
@@ -212,18 +246,64 @@ export default function AdminProducts() {
     });
   };
 
+  const getStockBadge = (stock: number) => {
+    if (stock === 0) return <Badge variant="destructive">Out of stock</Badge>;
+    if (stock <= 5) return <Badge variant="secondary" className="bg-amber-100 text-amber-700">Low: {stock}</Badge>;
+    return <Badge variant="outline">{stock}</Badge>;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Products</h1>
           <p className="text-sm text-muted-foreground">
-            Create, edit, publish/unpublish, and delete products.
+            Manage your product catalog ({filteredProducts.length} products)
           </p>
         </div>
         <Button onClick={openCreate}>Add product</Button>
       </div>
 
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStock} onValueChange={setFilterStock}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="Stock" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stock</SelectItem>
+                <SelectItem value="in">In Stock</SelectItem>
+                <SelectItem value="low">Low Stock (≤5)</SelectItem>
+                <SelectItem value="out">Out of Stock</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Products Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">All products</CardTitle>
@@ -233,22 +313,36 @@ export default function AdminProducts() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">Image</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead>Published</TableHead>
+                  <TableHead className="text-center">Stock</TableHead>
+                  <TableHead className="text-center">Published</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((p) => (
+                {paginatedProducts.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.categorySlug}</TableCell>
-                    <TableCell className="text-right">₹{Number(p.price ?? 0).toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{p.stock ?? 0}</TableCell>
                     <TableCell>
+                      {p.imageUrls?.[0] ? (
+                        <img
+                          src={p.imageUrls[0]}
+                          alt={p.name}
+                          className="h-10 w-10 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>{categoryById.get(p.categoryId)?.name || p.categorySlug}</TableCell>
+                    <TableCell className="text-right">₹{Number(p.price ?? 0).toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-center">{getStockBadge(p.stock ?? 0)}</TableCell>
+                    <TableCell className="text-center">
                       <Switch
                         checked={Boolean(p.published)}
                         onCheckedChange={(v) => togglePublished(p, v)}
@@ -264,28 +358,56 @@ export default function AdminProducts() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {products.length === 0 && (
+                {paginatedProducts.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
-                      No products yet.
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                      No products found.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Add/Edit Dialog */}
       <Dialog open={open} onOpenChange={(v) => {
         setOpen(v);
         if (!v) resetDialog();
       }}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit product" : "Add product"}</DialogTitle>
             <DialogDescription>
-              Use external image hosting and paste Image URLs (no uploads).
+              Fill in the product details below.
             </DialogDescription>
           </DialogHeader>
 
@@ -297,25 +419,12 @@ export default function AdminProducts() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="price">Price</Label>
-                <Input id="price" inputMode="decimal" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} />
+                <Label htmlFor="price">Price (₹)</Label>
+                <Input id="price" type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} />
               </div>
               <div className="grid gap-2">
-                <Label>Stock</Label>
-                <RadioGroup
-                  value={form.stock}
-                  onValueChange={(v) => setForm((p) => ({ ...p, stock: v }))}
-                  className="grid gap-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="in" id="stock-in" />
-                    <Label htmlFor="stock-in">In stock</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="out" id="stock-out" />
-                    <Label htmlFor="stock-out">Out of stock</Label>
-                  </div>
-                </RadioGroup>
+                <Label htmlFor="stock">Stock Quantity</Label>
+                <Input id="stock" type="number" min="0" value={form.stock} onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} />
               </div>
             </div>
 
@@ -334,22 +443,18 @@ export default function AdminProducts() {
                 </SelectContent>
               </Select>
               {categories.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Create a category first.
-                </p>
+                <p className="text-xs text-muted-foreground">Create a category first.</p>
               )}
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+              <Textarea id="description" rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
             </div>
 
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label>Published</Label>
-                <Switch checked={form.published} onCheckedChange={(v) => setForm((p) => ({ ...p, published: v }))} />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label>Published</Label>
+              <Switch checked={form.published} onCheckedChange={(v) => setForm((p) => ({ ...p, published: v }))} />
             </div>
 
             <div className="grid gap-3">
@@ -359,22 +464,32 @@ export default function AdminProducts() {
                   Add URL
                 </Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {form.imageUrls.map((url, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <Input
-                      placeholder="https://..."
-                      value={url}
-                      onChange={(e) => updateImageUrl(idx, e.target.value)}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => removeImageUrlField(idx)}
-                      disabled={form.imageUrls.length === 1}
-                    >
-                      Remove
-                    </Button>
+                  <div key={idx} className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://..."
+                        value={url}
+                        onChange={(e) => updateImageUrl(idx, e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => removeImageUrlField(idx)}
+                        disabled={form.imageUrls.length === 1}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    {url.trim() && (
+                      <img
+                        src={url.trim()}
+                        alt={`Preview ${idx + 1}`}
+                        className="h-20 w-20 rounded object-cover border"
+                        onError={(e) => (e.currentTarget.style.display = "none")}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

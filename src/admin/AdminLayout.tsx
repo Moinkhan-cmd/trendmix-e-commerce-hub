@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { BadgeDollarSign, Boxes, FolderKanban, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { BadgeDollarSign, Boxes, FolderKanban, LayoutDashboard, LogOut, Users, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAdminAuth } from "@/admin/AdminAuthProvider";
@@ -10,12 +10,14 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   end?: boolean;
 };
+
 const navItems: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/products", label: "Products", icon: Boxes },
   { to: "/admin/categories", label: "Categories", icon: FolderKanban },
   { to: "/admin/orders", label: "Orders", icon: BadgeDollarSign },
   { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminLayout() {
@@ -26,7 +28,6 @@ export default function AdminLayout() {
     await signOutAdmin();
     navigate("/admin/login", { replace: true });
   };
-
 
   const logoUrl = `${import.meta.env.BASE_URL}logo.svg`;
 
