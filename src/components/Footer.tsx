@@ -1,16 +1,15 @@
 import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
+import logoImg from "@/assets/images/logo.png";
 
 const Footer = () => {
-  const logoUrl = `${import.meta.env.BASE_URL}logo.svg`;
-
   return (
     <footer className="w-full border-t border-border bg-muted/30">
       <div className="container py-12 md:py-16">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <img src={logoUrl} alt="TrendMix logo" className="h-7 w-7 rounded-full object-cover" />
+              <img src={logoImg} alt="TrendMix logo" className="h-7 w-7 rounded-full object-cover" />
               <h3 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 TrendMix
               </h3>
