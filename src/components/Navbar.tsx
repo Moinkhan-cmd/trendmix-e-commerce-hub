@@ -54,14 +54,14 @@ const Navbar = () => {
         isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border",
       )}
     >
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="container flex h-16 items-center justify-between gap-4">
+        <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
           <Link
             to="/"
             className="group flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Go to home"
           >
-            <span className="relative">
+            <span className="relative flex-shrink-0">
               <img
                 src={logoImg}
                 alt="TrendMix logo"
@@ -71,12 +71,12 @@ const Navbar = () => {
               />
               <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-border/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </span>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide">
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide">
               TrendMix
             </h1>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-1 text-sm font-medium">
+          <nav className="hidden lg:flex items-center space-x-1 text-sm font-medium">
             {NAV_ITEMS.map((item) => {
               const active = isNavItemActive(item);
               return (
@@ -85,7 +85,7 @@ const Navbar = () => {
                   to={item.to}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative px-3 py-2 rounded-md transition-colors duration-200",
+                    "relative px-3 py-2 rounded-md transition-colors duration-200 whitespace-nowrap",
                     "text-muted-foreground hover:text-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     "after:absolute after:left-2 after:right-2 after:-bottom-0.5 after:h-[2px] after:rounded-full after:bg-primary",
@@ -101,16 +101,16 @@ const Navbar = () => {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <div className="hidden md:flex items-center relative">
             <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search products..."
-              className="pl-9 w-64 transition-shadow focus-visible:ring-2 focus-visible:ring-ring"
+              className="pl-9 w-48 lg:w-64 transition-shadow focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search">
+          <Button variant="ghost" size="icon" className="md:hidden flex-shrink-0" aria-label="Search">
             <Search className="h-5 w-5" />
           </Button>
 
@@ -119,7 +119,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="transition-transform hover:scale-105"
+            className="hidden sm:inline-flex transition-transform hover:scale-105 flex-shrink-0"
             aria-label="Wishlist"
           >
             <Heart className="h-5 w-5" />
@@ -128,7 +128,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="transition-transform hover:scale-105"
+            className="hidden sm:inline-flex transition-transform hover:scale-105 flex-shrink-0"
             aria-label="Account"
           >
             <User className="h-5 w-5" />
@@ -137,7 +137,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative transition-transform hover:scale-105"
+            className="relative transition-transform hover:scale-105 flex-shrink-0"
             aria-label="Cart"
           >
             <ShoppingCart className="h-5 w-5" />
@@ -148,7 +148,7 @@ const Navbar = () => {
             )}
           </Button>
 
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
+          <Button variant="ghost" size="icon" className="lg:hidden flex-shrink-0" aria-label="Menu">
             <Menu className="h-5 w-5" />
           </Button>
         </div>
