@@ -2,99 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 15%;
-
     --card: 0 0% 100%;
     --card-foreground: 240 10% 15%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 15%;
-
     --primary: 351 83% 64%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 180 51% 52%;
     --secondary-foreground: 0 0% 100%;
-
     --muted: 240 5% 96%;
     --muted-foreground: 240 4% 46%;
-
     --accent: 351 83% 64%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 240 6% 90%;
     --input: 240 6% 90%;
     --ring: 351 83% 64%;
-
     --radius: 0.75rem;
-    
-    /* Custom tokens for TrendMix */
     --gradient-primary: linear-gradient(135deg, hsl(351 83% 64%) 0%, hsl(340 75% 55%) 100%);
     --gradient-secondary: linear-gradient(135deg, hsl(180 51% 52%) 0%, hsl(170 45% 48%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(351 83% 64% / 0.1) 0%, hsl(180 51% 52% / 0.1) 100%);
-    
     --shadow-soft: 0 2px 8px hsl(240 10% 15% / 0.08);
     --shadow-medium: 0 4px 16px hsl(240 10% 15% / 0.12);
     --shadow-large: 0 8px 32px hsl(240 10% 15% / 0.16);
-    
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
     --background: 240 10% 10%;
     --foreground: 0 0% 98%;
-
     --card: 240 10% 13%;
     --card-foreground: 0 0% 98%;
-
     --popover: 240 10% 13%;
     --popover-foreground: 0 0% 98%;
-
     --primary: 351 83% 64%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 180 51% 52%;
     --secondary-foreground: 0 0% 100%;
-
     --muted: 240 5% 20%;
     --muted-foreground: 240 5% 64%;
-
     --accent: 351 83% 64%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 240 5% 20%;
     --input: 240 5% 20%;
     --ring: 351 83% 64%;
-    
     --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 4px 16px hsl(0 0% 0% / 0.4);
     --shadow-large: 0 8px 32px hsl(0 0% 0% / 0.5);
@@ -110,11 +74,68 @@ All colors MUST be HSL.
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* 3D Effects & Animations */
+@layer utilities {
+  .perspective-1000 { perspective: 1000px; }
+  .perspective-1500 { perspective: 1500px; }
+  .perspective-2000 { perspective: 2000px; }
+  .preserve-3d { transform-style: preserve-3d; }
+  .backface-hidden { backface-visibility: hidden; }
+
+  .float-3d { animation: float3d 6s ease-in-out infinite; }
+  .float-3d-delayed { animation: float3d 6s ease-in-out 2s infinite; }
+  .float-3d-slow { animation: float3d 8s ease-in-out infinite; }
+
+  @keyframes float3d {
+    0%, 100% { transform: translateY(0px) translateZ(0px) rotateX(0deg); }
+    50% { transform: translateY(-20px) translateZ(30px) rotateX(5deg); }
   }
 
-  body {
-    @apply bg-background text-foreground;
+  .rotate-3d { animation: rotate3d 20s linear infinite; }
+  @keyframes rotate3d {
+    from { transform: rotateY(0deg) rotateX(10deg); }
+    to { transform: rotateY(360deg) rotateX(10deg); }
   }
+
+  .glow-pulse { animation: glowPulse 3s ease-in-out infinite; }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 20px hsl(351 83% 64% / 0.3), 0 0 40px hsl(351 83% 64% / 0.2); }
+    50% { box-shadow: 0 0 30px hsl(351 83% 64% / 0.5), 0 0 60px hsl(351 83% 64% / 0.3); }
+  }
+
+  .shine-effect { position: relative; overflow: hidden; }
+  .shine-effect::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  .shine-effect:hover::before { left: 100%; }
+
+  .shadow-3d {
+    box-shadow: 0 1px 1px hsl(0deg 0% 0% / 0.075), 0 2px 2px hsl(0deg 0% 0% / 0.075), 0 4px 4px hsl(0deg 0% 0% / 0.075), 0 8px 8px hsl(0deg 0% 0% / 0.075), 0 16px 16px hsl(0deg 0% 0% / 0.075);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .shadow-3d:hover {
+    box-shadow: 0 2px 1px hsl(0deg 0% 0% / 0.075), 0 4px 2px hsl(0deg 0% 0% / 0.075), 0 8px 4px hsl(0deg 0% 0% / 0.075), 0 16px 8px hsl(0deg 0% 0% / 0.075), 0 32px 16px hsl(0deg 0% 0% / 0.075);
+    transform: translateY(-5px);
+  }
+
+  .glass-3d {
+    background: hsl(var(--background) / 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  .tilt-3d { transition: transform 0.3s ease; transform-style: preserve-3d; }
+  .tilt-3d:hover { transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) scale(1.02); }
+
+  .pop-3d { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+  .pop-3d:hover { transform: translateZ(30px) scale(1.05); box-shadow: 0 25px 50px -12px hsl(0 0% 0% / 0.25); }
 }

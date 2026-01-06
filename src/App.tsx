@@ -1,27 +1,28 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Products from "./pages/Products";
-import ProductDetail from "./pages/ProductDetail";
-import NotFound from "./pages/NotFound";
-import Cart from "./pages/Cart";
-import Wishlist from "./pages/Wishlist";
-import Account from "./pages/Account";
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Index from './pages/Index';
+import Products from './pages/Products';
+import ProductDetail from './pages/ProductDetail';
+import NotFound from './pages/NotFound';
+import Cart from './pages/Cart';
+import Wishlist from './pages/Wishlist';
+import Account from './pages/Account';
+import Checkout from './pages/Checkout';
 
-import { AdminAuthProvider } from "@/admin/AdminAuthProvider";
-import RequireAdmin from "@/admin/RequireAdmin";
-import AdminLayout from "@/admin/AdminLayout";
-import AdminLogin from "@/admin/pages/AdminLogin";
-import AdminDashboard from "@/admin/pages/AdminDashboard";
-import AdminProducts from "@/admin/pages/AdminProducts";
-import AdminCategories from "@/admin/pages/AdminCategories";
-import AdminOrders from "@/admin/pages/AdminOrders";
-import AdminUsers from "@/admin/pages/AdminUsers";
-import AdminSettings from "@/admin/pages/AdminSettings";
-import AdminProfile from "@/admin/pages/AdminProfile";
+import { AdminAuthProvider } from '@/admin/AdminAuthProvider';
+import RequireAdmin from '@/admin/RequireAdmin';
+import AdminLayout from '@/admin/AdminLayout';
+import AdminLogin from '@/admin/pages/AdminLogin';
+import AdminDashboard from '@/admin/pages/AdminDashboard';
+import AdminProducts from '@/admin/pages/AdminProducts';
+import AdminCategories from '@/admin/pages/AdminCategories';
+import AdminOrders from '@/admin/pages/AdminOrders';
+import AdminUsers from '@/admin/pages/AdminUsers';
+import AdminSettings from '@/admin/pages/AdminSettings';
+import AdminProfile from '@/admin/pages/AdminProfile';
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/products" element={<Products />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/account" element={<Account />} />
 
