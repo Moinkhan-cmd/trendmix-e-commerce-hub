@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/profile", label: "Profile", icon: UserCircle },
   { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 
 function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {

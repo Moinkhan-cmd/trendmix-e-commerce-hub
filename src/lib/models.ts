@@ -43,26 +43,42 @@ export type CustomerInfo = {
   notes?: string;
 };
 
-export type OrderDoc = {
-  /** Items in the order */
-  items: OrderItem[];
-  /** Customer information */
-  customer: CustomerInfo;
-  /** Order status */
+/** Order timeline event */
+export type OrderTimelineEvent = {
   status: OrderStatus;
-  /** Total amount */
+  timestamp: Timestamp;
+  note?: string;
+  updatedBy?: string;
+};
+
+/** Payment information */
+export type PaymentInfo = {
+  method: "cod" | "online" | "upi";
+  status: "pending" | "completed" | "failed" | "refunded";
+  transactionId?: string;
+  paidAt?: Timestamp;
+};
+
+export type OrderDoc = {
+  items: OrderItem[];
+  customer: CustomerInfo;
+  status: OrderStatus;
   total: number;
-  /** Subtotal before any discounts */
   subtotal: number;
-  /** Shipping cost */
   shipping: number;
-  /** Order number (human readable) */
+  discount?: number;
+  couponCode?: string;
   orderNumber: string;
-  /** User ID if logged in, or "guest" */
   userId: string;
-  /** Email notification sent to admin */
   emailSent?: boolean;
-  /** Timestamps */
+  customerEmailSent?: boolean;
+  timeline?: OrderTimelineEvent[];
+  payment?: PaymentInfo;
+  trackingNumber?: string;
+  shippingCarrier?: string;
+  estimatedDelivery?: Timestamp;
+  cancellationReason?: string;
+  adminNotes?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -101,13 +117,15 @@ export type PersonalProfileDoc = {
   updatedAt?: Timestamp;
 };
 
-/** Settings document for admin email notifications */
 export type NotificationSettingsDoc = {
   adminEmail: string;
   emailjsServiceId?: string;
   emailjsTemplateId?: string;
   emailjsPublicKey?: string;
   notifyOnNewOrder: boolean;
+  notifyOnStatusChange?: boolean;
+  customerOrderConfirmationTemplateId?: string;
+  customerStatusUpdateTemplateId?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
