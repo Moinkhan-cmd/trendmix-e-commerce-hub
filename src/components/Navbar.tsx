@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import logoImg from "@/assets/images/logo.png";
 
 type NavItem = {
   label: string;
@@ -45,8 +46,6 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const logoUrl = `${import.meta.env.BASE_URL}logo.svg`;
-
   return (
     <header
       className={cn(
@@ -63,7 +62,7 @@ const Navbar = () => {
           >
             <span className="relative">
               <img
-                src={logoUrl}
+                src={logoImg}
                 alt="TrendMix logo"
                 className="h-8 w-8 rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="eager"
