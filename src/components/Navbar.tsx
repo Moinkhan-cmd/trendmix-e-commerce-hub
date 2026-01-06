@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logoImg from "@/assets/images/logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavItem = {
   label: string;
@@ -112,6 +113,8 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search">
             <Search className="h-5 w-5" />
           </Button>
+
+          <ThemeToggle />
 
           <Button
             variant="ghost"
