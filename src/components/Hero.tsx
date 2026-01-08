@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDocFromServer, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { PersonalProfileDoc, SocialLink } from "@/lib/models";
 import { buildInstagramUrl, buildXUrl, inferPlatformFromUrl, normalizeUrl } from "@/lib/profile";
@@ -50,20 +50,45 @@ const Hero = () => {
 
   useEffect(() => {
     const ref = doc(db, "settings", "personalProfile");
-    return onSnapshot(
-      ref,
-      (snap) => {
+
+    let unsub: undefined | (() => void);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const snap = await getDocFromServer(ref);
+        if (cancelled) return;
+
         if (!snap.exists()) {
           setProfile(null);
-          return;
+        } else {
+          setProfile(snap.data() as PersonalProfileDoc);
         }
-        setProfile(snap.data() as PersonalProfileDoc);
-      },
-      (err) => {
-        console.warn("Failed to subscribe to personal profile:", err);
+
+        unsub = onSnapshot(
+          ref,
+          (nextSnap) => {
+            if (!nextSnap.exists()) {
+              setProfile(null);
+              return;
+            }
+            setProfile(nextSnap.data() as PersonalProfileDoc);
+          },
+          (err) => {
+            console.warn("Failed to subscribe to personal profile:", err);
+          }
+        );
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("Failed to load personal profile from server:", err);
         setProfile(null);
       }
-    );
+    })();
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   useEffect(() => {
