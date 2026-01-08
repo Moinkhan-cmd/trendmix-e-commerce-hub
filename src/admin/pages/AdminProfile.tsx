@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import logoImg from "@/assets/images/logo.png";
 import { doc, deleteDoc, deleteField, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
@@ -463,7 +464,7 @@ export default function AdminProfile() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-4">
                   <img
-                    src={filePreview || photoUrl || `${import.meta.env.BASE_URL}logo.svg`}
+                    src={filePreview || photoUrl || logoImg}
                     alt="Profile preview"
                     className="h-20 w-20 rounded-full object-cover border border-border"
                   />
