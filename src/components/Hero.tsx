@@ -110,7 +110,7 @@ const Hero = () => {
         </FloatingElement>
       </div>
 
-      <div className="container relative py-16 md:py-24 lg:py-28 preserve-3d">
+      <div className="container relative py-10 md:py-16 lg:py-20 preserve-3d">
         {/* Featured Profile Block */}
         {showFeatured && (
           <div className="mb-10 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left reveal-up">
@@ -153,7 +153,7 @@ const Hero = () => {
           </div>
         )}
 
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-10">
           <div className="flex flex-col justify-center space-y-7 text-center lg:text-left preserve-3d">
             {/* Badge with glow */}
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur self-center lg:self-start shine-effect glow-pulse reveal-up stagger-1" style={{ animationFillMode: "backwards" }}>

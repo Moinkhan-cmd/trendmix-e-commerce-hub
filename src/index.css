@@ -229,7 +229,11 @@
   .stagger-4 { animation-delay: 0.4s; }
   .stagger-5 { animation-delay: 0.5s; }
 
-  .reveal-up { opacity: 0; transform: translateY(30px); animation: revealUp 0.6s ease forwards; }
+  /* Fallback: never hide content if animations fail */
+  .reveal-up { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-up { opacity: 0; transform: translateY(30px); animation: revealUp 0.6s ease forwards; }
+  }
   @keyframes revealUp { to { opacity: 1; transform: translateY(0); } }
 
   .scale-in { opacity: 0; transform: scale(0.9); animation: scaleIn 0.5s ease forwards; }
