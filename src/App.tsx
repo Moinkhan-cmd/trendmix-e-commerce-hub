@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
+
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 
 import { AuthProvider } from '@/auth/AuthProvider';
 import { RequireAuth } from '@/auth/RequireAuth';
@@ -34,6 +36,40 @@ import AdminNotificationSettings from '@/admin/pages/AdminNotificationSettings';
 
 const queryClient = new QueryClient();
 
+const ScrollToHash = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return;
+
+    const id = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+    if (!id) return;
+
+    let raf: number | null = null;
+    let attempts = 0;
+
+    const tryScroll = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      attempts += 1;
+      if (attempts >= 10) return;
+      raf = window.requestAnimationFrame(tryScroll);
+    };
+
+    tryScroll();
+
+    return () => {
+      if (raf != null) window.cancelAnimationFrame(raf);
+    };
+  }, [location.pathname, location.hash]);
+
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -42,6 +78,7 @@ const App = () => (
       <AuthProvider>
         <AdminAuthProvider>
           <BrowserRouter>
+            <ScrollToHash />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />

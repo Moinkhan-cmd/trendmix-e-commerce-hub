@@ -466,11 +466,17 @@ export default function AdminProducts() {
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.slug})
+                  {categories.length > 0 ? (
+                    categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} ({c.slug})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="__no_categories__" disabled>
+                      No categories found
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
               {categories.length === 0 && (
