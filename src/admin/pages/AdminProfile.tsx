@@ -140,56 +140,62 @@ export default function AdminProfile() {
     const unsub = onSnapshot(
       PROFILE_REF,
       (snap) => {
-      setHasProfile(snap.exists());
-      if (!snap.exists()) {
-        setLoading(false);
-        if (!formState.isDirty) {
-          reset({
-            email: "",
-            location: "",
-            instagramId: "",
-            xId: "",
-            socialLinks: [{ label: "", url: "" }],
-            bioHtml: "",
-            featured: { enabled: false, visible: true, title: "", tagline: "" },
+        setHasProfile(snap.exists());
+
+        if (!snap.exists()) {
+          setLoading(false);
+          if (!formState.isDirty) {
+            reset({
+              email: "",
+              location: "",
+              instagramId: "",
+              xId: "",
+              socialLinks: [{ label: "", url: "" }],
+              bioHtml: "",
+              featured: { enabled: false, visible: true, title: "", tagline: "" },
+            });
+            setPhotoUrl(null);
+            setPhotoPath(null);
           }
-      ,
+          return;
+        }
+
+        const data = snap.data() as PersonalProfileDoc;
+        setLoading(false);
+
+        if (formState.isDirty) return;
+
+        reset({
+          email: data.email ?? "",
+          location: data.location ?? "",
+          instagramId: data.instagramId ?? "",
+          xId: data.xId ?? "",
+          socialLinks:
+            Array.isArray(data.socialLinks) && data.socialLinks.length
+              ? data.socialLinks.map((l) => ({
+                  label: l.label ?? "",
+                  url: l.url ?? "",
+                  platform: l.platform ?? "",
+                }))
+              : [{ label: "", url: "" }],
+          bioHtml: data.bioHtml ?? "",
+          featured: {
+            enabled: Boolean(data.featured?.enabled),
+            visible: data.featured?.visible !== false,
+            title: data.featured?.title ?? "",
+            tagline: data.featured?.tagline ?? "",
+          },
+        });
+        setPhotoUrl(data.photoUrl ?? null);
+        setPhotoPath(data.photoPath ?? null);
+      },
       (err) => {
-        console.error(\"Failed to subscribe to personal profile:\", err);
-        toast.error(err?.message ?? \"Failed to load profile\");
+        console.error("Failed to subscribe to personal profile:", err);
+        toast.error(err?.message ?? "Failed to load profile");
         setLoading(false);
       }
     );
-          setPhotoUrl(null);
-          setPhotoPath(null);
-        }
-        return;
-      }
 
-      const data = snap.data() as PersonalProfileDoc;
-      setLoading(false);
-
-      if (formState.isDirty) return;
-
-      reset({
-        email: data.email ?? "",
-        location: data.location ?? "",
-        instagramId: data.instagramId ?? "",
-        xId: data.xId ?? "",
-        socialLinks: Array.isArray(data.socialLinks) && data.socialLinks.length
-          ? data.socialLinks.map((l) => ({ label: l.label ?? "", url: l.url ?? "", platform: (l as any).platform ?? "" }))
-          : [{ label: "", url: "" }],
-        bioHtml: data.bioHtml ?? "",
-        featured: {
-          enabled: Boolean(data.featured?.enabled),
-          visible: data.featured?.visible !== false,
-          title: data.featured?.title ?? "",
-          tagline: data.featured?.tagline ?? "",
-        },
-      });
-      setPhotoUrl(data.photoUrl ?? null);
-      setPhotoPath(data.photoPath ?? null);
-    });
     return unsub;
   }, [reset, formState.isDirty]);
 

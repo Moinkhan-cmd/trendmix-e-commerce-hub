@@ -24,12 +24,14 @@ function safeParseShopState(raw: string | null): ShopState | null {
 }
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<ShopState>({ cart: {}, wishlist: {} });
-
-  useEffect(() => {
-    const next = safeParseShopState(globalThis?.localStorage?.getItem(SHOP_STORAGE_KEY) ?? null);
-    if (next) setState(next);
-  }, []);
+  const [state, setState] = useState<ShopState>(() => {
+    try {
+      const raw = globalThis?.localStorage?.getItem(SHOP_STORAGE_KEY) ?? null;
+      return safeParseShopState(raw) ?? { cart: {}, wishlist: {} };
+    } catch {
+      return { cart: {}, wishlist: {} };
+    }
+  });
 
   useEffect(() => {
     try {

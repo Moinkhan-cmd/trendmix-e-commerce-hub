@@ -196,40 +196,40 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setLoading(true);
+
     const unsubProducts = onSnapshot(
-      collection(db, 'products'),
+      collection(db, "products"),
       (snap) => {
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
-    }
-      ,
+        setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
+      },
       (err) => {
-        console.error(\"Failed to subscribe to products:\", err);
-        toast.error(\"Failed to load products\");
+        console.error("Failed to subscribe to products:", err);
+        toast.error("Failed to load products");
         setLoading(false);
       }
     );
+
     const unsubOrders = onSnapshot(
-      query(collection(db, 'orders'), orderBy('createdAt', 'desc')),
+      query(collection(db, "orders"), orderBy("createdAt", "desc")),
       (snap) => {
         setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) })));
         setLoading(false);
-      }
-      ,
+      },
       (err) => {
-        console.error(\"Failed to subscribe to orders:\", err);
-        toast.error(\"Failed to load orders\");
+        console.error("Failed to subscribe to orders:", err);
+        toast.error("Failed to load orders");
         setLoading(false);
       }
     );
+
     const unsubUsers = onSnapshot(
-      collection(db, 'users'),
+      collection(db, "users"),
       (snap) => {
-      setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as UserDoc) })));
-    }
-      ,
+        setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as UserDoc) })));
+      },
       (err) => {
-        console.error(\"Failed to subscribe to users:\", err);
-        toast.error(\"Failed to load users\");
+        console.error("Failed to subscribe to users:", err);
+        toast.error("Failed to load users");
         setLoading(false);
       }
     );
