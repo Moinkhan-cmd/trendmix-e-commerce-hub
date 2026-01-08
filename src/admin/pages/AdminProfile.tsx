@@ -137,7 +137,9 @@ export default function AdminProfile() {
   }, [filePreview]);
 
   useEffect(() => {
-    const unsub = onSnapshot(PROFILE_REF, (snap) => {
+    const unsub = onSnapshot(
+      PROFILE_REF,
+      (snap) => {
       setHasProfile(snap.exists());
       if (!snap.exists()) {
         setLoading(false);
@@ -150,7 +152,14 @@ export default function AdminProfile() {
             socialLinks: [{ label: "", url: "" }],
             bioHtml: "",
             featured: { enabled: false, visible: true, title: "", tagline: "" },
-          });
+          }
+      ,
+      (err) => {
+        console.error(\"Failed to subscribe to personal profile:\", err);
+        toast.error(err?.message ?? \"Failed to load profile\");
+        setLoading(false);
+      }
+    );
           setPhotoUrl(null);
           setPhotoPath(null);
         }

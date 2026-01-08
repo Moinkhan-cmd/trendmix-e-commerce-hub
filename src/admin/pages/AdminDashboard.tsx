@@ -55,6 +55,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 import type { OrderDoc, ProductDoc, UserDoc } from '@/lib/models';
 import { cn } from '@/lib/utils';
+import { toast } from "@/components/ui/sonner";
 
 type WithId<T> = T & { id: string };
 
@@ -195,19 +196,43 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setLoading(true);
-    const unsubProducts = onSnapshot(collection(db, 'products'), (snap) => {
+    const unsubProducts = onSnapshot(
+      collection(db, 'products'),
+      (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
-    });
+    }
+      ,
+      (err) => {
+        console.error(\"Failed to subscribe to products:\", err);
+        toast.error(\"Failed to load products\");
+        setLoading(false);
+      }
+    );
     const unsubOrders = onSnapshot(
       query(collection(db, 'orders'), orderBy('createdAt', 'desc')),
       (snap) => {
         setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) })));
         setLoading(false);
       }
+      ,
+      (err) => {
+        console.error(\"Failed to subscribe to orders:\", err);
+        toast.error(\"Failed to load orders\");
+        setLoading(false);
+      }
     );
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      (snap) => {
       setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as UserDoc) })));
-    });
+    }
+      ,
+      (err) => {
+        console.error(\"Failed to subscribe to users:\", err);
+        toast.error(\"Failed to load users\");
+        setLoading(false);
+      }
+    );
 
     return () => {
       unsubProducts();
