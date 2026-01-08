@@ -44,9 +44,15 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<WithId<UserDoc> | null>(null);
 
   useEffect(() => {
-    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as UserDoc) })));
-    });
+    const unsubUsers = onSnapshot(
+      collection(db, "users"),
+      (snap) => {
+        setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as UserDoc) })));
+      },
+      (err) => {
+        console.error("Firestore subscription failed (users):", err);
+      }
+    );
     const unsubOrders = onSnapshot(
       query(collection(db, "orders"), orderBy("createdAt", "desc")),
       (snap) => {

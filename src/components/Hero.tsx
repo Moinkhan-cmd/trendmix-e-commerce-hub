@@ -50,13 +50,20 @@ const Hero = () => {
 
   useEffect(() => {
     const ref = doc(db, "settings", "personalProfile");
-    return onSnapshot(ref, (snap) => {
-      if (!snap.exists()) {
+    return onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
+          setProfile(null);
+          return;
+        }
+        setProfile(snap.data() as PersonalProfileDoc);
+      },
+      (err) => {
+        console.warn("Failed to subscribe to personal profile:", err);
         setProfile(null);
-        return;
       }
-      setProfile(snap.data() as PersonalProfileDoc);
-    });
+    );
   }, []);
 
   useEffect(() => {

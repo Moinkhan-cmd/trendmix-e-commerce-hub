@@ -58,12 +58,24 @@ export default function AdminCategories() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    const unsubCategories = onSnapshot(collection(db, "categories"), (snap) => {
-      setCategories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as CategoryDoc) })));
-    });
-    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
-    });
+    const unsubCategories = onSnapshot(
+      collection(db, "categories"),
+      (snap) => {
+        setCategories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as CategoryDoc) })));
+      },
+      (err) => {
+        console.error("Firestore subscription failed (categories):", err);
+      }
+    );
+    const unsubProducts = onSnapshot(
+      collection(db, "products"),
+      (snap) => {
+        setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
+      },
+      (err) => {
+        console.error("Firestore subscription failed (products):", err);
+      }
+    );
     return () => {
       unsubCategories();
       unsubProducts();
