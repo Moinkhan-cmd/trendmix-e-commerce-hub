@@ -175,7 +175,6 @@ const Hero = () => {
                       target="_blank"
                       rel="noreferrer noopener"
                       className={`inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1.5 text-sm text-muted-foreground backdrop-blur hover:text-foreground hover:bg-muted/60 transition-all hover-lift stagger-${idx + 1}`}
-                      style={{ animationFillMode: "backwards" }}
                     >
                       <Icon className="h-4 w-4" />
                       <span className="capitalize">{i.label}</span>
@@ -190,13 +189,13 @@ const Hero = () => {
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-10">
           <div className="flex flex-col justify-center space-y-7 text-center lg:text-left preserve-3d">
             {/* Badge with glow */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur self-center lg:self-start shine-effect glow-pulse reveal-up stagger-1" style={{ animationFillMode: "backwards" }}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur self-center lg:self-start shine-effect glow-pulse reveal-up stagger-1">
               <Sparkles className="h-4 w-4 animate-pulse" />
               <span>New Arrivals Daily</span>
             </div>
 
             <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl reveal-up stagger-2" style={{ animationFillMode: "backwards" }}>
+              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl reveal-up stagger-2">
                 <span className="text-3d inline-block hover:scale-105 transition-transform cursor-default">Discover Your</span>
                 <br />
                 <span className="bg-gradient-to-r from-primary via-pink-500 to-secondary bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient inline-block">
@@ -204,13 +203,13 @@ const Hero = () => {
                 </span>
               </h1>
 
-              <p className="mx-auto max-w-[42rem] text-muted-foreground text-lg md:text-xl lg:mx-0 reveal-up stagger-3" style={{ animationFillMode: "backwards" }}>
+              <p className="mx-auto max-w-[42rem] text-muted-foreground text-lg md:text-xl lg:mx-0 reveal-up stagger-3">
                 Shop the latest trends in beauty, jewelry, and fashion accessories.
                 Curated collections that blend style with affordability.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 self-center lg:self-start reveal-up stagger-4" style={{ animationFillMode: "backwards" }}>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 self-center lg:self-start reveal-up stagger-4">
               <Button asChild size="lg" className="group btn-3d shine-effect relative overflow-hidden">
                 <Link to="/products">
                   <span className="relative z-10 flex items-center">
@@ -226,7 +225,7 @@ const Hero = () => {
             </div>
 
             {/* Stats with 3D cards */}
-            <div className="self-center lg:self-start reveal-up stagger-5" style={{ animationFillMode: "backwards" }}>
+            <div className="self-center lg:self-start reveal-up stagger-5">
               <div className="inline-flex items-center gap-6 sm:gap-8 rounded-2xl border border-border glass-card px-5 py-4 shadow-3d-elevated">
                 <div className="text-center group cursor-default">
                   <p className="text-2xl font-bold leading-none group-hover:text-primary transition-colors group-hover:scale-110 inline-block transition-transform">2000+</p>
