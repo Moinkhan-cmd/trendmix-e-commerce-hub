@@ -66,6 +66,8 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState<WithId<ProductDoc> | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
 
+  const [imagePreviewErrors, setImagePreviewErrors] = useState<Record<number, boolean>>({});
+
   // Search, filter, and pagination
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -120,6 +122,7 @@ export default function AdminProducts() {
   const resetDialog = () => {
     setEditing(null);
     setForm({ ...emptyForm });
+    setImagePreviewErrors({});
   };
 
   const openCreate = () => {
@@ -138,6 +141,7 @@ export default function AdminProducts() {
       published: Boolean(p.published),
       imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [""],
     });
+    setImagePreviewErrors({});
     setOpen(true);
   };
 
@@ -233,6 +237,12 @@ export default function AdminProducts() {
       next[idx] = value;
       return { ...prev, imageUrls: next };
     });
+    setImagePreviewErrors((prev) => {
+      if (!(idx in prev)) return prev;
+      const next = { ...prev };
+      delete next[idx];
+      return next;
+    });
   };
 
   const addImageUrlField = () => {
@@ -243,6 +253,15 @@ export default function AdminProducts() {
     setForm((prev) => {
       const next = prev.imageUrls.filter((_, i) => i !== idx);
       return { ...prev, imageUrls: next.length ? next : [""] };
+    });
+    setImagePreviewErrors((prev) => {
+      const next: Record<number, boolean> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        const i = Number(k);
+        if (Number.isNaN(i) || i === idx) continue;
+        next[i > idx ? i - 1 : i] = v;
+      }
+      return next;
     });
   };
 
@@ -482,13 +501,21 @@ export default function AdminProducts() {
                         Remove
                       </Button>
                     </div>
-                    {url.trim() && (
+                    {url.trim() && !imagePreviewErrors[idx] && (
                       <img
                         src={url.trim()}
                         alt={`Preview ${idx + 1}`}
                         className="h-20 w-20 rounded object-cover border"
-                        onError={(e) => (e.currentTarget.style.display = "none")}
+                        onError={() =>
+                          setImagePreviewErrors((prev) => ({
+                            ...prev,
+                            [idx]: true,
+                          }))
+                        }
                       />
+                    )}
+                    {url.trim() && imagePreviewErrors[idx] && (
+                      <p className="text-xs text-muted-foreground">Preview failed to load. Check the URL.</p>
                     )}
                   </div>
                 ))}
@@ -497,7 +524,7 @@ export default function AdminProducts() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
               Cancel
             </Button>
             <Button onClick={onSave} disabled={saving}>

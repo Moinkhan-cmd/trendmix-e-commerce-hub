@@ -63,6 +63,7 @@ const Hero = () => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!heroRef.current) return;
       const rect = heroRef.current.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
       setMousePosition({
         x: ((e.clientX - rect.left) / rect.width - 0.5) * 20,
         y: ((e.clientY - rect.top) / rect.height - 0.5) * 20,
@@ -224,11 +225,11 @@ const Hero = () => {
                 <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-r from-primary/30 via-pink-500/20 to-secondary/30 blur-2xl opacity-60 animate-pulse" />
                 
                 {/* Main image container */}
-                <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-muted shadow-3d">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/50 bg-muted shadow-3d">
                   <img
                     src={heroBanner}
                     alt="TrendMix featured products showcase"
-                    className="h-auto w-full object-cover transition-transform duration-700 hover:scale-105"
+                    className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
                   
                   {/* Overlay gradient */}

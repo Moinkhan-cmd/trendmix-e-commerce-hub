@@ -24,8 +24,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       return;
     }
-    const ok = await isUidAdmin(auth.currentUser.uid);
-    setIsAdmin(ok);
+
+    setLoading(true);
+    try {
+      const ok = await isUidAdmin(auth.currentUser.uid);
+      setIsAdmin(ok);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOutAdmin = async () => {
@@ -46,6 +52,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
         const ok = await isUidAdmin(nextUser.uid);
         setIsAdmin(ok);
+      } catch {
+        setIsAdmin(false);
       } finally {
         setLoading(false);
       }
@@ -59,11 +67,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     [user, isAdmin, loading]
   );
 
-  return (
-    <AdminAuthContext.Provider value={value}>
-      {children}
-    </AdminAuthContext.Provider>
-  );
+  return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
 }
 
 export function useAdminAuth() {

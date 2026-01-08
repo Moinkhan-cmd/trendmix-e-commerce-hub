@@ -66,7 +66,7 @@ export function Card3D({
           transform,
           transition: "transform 0.15s ease-out, box-shadow 0.3s ease",
           boxShadow: transform
-            ? "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 30px -15px rgba(var(--primary), 0.3)"
+            ? "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 30px -15px hsl(var(--primary) / 0.3)"
             : "0 10px 30px -10px rgba(0, 0, 0, 0.1)",
         }}
         onMouseMove={handleMouseMove}
