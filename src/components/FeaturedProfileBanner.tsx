@@ -79,7 +79,9 @@ export default function FeaturedProfileBanner() {
 
         unsub = onSnapshot(
           ref,
+          { includeMetadataChanges: true },
           (nextSnap) => {
+            if (nextSnap.metadata.fromCache) return;
             if (!nextSnap.exists()) {
               setProfile(null);
               return;
