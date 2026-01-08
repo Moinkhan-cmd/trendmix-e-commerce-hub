@@ -20,7 +20,7 @@ import type { ProductDoc } from "@/lib/models";
 
 type WithId<T> = T & { id: string };
 
-type Category = "cosmetics" | "jewelry" | "socks" | "accessories";
+type Category = "cosmetics" | "jewelry" | "socks" | "accessories" | "henna";
 
 type SortOption = "featured" | "price-low" | "price-high" | "newest" | "rating";
 
@@ -29,6 +29,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
   jewelry: "Jewelry",
   socks: "Socks",
   accessories: "Accessories",
+  henna: "Henna",
 };
 
 const CATEGORY_OPTIONS: Array<{ label: string; value: Category | null }> = [
@@ -37,10 +38,11 @@ const CATEGORY_OPTIONS: Array<{ label: string; value: Category | null }> = [
   { label: "Jewelry", value: "jewelry" },
   { label: "Socks", value: "socks" },
   { label: "Accessories", value: "accessories" },
+  { label: "Henna", value: "henna" },
 ];
 
 function isCategory(value: string): value is Category {
-  return value === "cosmetics" || value === "jewelry" || value === "socks" || value === "accessories";
+  return value === "cosmetics" || value === "jewelry" || value === "socks" || value === "accessories" || value === "henna";
 }
 
 const DEFAULT_PRICE_RANGE: [number, number] = [0, 2000];

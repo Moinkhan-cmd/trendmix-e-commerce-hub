@@ -17,7 +17,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 type NavItem = {
   label: string;
   to: string;
-  category?: "cosmetics" | "jewelry" | "socks" | "accessories";
+  category?: "cosmetics" | "jewelry" | "socks" | "accessories" | "henna";
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -26,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Jewelry", to: "/products?category=jewelry", category: "jewelry" },
   { label: "Socks", to: "/products?category=socks", category: "socks" },
   { label: "Accessories", to: "/products?category=accessories", category: "accessories" },
+  { label: "Henna", to: "/products?category=henna", category: "henna" },
 ];
 
 const Navbar = () => {
