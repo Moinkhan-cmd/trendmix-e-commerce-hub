@@ -10,6 +10,9 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,12 +56,82 @@ import { Search, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 
 type WithId<T> = T & { id: string };
 
-const emptyForm = {
+const optionalNumber = z.preprocess((v) => {
+  if (v === "" || v === null || v === undefined) return undefined;
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : v;
+  }
+  return v;
+}, z.number().min(0, "Must be ≥ 0").optional());
+
+const productFormSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(120, "Name is too long"),
+    price: z.coerce.number().min(0, "Price must be ≥ 0"),
+    compareAtPrice: optionalNumber,
+    sku: z.string().trim().max(64, "SKU is too long").optional(),
+    brand: z.string().trim().max(64, "Brand is too long").optional(),
+    tagsText: z.string().optional().default(""),
+    weightKg: optionalNumber,
+    dimensionLengthCm: optionalNumber,
+    dimensionWidthCm: optionalNumber,
+    dimensionHeightCm: optionalNumber,
+    featured: z.boolean().default(false),
+    categoryId: z.string().min(1, "Category is required"),
+    description: z.string().max(4000, "Description is too long").optional().default(""),
+    stock: z.coerce.number().int("Stock must be an integer").min(0, "Stock must be ≥ 0"),
+    published: z.boolean().default(true),
+    imageUrls: z
+      .array(z.string())
+      .min(1)
+      .refine((arr) => arr.some((u) => u.trim().length > 0), {
+        message: "At least 1 Image URL is required",
+      })
+      .refine(
+        (arr) =>
+          arr
+            .map((u) => u.trim())
+            .filter(Boolean)
+            .every((u) => {
+              try {
+                // URL() is strict but good for admin validation
+                // eslint-disable-next-line no-new
+                new URL(u);
+                return true;
+              } catch {
+                return false;
+              }
+            }),
+        { message: "All Image URLs must be valid URLs" },
+      ),
+  })
+  .refine(
+    (v) => v.compareAtPrice === undefined || v.compareAtPrice >= v.price,
+    {
+      message: "Compare-at price must be ≥ price",
+      path: ["compareAtPrice"],
+    },
+  );
+
+type ProductFormValues = z.infer<typeof productFormSchema>;
+
+const defaultProductValues: ProductFormValues = {
   name: "",
-  price: "",
+  price: 0,
+  compareAtPrice: undefined,
+  sku: "",
+  brand: "",
+  tagsText: "",
+  weightKg: undefined,
+  dimensionLengthCm: undefined,
+  dimensionWidthCm: undefined,
+  dimensionHeightCm: undefined,
+  featured: false,
   categoryId: "",
   description: "",
-  stock: "10",
+  stock: 10,
   published: true,
   imageUrls: [""],
 };
@@ -64,7 +145,15 @@ export default function AdminProducts() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<WithId<ProductDoc> | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
+  const productForm = useForm<ProductFormValues>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: defaultProductValues,
+    mode: "onChange",
+  });
+  const imageUrlsArray = useFieldArray({
+    control: productForm.control,
+    name: "imageUrls",
+  });
 
   const [imagePreviewErrors, setImagePreviewErrors] = useState<Record<number, boolean>>({});
 
@@ -133,7 +222,7 @@ export default function AdminProducts() {
 
   const resetDialog = () => {
     setEditing(null);
-    setForm({ ...emptyForm });
+    productForm.reset(defaultProductValues);
     setImagePreviewErrors({});
   };
 
@@ -144,12 +233,21 @@ export default function AdminProducts() {
 
   const openEdit = (p: WithId<ProductDoc>) => {
     setEditing(p);
-    setForm({
+    productForm.reset({
       name: p.name ?? "",
-      price: String(p.price ?? ""),
+      price: Number(p.price ?? 0),
+      compareAtPrice: typeof p.compareAtPrice === "number" ? p.compareAtPrice : undefined,
+      sku: p.sku ?? "",
+      brand: p.brand ?? "",
+      tagsText: Array.isArray(p.tags) ? p.tags.join(", ") : "",
+      weightKg: typeof p.weightKg === "number" ? p.weightKg : undefined,
+      dimensionLengthCm: typeof p.dimensionsCm?.length === "number" ? p.dimensionsCm.length : undefined,
+      dimensionWidthCm: typeof p.dimensionsCm?.width === "number" ? p.dimensionsCm.width : undefined,
+      dimensionHeightCm: typeof p.dimensionsCm?.height === "number" ? p.dimensionsCm.height : undefined,
+      featured: Boolean(p.featured),
       categoryId: p.categoryId ?? "",
       description: p.description ?? "",
-      stock: String(p.stock ?? 0),
+      stock: Number(p.stock ?? 0),
       published: Boolean(p.published),
       imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [""],
     });
@@ -157,58 +255,65 @@ export default function AdminProducts() {
     setOpen(true);
   };
 
-  const validate = () => {
-    if (!form.name.trim()) return "Product name is required";
-    const price = Number(form.price);
-    if (!Number.isFinite(price) || price < 0) return "Price must be a valid number";
-    const stock = Number(form.stock);
-    if (!Number.isFinite(stock) || stock < 0) return "Stock must be a valid number";
-    if (!form.categoryId) return "Category is required";
-    const urls = form.imageUrls.map((u) => u.trim()).filter(Boolean);
-    if (urls.length === 0) return "At least 1 Image URL is required";
-    return null;
+  const parseTags = (tagsText: string | undefined) => {
+    const raw = (tagsText ?? "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return Array.from(new Set(raw));
   };
 
-  const onSave = async () => {
-    const err = validate();
-    if (err) {
-      toast.error(err);
-      return;
-    }
-
-    const price = Number(form.price);
-    const stock = Number(form.stock);
-    const urls = form.imageUrls.map((u) => u.trim()).filter(Boolean);
-    const cat = categoryById.get(form.categoryId);
-
+  const onSubmit = productForm.handleSubmit(async (values) => {
+    const cat = categoryById.get(values.categoryId);
     if (!cat) {
       toast.error("Selected category not found");
       return;
     }
 
-    const payload: ProductDoc = {
-      name: form.name.trim(),
-      price,
+    const urls = values.imageUrls.map((u) => u.trim()).filter(Boolean);
+    const tags = parseTags(values.tagsText);
+
+    const payload: any = {
+      name: values.name.trim(),
+      price: values.price,
       categoryId: cat.id,
       categorySlug: cat.slug,
-      description: form.description.trim(),
-      stock,
+      description: (values.description ?? "").trim(),
+      stock: values.stock,
       imageUrls: urls,
-      published: form.published,
-      updatedAt: serverTimestamp() as any,
-      createdAt: (editing ? undefined : (serverTimestamp() as any)) as any,
+      published: values.published,
+      updatedAt: serverTimestamp(),
     };
+
+    // Only add optional fields if they have values (Firestore doesn't allow undefined)
+    if (values.compareAtPrice !== undefined) payload.compareAtPrice = values.compareAtPrice;
+    if (values.sku?.trim()) payload.sku = values.sku.trim();
+    if (values.brand?.trim()) payload.brand = values.brand.trim();
+    if (tags.length) payload.tags = tags;
+    if (values.weightKg !== undefined) payload.weightKg = values.weightKg;
+    if (
+      values.dimensionLengthCm !== undefined ||
+      values.dimensionWidthCm !== undefined ||
+      values.dimensionHeightCm !== undefined
+    ) {
+      payload.dimensionsCm = {
+        ...(values.dimensionLengthCm !== undefined && { length: values.dimensionLengthCm }),
+        ...(values.dimensionWidthCm !== undefined && { width: values.dimensionWidthCm }),
+        ...(values.dimensionHeightCm !== undefined && { height: values.dimensionHeightCm }),
+      };
+    }
+    if (values.featured) payload.featured = values.featured;
 
     setSaving(true);
     try {
       if (editing) {
         const ref = doc(db, "products", editing.id);
-        const { createdAt, ...rest } = payload;
-        await updateDoc(ref, rest as any);
+        await updateDoc(ref, payload);
         toast.success("Product updated");
       } else {
+        payload.createdAt = serverTimestamp();
         const ref = collection(db, "products");
-        await addDoc(ref, payload as any);
+        await addDoc(ref, payload);
         toast.success("Product created");
       }
       setOpen(false);
@@ -218,7 +323,7 @@ export default function AdminProducts() {
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const onDelete = async (p: WithId<ProductDoc>) => {
     const ok = confirm(`Delete "${p.name}"?`);
@@ -243,29 +348,12 @@ export default function AdminProducts() {
     }
   };
 
-  const updateImageUrl = (idx: number, value: string) => {
-    setForm((prev) => {
-      const next = [...prev.imageUrls];
-      next[idx] = value;
-      return { ...prev, imageUrls: next };
-    });
-    setImagePreviewErrors((prev) => {
-      if (!(idx in prev)) return prev;
-      const next = { ...prev };
-      delete next[idx];
-      return next;
-    });
-  };
-
   const addImageUrlField = () => {
-    setForm((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ""] }));
+    imageUrlsArray.append("");
   };
 
   const removeImageUrlField = (idx: number) => {
-    setForm((prev) => {
-      const next = prev.imageUrls.filter((_, i) => i !== idx);
-      return { ...prev, imageUrls: next.length ? next : [""] };
-    });
+    imageUrlsArray.remove(idx);
     setImagePreviewErrors((prev) => {
       const next: Record<number, boolean> = {};
       for (const [k, v] of Object.entries(prev)) {
@@ -442,113 +530,327 @@ export default function AdminProducts() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="price">Price (₹)</Label>
-                <Input id="price" type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="stock">Stock Quantity</Label>
-                <Input id="stock" type="number" min="0" value={form.stock} onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))} />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Category</Label>
-              <Select value={form.categoryId} onValueChange={(v) => setForm((p) => ({ ...p, categoryId: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.length > 0 ? (
-                    categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.slug})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="__no_categories__" disabled>
-                      No categories found
-                    </SelectItem>
+          <Form {...productForm}>
+            <form onSubmit={onSubmit} className="grid gap-6">
+              <div className="grid gap-4">
+                <FormField
+                  control={productForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. TrendMix Hoodie" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </SelectContent>
-              </Select>
-              {categories.length === 0 && (
-                <p className="text-xs text-muted-foreground">Create a category first.</p>
-              )}
-            </div>
+                />
 
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label>Published</Label>
-              <Switch checked={form.published} onCheckedChange={(v) => setForm((p) => ({ ...p, published: v }))} />
-            </div>
-
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between">
-                <Label>Image URLs</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addImageUrlField}>
-                  Add URL
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {form.imageUrls.map((url, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://..."
-                        value={url}
-                        onChange={(e) => updateImageUrl(idx, e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => removeImageUrlField(idx)}
-                        disabled={form.imageUrls.length === 1}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    {url.trim() && !imagePreviewErrors[idx] && (
-                      <img
-                        src={url.trim()}
-                        alt={`Preview ${idx + 1}`}
-                        className="h-20 w-20 rounded object-cover border"
-                        onError={() =>
-                          setImagePreviewErrors((prev) => ({
-                            ...prev,
-                            [idx]: true,
-                          }))
-                        }
-                      />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={productForm.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Price (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} step="0.01" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                    {url.trim() && imagePreviewErrors[idx] && (
-                      <p className="text-xs text-muted-foreground">Preview failed to load. Check the URL.</p>
+                  />
+                  <FormField
+                    control={productForm.control}
+                    name="compareAtPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Compare at price (₹) (optional)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} step="0.01" placeholder="e.g. 999" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={productForm.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stock quantity</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} step="1" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={productForm.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.length > 0 ? (
+                              categories.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="__no_categories__" disabled>
+                                No categories found
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        {categories.length === 0 && (
+                          <p className="text-xs text-muted-foreground">Create a category first.</p>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={productForm.control}
+                    name="sku"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SKU (optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. TM-HOODIE-BLK-M" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={productForm.control}
+                    name="brand"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Brand (optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. TrendMix" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={productForm.control}
+                  name="tagsText"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags (comma separated) (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="summer, sale, cotton" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={productForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea rows={4} placeholder="Write a short description..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={productForm.control}
+                    name="weightKg"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight (kg) (optional)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} step="0.01" placeholder="e.g. 0.5" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={productForm.control}
+                    name="featured"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-md border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Featured</FormLabel>
+                          <p className="text-xs text-muted-foreground">Show as featured (optional).</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <p className="text-sm font-medium">Dimensions (cm) (optional)</p>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <FormField
+                      control={productForm.control}
+                      name="dimensionLengthCm"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input type="number" min={0} step="0.01" placeholder="Length" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={productForm.control}
+                      name="dimensionWidthCm"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input type="number" min={0} step="0.01" placeholder="Width" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={productForm.control}
+                      name="dimensionHeightCm"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input type="number" min={0} step="0.01" placeholder="Height" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
+                </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
+                <FormField
+                  control={productForm.control}
+                  name="published"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-md border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Published</FormLabel>
+                        <p className="text-xs text-muted-foreground">Visible in the store.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Image URLs</p>
+                    <Button type="button" variant="outline" size="sm" onClick={addImageUrlField}>
+                      Add URL
+                    </Button>
+                  </div>
+
+                  <FormMessage>{productForm.formState.errors.imageUrls?.message as any}</FormMessage>
+
+                  <div className="space-y-3">
+                    {imageUrlsArray.fields.map((f, idx) => (
+                      <FormField
+                        key={f.id}
+                        control={productForm.control}
+                        name={`imageUrls.${idx}`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="flex gap-2">
+                              <FormControl>
+                                <Input
+                                  placeholder="https://..."
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    setImagePreviewErrors((prev) => {
+                                      if (!(idx in prev)) return prev;
+                                      const next = { ...prev };
+                                      delete next[idx];
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              </FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => removeImageUrlField(idx)}
+                                disabled={imageUrlsArray.fields.length === 1}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+
+                            {String(field.value ?? "").trim() && !imagePreviewErrors[idx] && (
+                              <img
+                                src={String(field.value ?? "").trim()}
+                                alt={`Preview ${idx + 1}`}
+                                className="h-20 w-20 rounded object-cover border"
+                                onError={() =>
+                                  setImagePreviewErrors((prev) => ({
+                                    ...prev,
+                                    [idx]: true,
+                                  }))
+                                }
+                              />
+                            )}
+                            {String(field.value ?? "").trim() && imagePreviewErrors[idx] && (
+                              <p className="text-xs text-muted-foreground">Preview failed to load. Check the URL.</p>
+                            )}
+
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>

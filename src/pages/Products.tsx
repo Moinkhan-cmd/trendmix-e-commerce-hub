@@ -16,36 +16,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { SlidersHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
-import type { ProductDoc } from "@/lib/models";
+import type { ProductDoc, CategoryDoc } from "@/lib/models";
 
 type WithId<T> = T & { id: string };
 
-type Category = "cosmetics" | "jewelry" | "socks" | "accessories" | "henna";
-
 type SortOption = "featured" | "price-low" | "price-high" | "newest" | "rating";
 
-const CATEGORY_LABEL: Record<Category, string> = {
-  cosmetics: "Cosmetics",
-  jewelry: "Jewelry",
-  socks: "Socks",
-  accessories: "Accessories",
-  henna: "Henna",
-};
-
-const CATEGORY_OPTIONS: Array<{ label: string; value: Category | null }> = [
-  { label: "All", value: null },
-  { label: "Cosmetics", value: "cosmetics" },
-  { label: "Jewelry", value: "jewelry" },
-  { label: "Socks", value: "socks" },
-  { label: "Accessories", value: "accessories" },
-  { label: "Henna", value: "henna" },
-];
-
-function isCategory(value: string): value is Category {
-  return value === "cosmetics" || value === "jewelry" || value === "socks" || value === "accessories" || value === "henna";
-}
-
-const DEFAULT_PRICE_RANGE: [number, number] = [0, 2000];
+const DEFAULT_PRICE_MAX = 2000;
+const DEFAULT_PRICE_RANGE: [number, number] = [0, DEFAULT_PRICE_MAX];
 
 function getTimestampMs(value: unknown) {
   const anyValue = value as any;
@@ -54,6 +32,7 @@ function getTimestampMs(value: unknown) {
 
 const Products = () => {
   const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
+  const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -64,10 +43,11 @@ const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    const q = query(collection(db, "products"), where("published", "==", true));
+    const qProducts = query(collection(db, "products"), where("published", "==", true));
+    const qCategories = collection(db, "categories");
 
-    const unsub = onSnapshot(
-      q,
+    const unsubProducts = onSnapshot(
+      qProducts,
       (snap) => {
         setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
         setLoading(false);
@@ -79,13 +59,43 @@ const Products = () => {
       },
     );
 
-    return () => unsub();
+    const unsubCategories = onSnapshot(
+      qCategories,
+      (snap) => {
+        setCategories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as CategoryDoc) })));
+      },
+      (err) => {
+        console.error("Failed to load categories:", err);
+      },
+    );
+
+    return () => {
+      unsubProducts();
+      unsubCategories();
+    };
   }, []);
 
   const categoryParamRaw = (searchParams.get("category") ?? "").toLowerCase().trim();
-  const activeCategory = isCategory(categoryParamRaw) ? categoryParamRaw : null;
+  const activeCategory = categoryParamRaw || null;
 
   const queryParam = (searchParams.get("q") ?? "").toLowerCase().trim();
+
+  const priceSliderMax = useMemo(() => {
+    const maxInCatalog = products.reduce((acc, p) => {
+      const price = Number(p.price ?? 0);
+      return Number.isFinite(price) ? Math.max(acc, price) : acc;
+    }, DEFAULT_PRICE_MAX);
+    return Math.max(DEFAULT_PRICE_MAX, maxInCatalog);
+  }, [products]);
+
+  // If the catalog contains products above the default max, expand the default range
+  // so newly added products are visible without needing user interaction.
+  useEffect(() => {
+    if (priceRange[1] === DEFAULT_PRICE_MAX && priceSliderMax > DEFAULT_PRICE_MAX) {
+      setPriceRange([0, priceSliderMax]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceSliderMax]);
 
   const filteredProducts = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
@@ -124,10 +134,11 @@ const Products = () => {
 
   const pageTitle = useMemo(() => {
     if (!activeCategory) return "All Products";
-    return CATEGORY_LABEL[activeCategory] ?? "All Products";
-  }, [activeCategory]);
+    const cat = categories.find((c) => c.slug === activeCategory);
+    return cat?.name ?? "All Products";
+  }, [activeCategory, categories]);
 
-  const setCategoryParam = (nextCategory: Category | null) => {
+  const setCategoryParam = (nextCategory: string | null) => {
     const next = new URLSearchParams(searchParams);
 
     if (nextCategory) {
@@ -144,7 +155,7 @@ const Products = () => {
   };
 
   const clearFilters = () => {
-    setPriceRange(DEFAULT_PRICE_RANGE);
+    setPriceRange([0, priceSliderMax]);
     setMinRating(null);
     setSort("featured");
     setCategoryParam(null);
@@ -190,19 +201,34 @@ const Products = () => {
             <div className="rounded-lg border border-border p-4">
               <h3 className="font-semibold mb-4">Categories</h3>
               <div className="space-y-3">
-                {CATEGORY_OPTIONS.map((category) => {
-                  const checked = category.value ? activeCategory === category.value : !activeCategory;
-                  const id = `category-${category.value ?? "all"}`;
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="category-all"
+                    checked={!activeCategory}
+                    onCheckedChange={(v) => {
+                      if (v) setCategoryParam(null);
+                    }}
+                  />
+                  <label
+                    htmlFor="category-all"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    All
+                  </label>
+                </div>
+                {categories.map((category) => {
+                  const checked = activeCategory === category.slug;
+                  const id = `category-${category.slug}`;
 
                   return (
-                    <div key={id} className="flex items-center space-x-2">
+                    <div key={category.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={id}
                         checked={checked}
                         onCheckedChange={(v) => {
                           if (v) {
-                            setCategoryParam(category.value);
-                          } else if (category.value) {
+                            setCategoryParam(category.slug);
+                          } else {
                             setCategoryParam(null);
                           }
                         }}
@@ -211,7 +237,7 @@ const Products = () => {
                         htmlFor={id}
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                       >
-                        {category.label}
+                        {category.name}
                       </label>
                     </div>
                   );
@@ -224,7 +250,7 @@ const Products = () => {
               <Slider
                 value={priceRange}
                 onValueChange={(value) => setPriceRange(value as [number, number])}
-                max={2000}
+                max={priceSliderMax}
                 step={50}
                 className="mb-4"
               />

@@ -120,8 +120,24 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} TrendMix Store. All rights reserved.</p>
+        <div className="mt-12 border-t border-border pt-8 text-center text-sm text-muted-foreground">
+          <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <span>&copy; 2026 TrendMix Store.</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="inline-flex items-center gap-1">
+              <span>Made by Moinkhan</span>
+              <span className="inline-flex items-center" aria-label="love" title="love">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 text-destructive motion-reduce:animate-none animate-heartbeat"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M12 21s-7.2-4.6-9.6-8.6C.7 9.6 2.1 6.8 4.9 5.9c1.8-.6 3.8 0 5.1 1.5L12 9.6l2-2.2c1.3-1.5 3.3-2.1 5.1-1.5 2.8.9 4.2 3.7 2.5 6.5C19.2 16.4 12 21 12 21z" />
+                </svg>
+              </span>
+            </span>
+          </p>
         </div>
       </div>
     </footer>

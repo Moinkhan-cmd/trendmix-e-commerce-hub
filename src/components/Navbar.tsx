@@ -65,7 +65,7 @@ const Navbar = () => {
     <header
       className={cn(
         "sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300",
-        isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border",
+        isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border/50",
       )}
     >
       <div className="container flex h-16 items-center justify-between gap-4">
@@ -100,12 +100,12 @@ const Navbar = () => {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative px-3 py-2 rounded-md transition-colors duration-200 whitespace-nowrap",
-                    "text-muted-foreground hover:text-foreground",
+                    "text-muted-foreground hover:text-foreground hover:bg-accent/40",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    "after:absolute after:left-2 after:right-2 after:-bottom-0.5 after:h-[2px] after:rounded-full after:bg-primary",
+                    "after:absolute after:left-3 after:right-3 after:-bottom-0.5 after:h-[2px] after:rounded-full after:bg-primary",
                     "after:origin-left after:scale-x-0 after:transition-transform after:duration-300",
                     "hover:after:scale-x-100",
-                    active && "text-primary after:scale-x-100",
+                    active && "text-foreground bg-accent/50 after:scale-x-100",
                   )}
                 >
                   {item.label}
@@ -120,11 +120,16 @@ const Navbar = () => {
             <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search products..."
-              className="pl-9 w-48 lg:w-64 transition-shadow focus-visible:ring-2 focus-visible:ring-ring"
+              className="pl-9 w-48 lg:w-64 rounded-full border-border/50 bg-background/50 transition-shadow focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
-          <Button variant="ghost" size="icon" className="md:hidden flex-shrink-0" aria-label="Search">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden flex-shrink-0 transition-colors hover:bg-accent/50"
+            aria-label="Search"
+          >
             <Search className="h-5 w-5" />
           </Button>
 
@@ -133,7 +138,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="hidden sm:inline-flex transition-transform hover:scale-105 flex-shrink-0"
+            className="hidden sm:inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
             aria-label="Wishlist"
             asChild
           >
@@ -145,7 +150,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="hidden sm:inline-flex transition-transform hover:scale-105 flex-shrink-0"
+            className="hidden sm:inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
             aria-label="Account"
             asChild
           >
@@ -157,7 +162,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative transition-transform hover:scale-105 flex-shrink-0"
+            className="relative flex-shrink-0 transition-colors hover:bg-accent/50"
             aria-label="Cart"
             asChild
           >
@@ -174,11 +179,16 @@ const Navbar = () => {
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden flex-shrink-0" aria-label="Open menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden flex-shrink-0 transition-colors hover:bg-accent/50"
+                aria-label="Open menu"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+            <SheetContent side="right" className="flex w-[300px] flex-col overflow-hidden sm:w-[350px]">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
                   <img
@@ -192,80 +202,84 @@ const Navbar = () => {
                 </SheetTitle>
               </SheetHeader>
 
-              {/* Mobile Search */}
-              <div className="mt-6 md:hidden">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search products..."
-                    className="pl-9 w-full"
-                  />
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+                {/* Mobile Search */}
+                <div className="mt-6 md:hidden">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search products..."
+                      className="h-10 w-full rounded-full border-border/50 bg-background/50 pl-9"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Mobile Navigation Links */}
-              <nav className="mt-6 flex flex-col gap-1">
-                {NAV_ITEMS.map((item) => {
-                  const active = isNavItemActive(item);
-                  return (
-                    <Link
-                      key={item.label}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={cn(
-                        "flex items-center px-3 py-3 rounded-lg text-base font-medium transition-colors",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        active && "bg-accent text-primary",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
+                {/* Mobile Navigation Links */}
+                <nav className="mt-6 flex flex-col gap-1">
+                  {NAV_ITEMS.map((item) => {
+                    const active = isNavItemActive(item);
+                    return (
+                      <Link
+                        key={item.label}
+                        to={item.to}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={cn(
+                          "flex items-center rounded-lg px-3 py-3 text-base font-medium transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          active && "bg-accent text-accent-foreground",
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
 
-              {/* Divider */}
-              <div className="my-6 border-t border-border" />
+                {/* Divider */}
+                <div className="my-6 border-t border-border" />
 
-              {/* Mobile Action Links */}
-              <div className="flex flex-col gap-1">
-                <Link
-                  to="/wishlist"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Heart className="h-5 w-5" />
-                  Wishlist
-                </Link>
-                <Link
-                  to="/account"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  <User className="h-5 w-5" />
-                  Account
-                </Link>
-                <Link
-                  to="/cart"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  Cart
-                  {cartCount > 0 && (
-                    <span className="ml-auto h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-              </div>
-
-              {/* Theme Toggle in Mobile */}
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="flex items-center justify-between px-3">
-                  <span className="text-sm text-muted-foreground">Theme</span>
-                  <ThemeToggle />
+                {/* Mobile Action Links */}
+                <div className="flex flex-col gap-1">
+                  <Link
+                    to="/wishlist"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Heart className="h-5 w-5" />
+                    Wishlist
+                  </Link>
+                  <Link
+                    to="/account"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <User className="h-5 w-5" />
+                    Account
+                  </Link>
+                  <Link
+                    to="/cart"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Cart
+                    {cartCount > 0 && (
+                      <span className="ml-auto h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                        {cartCount}
+                      </span>
+                    )}
+                  </Link>
                 </div>
+
+                {/* Theme Toggle in Mobile */}
+                <div className="mt-6 pt-6 border-t border-border">
+                  <div className="flex items-center justify-between px-3">
+                    <span className="text-sm text-muted-foreground">Theme</span>
+                    <ThemeToggle />
+                  </div>
+                </div>
+
+                <div className="h-6" />
               </div>
             </SheetContent>
           </Sheet>

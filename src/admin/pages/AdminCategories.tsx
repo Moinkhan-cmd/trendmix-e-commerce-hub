@@ -170,6 +170,46 @@ export default function AdminCategories() {
     }
   };
 
+  const seedDefaultCategories = async () => {
+    if (categories.length > 0) {
+      toast.error("Categories already exist");
+      return;
+    }
+
+    const ok = confirm("Create default categories?");
+    if (!ok) return;
+
+    const defaults: Array<Pick<CategoryDoc, "name" | "slug" | "imageUrl">> = [
+      { name: "Clothing", slug: "clothing", imageUrl: "https://placehold.co/600x600/png?text=Clothing" },
+      { name: "Henna", slug: "henna", imageUrl: "https://placehold.co/600x600/png?text=Henna" },
+      { name: "Accessories", slug: "accessories", imageUrl: "https://placehold.co/600x600/png?text=Accessories" },
+      { name: "Jewelry", slug: "jewelry", imageUrl: "https://placehold.co/600x600/png?text=Jewelry" },
+      { name: "Beauty", slug: "beauty", imageUrl: "https://placehold.co/600x600/png?text=Beauty" },
+      { name: "Electronics", slug: "electronics", imageUrl: "https://placehold.co/600x600/png?text=Electronics" },
+      { name: "Home", slug: "home", imageUrl: "https://placehold.co/600x600/png?text=Home" },
+      { name: "Bags", slug: "bags", imageUrl: "https://placehold.co/600x600/png?text=Bags" },
+    ];
+
+    setSaving(true);
+    try {
+      const colRef = collection(db, "categories");
+      for (const c of defaults) {
+        await addDoc(colRef, {
+          name: c.name,
+          slug: slugify(c.slug),
+          imageUrl: c.imageUrl,
+          createdAt: serverTimestamp() as any,
+          updatedAt: serverTimestamp() as any,
+        } satisfies CategoryDoc as any);
+      }
+      toast.success(`Created ${defaults.length} categories`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to seed categories");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const onDelete = async (c: WithId<CategoryDoc>) => {
     const productCount = productCountByCategory.get(c.id) || 0;
     if (productCount > 0) {
@@ -197,7 +237,14 @@ export default function AdminCategories() {
             Manage product categories ({categories.length} total)
           </p>
         </div>
-        <Button onClick={openCreate}>Add category</Button>
+        <div className="flex gap-2">
+          {categories.length === 0 && (
+            <Button variant="outline" onClick={seedDefaultCategories} disabled={saving}>
+              Seed default categories
+            </Button>
+          )}
+          <Button onClick={openCreate}>Add category</Button>
+        </div>
       </div>
 
       {/* Search */}

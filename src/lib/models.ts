@@ -13,6 +13,17 @@ export type CategoryDoc = {
 export type ProductDoc = {
   name: string;
   price: number;
+  compareAtPrice?: number;
+  sku?: string;
+  brand?: string;
+  tags?: string[];
+  weightKg?: number;
+  dimensionsCm?: {
+    length?: number;
+    width?: number;
+    height?: number;
+  };
+  featured?: boolean;
   categoryId: string;
   categorySlug: string;
   description: string;

@@ -20,6 +20,11 @@ import Checkout from './pages/Checkout';
 import OrderTracking from './pages/OrderTracking';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Shipping from './pages/Shipping';
+import Returns from './pages/Returns';
+import FAQ from './pages/FAQ';
 
 import { AdminAuthProvider } from '@/admin/AdminAuthProvider';
 import RequireAdmin from '@/admin/RequireAdmin';
@@ -87,6 +92,11 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/track-order" element={<OrderTracking />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/shipping" element={<Shipping />} />
+              <Route path="/returns" element={<Returns />} />
+              <Route path="/faq" element={<FAQ />} />
               
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />
