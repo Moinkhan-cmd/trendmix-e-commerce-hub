@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -25,6 +25,14 @@ type SortOption = "featured" | "price-low" | "price-high" | "newest" | "rating";
 const DEFAULT_PRICE_MAX = 2000;
 const DEFAULT_PRICE_RANGE: [number, number] = [0, DEFAULT_PRICE_MAX];
 
+function isPublished(value: unknown): boolean {
+  // Be tolerant of legacy/incorrectly-typed data coming from Firestore.
+  if (value === true) return true;
+  if (value === 1) return true;
+  if (typeof value === "string") return value.toLowerCase().trim() === "true";
+  return false;
+}
+
 function getTimestampMs(value: unknown) {
   const anyValue = value as any;
   return typeof anyValue?.toMillis === "function" ? Number(anyValue.toMillis()) : 0;
@@ -43,7 +51,7 @@ const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    const qProducts = query(collection(db, "products"), where("published", "==", true));
+    const qProducts = collection(db, "products");
     const qCategories = collection(db, "categories");
 
     const unsubProducts = onSnapshot(
@@ -101,13 +109,14 @@ const Products = () => {
     const [minPrice, maxPrice] = priceRange;
 
     const next = products.filter((product) => {
+      const publishedOk = isPublished(product.published);
       const categoryOk = activeCategory ? product.categorySlug === activeCategory : true;
       const queryOk = queryParam ? (product.name ?? "").toLowerCase().includes(queryParam) : true;
       const price = Number(product.price ?? 0);
       const priceOk = price >= minPrice && price <= maxPrice;
       const ratingOk = minRating != null ? true : true;
 
-      return categoryOk && queryOk && priceOk && ratingOk;
+      return publishedOk && categoryOk && queryOk && priceOk && ratingOk;
     });
 
     if (sort === "featured" || sort === "rating") return next;
@@ -135,7 +144,10 @@ const Products = () => {
   const pageTitle = useMemo(() => {
     if (!activeCategory) return "All Products";
     const cat = categories.find((c) => c.slug === activeCategory);
-    return cat?.name ?? "All Products";
+    if (cat?.name) return cat.name;
+    // If the category isn't present in the categories collection yet,
+    // keep the UI consistent with the URL instead of falling back to "All Products".
+    return activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1);
   }, [activeCategory, categories]);
 
   const setCategoryParam = (nextCategory: string | null) => {
@@ -149,6 +161,10 @@ const Products = () => {
 
     setSearchParams(next);
   };
+
+  // Note: Don't auto-clear unknown category slugs.
+  // The navbar uses category slugs directly, and the Categories collection may be empty
+  // (or not include that slug yet), which would otherwise bounce users back to All Products.
 
   const toggleMinRating = (rating: number) => {
     setMinRating((prev) => (prev === rating ? null : rating));
@@ -300,7 +316,11 @@ const Products = () => {
           ) : filteredProducts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
               <h2 className="text-xl font-semibold">No products available</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Add products from the admin panel and mark them as published.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {products.length === 0
+                  ? "Add products from the admin panel and mark them as published."
+                  : "No published products match the current filters."}
+              </p>
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

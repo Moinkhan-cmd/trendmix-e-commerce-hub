@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin = authenticated user with an /admins/{uid} doc.
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Public catalog
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings used by both public UI and client-side order helpers.
+    // NOTE: If you store secrets here, move them to server-side functions instead.
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User profiles
+    match /users/{userId} {
+      // Keep user data private by default.
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      // Optional: admins can manage users
+      allow read, write: if isAdmin();
+    }
+
+    // Admin marker docs
+    match /admins/{uid} {
+      // Allow a signed-in user to read their own admin marker doc (used by client to check admin).
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      // Only admins can manage admin marker docs.
+      allow write: if isAdmin();
+    }
+
+    // Orders
+    // WARNING: Public reads expose customer info. This is convenient for demos + order tracking,
+    // but not recommended for production.
+    match /orders/{orderId} {
+      allow create: if true;     // guest checkout
+      allow read: if true;       // enables order tracking by order number/email/phone
+      allow update, delete: if isAdmin();
+    }
+
+    // Default deny for anything not explicitly allowed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

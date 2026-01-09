@@ -1,21 +1,87 @@
+import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import FeaturedProfileBanner from "@/components/FeaturedProfileBanner";
 import CategoryCard from "@/components/CategoryCard";
 import Footer from "@/components/Footer";
+import ProductCard from "@/components/ProductCard";
 import { Sparkles, Gem, Shirt, Package } from "lucide-react";
 import productCosmetics from "@/assets/product-cosmetics.jpg";
 import productJewelry from "@/assets/product-jewelry.jpg";
 import productSocks from "@/assets/product-socks.jpg";
 import productAccessories from "@/assets/product-accessories.jpg";
+import { db } from "@/lib/firebase";
+import type { CategoryDoc, ProductDoc } from "@/lib/models";
+
+type WithId<T> = T & { id: string };
+
+function isPublished(value: unknown): boolean {
+  if (value === true) return true;
+  if (value === 1) return true;
+  if (typeof value === "string") return value.toLowerCase().trim() === "true";
+  return false;
+}
 
 const Index = () => {
-  const categories = [
-    { title: "Cosmetics", description: "Premium beauty essentials", image: productCosmetics, icon: Sparkles, href: "/products?category=cosmetics" },
-    { title: "Jewelry", description: "Elegant accessories", image: productJewelry, icon: Gem, href: "/products?category=jewelry" },
-    { title: "Fashion Socks", description: "Trendy & comfortable", image: productSocks, icon: Shirt, href: "/products?category=socks" },
-    { title: "Accessories", description: "Complete your look", image: productAccessories, icon: Package, href: "/products?category=accessories" },
-  ];
+  const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
+  const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "products"),
+      (snap) => {
+        setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
+        setProductsLoading(false);
+        setProductsError(null);
+      },
+      (err) => {
+        setProductsLoading(false);
+        setProductsError(err?.message ?? "Failed to load products");
+      },
+    );
+
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "categories"),
+      (snap) => {
+        setCategories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as CategoryDoc) })));
+        setCategoriesLoading(false);
+      },
+      () => {
+        setCategoriesLoading(false);
+      },
+    );
+
+    return () => unsub();
+  }, []);
+
+  const homepageProducts = useMemo(() => {
+    return products.filter((p) => isPublished(p.published)).slice(0, 8);
+  }, [products]);
+
+  const homepageCategories = useMemo(() => {
+    const fallbackImages = [productCosmetics, productJewelry, productSocks, productAccessories];
+    const icons = [Sparkles, Gem, Shirt, Package];
+
+    return categories.map((c, idx) => {
+      const image = c.imageUrl || fallbackImages[idx % fallbackImages.length];
+      const icon = icons[idx % icons.length];
+      return {
+        title: c.name,
+        description: "Browse products",
+        image,
+        icon,
+        href: `/products?category=${encodeURIComponent((c.slug ?? "").toLowerCase())}`,
+      };
+    });
+  }, [categories]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -37,7 +103,7 @@ const Index = () => {
 
           <div className="perspective-1500 preserve-3d">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {categories.map((category, index) => (
+              {homepageCategories.map((category, index) => (
                 <div
                   key={category.title}
                   className="opacity-0 animate-in fade-in slide-in-from-bottom-4"
@@ -48,21 +114,55 @@ const Index = () => {
               ))}
             </div>
           </div>
+
+          {!categoriesLoading && homepageCategories.length === 0 ? (
+            <div className="mt-10 rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+              <p className="text-sm text-muted-foreground">No categories yet.</p>
+              <p className="mt-2 text-sm">Go to <span className="font-medium">Admin ? Categories</span> to add categories.</p>
+            </div>
+          ) : null}
         </section>
 
         <section className="bg-muted/30 py-16 md:py-20">
           <div className="container">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Featured Products</h2>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Products</h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
                 Products will appear here once you add them from the admin panel.
               </p>
             </div>
 
-            <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
-              <p className="text-sm text-muted-foreground">No products yet.</p>
-              <p className="mt-2 text-sm">Go to <span className="font-medium">Admin ? Products</span> to add your first product.</p>
-            </div>
+            {productsLoading ? (
+              <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+                <p className="text-sm text-muted-foreground">Loading products…</p>
+              </div>
+            ) : productsError ? (
+              <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+                <p className="text-sm text-muted-foreground">Couldn’t load products.</p>
+                <p className="mt-2 text-sm text-muted-foreground">{productsError}</p>
+              </div>
+            ) : homepageProducts.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+                <p className="text-sm text-muted-foreground">No products yet.</p>
+                <p className="mt-2 text-sm">
+                  Go to <span className="font-medium">Admin ? Products</span> to add your first product.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {homepageProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={Number(product.price ?? 0)}
+                    image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
+                    rating={0}
+                    reviews={0}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
 

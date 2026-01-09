@@ -82,7 +82,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <AdminAuthProvider>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ScrollToHash />
             <Routes>
               {/* Public routes */}

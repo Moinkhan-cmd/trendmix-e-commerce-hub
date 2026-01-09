@@ -17,12 +17,13 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 type NavItem = {
   label: string;
   to: string;
-  category?: "cosmetics" | "jewelry" | "socks" | "accessories" | "henna";
+  category?: "beauty" | "jewelry" | "socks" | "accessories" | "henna";
 };
 
 const NAV_ITEMS: NavItem[] = [
   { label: "All Products", to: "/products" },
-  { label: "Cosmetics", to: "/products?category=cosmetics", category: "cosmetics" },
+  // Category slug is "beauty" in Firestore (AdminCategories seed + typical setup).
+  { label: "Cosmetics", to: "/products?category=beauty", category: "beauty" },
   { label: "Jewelry", to: "/products?category=jewelry", category: "jewelry" },
   { label: "Socks", to: "/products?category=socks", category: "socks" },
   { label: "Accessories", to: "/products?category=accessories", category: "accessories" },
