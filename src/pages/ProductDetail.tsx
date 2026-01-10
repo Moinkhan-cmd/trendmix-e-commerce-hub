@@ -451,8 +451,8 @@ const ProductDetail = () => {
         {loading ? (
           <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-4">
-              <div className="aspect-square rounded-2xl border bg-muted animate-pulse" />
-              <div className="flex gap-3">
+              <div className="aspect-square max-h-[500px] mx-auto rounded-2xl border bg-muted animate-pulse" />
+              <div className="flex gap-3 justify-center">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="h-20 w-20 rounded-xl border bg-muted animate-pulse" />
                 ))}
