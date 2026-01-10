@@ -17,6 +17,59 @@ import {
 import { db } from "./firebase";
 import type { OrderDoc, OrderItem, CustomerInfo, OrderStatus, OrderTimelineEvent } from "./models";
 
+type FirestoreLikeError = {
+  code?: string;
+  message?: string;
+};
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "").slice(-10);
+}
+
+function isFirestoreIndexError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const maybe = err as FirestoreLikeError;
+  const code = typeof maybe.code === "string" ? maybe.code : "";
+  const message = typeof maybe.message === "string" ? maybe.message : "";
+  return (
+    code === "failed-precondition" &&
+    /index|requires an index|create index|composite index/i.test(message)
+  );
+}
+
+function sortByCreatedAtDesc<T extends { createdAt?: Timestamp }>(items: T[]): T[] {
+  return items.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+}
+
+function stripUndefinedDeep(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  if (Array.isArray(value)) {
+    const cleaned = value.map(stripUndefinedDeep).filter((v) => v !== undefined);
+    return cleaned;
+  }
+
+  if (value instanceof Timestamp) return value;
+  if (value instanceof Date) return value;
+
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      const cleanedVal = stripUndefinedDeep(val);
+      if (cleanedVal !== undefined) out[key] = cleanedVal;
+    }
+    return out;
+  }
+
+  return value;
+}
+
 export type CreateOrderInput = {
   items: OrderItem[];
   customer: CustomerInfo;
@@ -57,9 +110,15 @@ function createInitialTimeline(): OrderTimelineEvent[] {
 export async function createOrder(input: CreateOrderInput): Promise<{ id: string; orderNumber: string }> {
   const orderNumber = generateOrderNumber();
 
-  const orderData: Omit<OrderDoc, "createdAt" | "updatedAt"> = {
+  const customer: CustomerInfo = {
+    ...input.customer,
+    email: normalizeEmail(input.customer.email),
+    phone: normalizePhone(input.customer.phone),
+  };
+
+  const orderData = stripUndefinedDeep({
     items: input.items,
-    customer: input.customer,
+    customer,
     status: "Pending",
     subtotal: input.subtotal,
     shipping: input.shipping,
@@ -75,7 +134,7 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
       method: "cod",
       status: "pending",
     },
-  };
+  }) as Omit<OrderDoc, "createdAt" | "updatedAt">;
 
   const docRef = await addDoc(collection(db, "orders"), {
     ...orderData,
@@ -206,24 +265,47 @@ export async function getOrderByNumber(orderNumber: string): Promise<(OrderDoc &
 }
 
 export async function getOrdersByEmail(email: string): Promise<Array<OrderDoc & { id: string }>> {
-  const q = query(
-    collection(db, "orders"),
-    where("customer.email", "==", email.toLowerCase()),
-    orderBy("createdAt", "desc")
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) }));
+  const normalizedEmail = normalizeEmail(email);
+
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("customer.email", "==", normalizedEmail),
+      orderBy("createdAt", "desc")
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) }));
+  } catch (err) {
+    // If the project doesn't have the composite index for (customer.email, createdAt),
+    // fall back to a simpler query and sort client-side.
+    if (isFirestoreIndexError(err)) {
+      const q = query(collection(db, "orders"), where("customer.email", "==", normalizedEmail));
+      const snap = await getDocs(q);
+      return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) })));
+    }
+    throw err;
+  }
 }
 
 export async function getOrdersByPhone(phone: string): Promise<Array<OrderDoc & { id: string }>> {
-  const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
-  const q = query(
-    collection(db, "orders"),
-    where("customer.phone", "==", normalizedPhone),
-    orderBy("createdAt", "desc")
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) }));
+  const normalizedPhone = normalizePhone(phone);
+
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("customer.phone", "==", normalizedPhone),
+      orderBy("createdAt", "desc")
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) }));
+  } catch (err) {
+    if (isFirestoreIndexError(err)) {
+      const q = query(collection(db, "orders"), where("customer.phone", "==", normalizedPhone));
+      const snap = await getDocs(q);
+      return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) })));
+    }
+    throw err;
+  }
 }
 
 export async function getRecentOrders(count: number = 10): Promise<Array<OrderDoc & { id: string }>> {

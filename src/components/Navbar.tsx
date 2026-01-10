@@ -24,6 +24,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { CategoryDoc } from "@/lib/models";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
+import { useShop } from "@/store/shop";
 
 type NavItem = {
   label: string;
@@ -42,7 +43,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const Navbar = () => {
-  const [cartCount] = useState(0);
+  const { cartCount, wishlistCount } = useShop();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
@@ -350,12 +351,17 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
+            className="relative inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
             aria-label="Wishlist"
             asChild
           >
             <Link to="/wishlist">
               <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                  {wishlistCount}
+                </span>
+              )}
             </Link>
           </Button>
 
