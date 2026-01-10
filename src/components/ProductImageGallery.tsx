@@ -31,16 +31,16 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
     <section className={cn("space-y-4", className)} aria-label="Product images">
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="relative aspect-square max-h-[500px] bg-muted mx-auto">
+          <div className="relative aspect-[4/3] max-h-[350px] sm:max-h-[400px] bg-muted mx-auto">
             {selected ? (
-              <div className="group relative h-full w-full overflow-hidden">
+              <div className="group relative h-full w-full overflow-hidden flex items-center justify-center">
                 <img
                   src={selected}
                   alt={alt}
                   className={cn(
-                    "h-full w-full object-cover",
+                    "max-h-full max-w-full object-contain",
                     "transition-transform duration-300 ease-out",
-                    "sm:group-hover:scale-[1.25]",
+                    "sm:group-hover:scale-[1.1]",
                   )}
                   loading="eager"
                   decoding="async"
