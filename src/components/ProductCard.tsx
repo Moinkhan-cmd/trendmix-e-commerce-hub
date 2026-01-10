@@ -36,7 +36,7 @@ const ProductCard = ({
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
     >
       <div className="relative">
         <Link to={`/product/${id}`} aria-label={`View ${name}`}>
@@ -52,10 +52,10 @@ const ProductCard = ({
             ) : (
               <div className="flex h-full w-full items-center justify-center">
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border bg-background/60">
-                    <ImageIcon className="h-5 w-5" />
+                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl border bg-background/60">
+                    <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <span className="text-[11px]">Image unavailable</span>
+                  <span className="text-[10px] sm:text-[11px]">Image unavailable</span>
                 </div>
               </div>
             )}
@@ -63,13 +63,13 @@ const ProductCard = ({
         </Link>
 
         {badge ? (
-          <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
+          <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 text-[10px] sm:text-xs bg-primary text-primary-foreground">
             {badge}
           </Badge>
         ) : null}
 
         {discount > 0 ? (
-          <Badge className="absolute top-3 right-3 bg-destructive text-destructive-foreground">
+          <Badge className="absolute top-2 right-2 sm:top-3 sm:right-3 text-[10px] sm:text-xs bg-destructive text-destructive-foreground">
             -{discount}%
           </Badge>
         ) : null}
@@ -77,7 +77,7 @@ const ProductCard = ({
         <Button
           size="icon"
           variant="ghost"
-          className="absolute right-3 top-12 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-background/70 backdrop-blur hover:bg-background"
+          className="absolute right-2 top-10 sm:right-3 sm:top-12 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all duration-200 bg-background/70 backdrop-blur hover:bg-background h-8 w-8 sm:h-10 sm:w-10"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -89,42 +89,42 @@ const ProductCard = ({
         </Button>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
         <Link to={`/product/${id}`} className="group/title">
-          <h3 className="min-h-[2.75rem] text-sm font-medium leading-snug line-clamp-2 transition-colors group-hover/title:text-primary">
+          <h3 className="min-h-[2.25rem] sm:min-h-[2.75rem] text-xs sm:text-sm font-medium leading-snug line-clamp-2 transition-colors group-hover/title:text-primary">
             {name}
           </h3>
         </Link>
 
-        <div className="mt-2 flex items-center gap-1">
+        <div className="mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
               key={i}
               className={
                 i < Math.floor(rating)
-                  ? "h-4 w-4 fill-primary text-primary"
-                  : "h-4 w-4 text-muted-foreground/30"
+                  ? "h-3 w-3 sm:h-4 sm:w-4 fill-primary text-primary"
+                  : "h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/30"
               }
             />
           ))}
-          <span className="ml-1 text-xs text-muted-foreground">({reviews})</span>
+          <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-xs text-muted-foreground">({reviews})</span>
         </div>
 
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <div className="flex items-baseline gap-2">
-            <span className="text-base font-semibold">{priceText}</span>
+        <div className="mt-2 sm:mt-3 flex items-end justify-between gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-baseline gap-1 sm:gap-2">
+            <span className="text-sm sm:text-base font-semibold">{priceText}</span>
             {originalPriceText ? (
-              <span className="text-xs text-muted-foreground line-through">{originalPriceText}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground line-through">{originalPriceText}</span>
             ) : null}
           </div>
         </div>
 
         <Button
-          className="mt-4 w-full"
+          className="mt-3 sm:mt-4 w-full h-8 sm:h-9 text-xs sm:text-sm"
           size="sm"
           onClick={() => addToCart({ id, name, price, image }, 1)}
         >
-          <ShoppingCart className="mr-2 h-4 w-4" />
+          <ShoppingCart className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
           Add to Cart
         </Button>
       </div>

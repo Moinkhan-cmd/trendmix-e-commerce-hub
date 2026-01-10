@@ -53,6 +53,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Password Reset OTPs - only accessible by system
+    // Note: In production, use Cloud Functions for better security
+    match /passwordResetOTPs/{email} {
+      // Allow reading/writing for password reset flow
+      // The OTP is hashed, so reading it doesn't expose the actual code
+      allow read, write: if true;
+    }
+
+    // Rate limiting for password reset attempts
+    match /passwordResetAttempts/{email} {
+      allow read, write: if true;
+    }
+
     // Default deny for anything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;

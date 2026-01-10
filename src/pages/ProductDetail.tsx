@@ -447,7 +447,7 @@ const ProductDetail = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 container py-6 sm:py-10 pb-28 md:pb-10">
+      <main className="flex-1 container px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-10 pb-24 sm:pb-28 md:pb-10">
         {loading ? (
           <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-4">
@@ -490,14 +490,14 @@ const ProductDetail = () => {
           </div>
         ) : (
           <div className="space-y-10">
-            <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
-              <ol className="flex flex-wrap items-center gap-2">
+            <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-muted-foreground">
+              <ol className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <li>
-                  <Link className="hover:text-foreground" to="/">
+                  <Link className="hover:text-foreground transition-colors" to="/">
                     Home
                   </Link>
                 </li>
-                <li aria-hidden="true">/</li>
+                <li aria-hidden="true" className="text-muted-foreground/50">/</li>
                 <li>
                   <Link className="hover:text-foreground" to="/products">
                     Products
@@ -508,7 +508,7 @@ const ProductDetail = () => {
               </ol>
             </nav>
 
-            <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1.05fr_0.95fr]">
               {/* Left: Image Gallery */}
               <ProductImageGallery
                 images={product.imageUrls}
@@ -517,15 +517,15 @@ const ProductDetail = () => {
               />
 
               {/* Right: Product Info */}
-              <section className="space-y-5" aria-label="Product information">
-                <header className="space-y-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight leading-snug">
+              <section className="space-y-3 sm:space-y-4 lg:space-y-5" aria-label="Product information">
+                <header className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight leading-snug">
                         {product.name}
                       </h1>
                       {product.brand ? (
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">
                           Brand: <span className="font-medium text-foreground">{product.brand}</span>
                         </p>
                       ) : null}
@@ -542,19 +542,19 @@ const ProductDetail = () => {
                           image: selectedImage ?? imageUrl,
                         })
                       }
-                      className="shrink-0 transition-transform active:scale-[0.98]"
+                      className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 transition-transform active:scale-[0.98]"
                       aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
                       title={wished ? "Wishlisted" : "Add to wishlist"}
                     >
-                      <Heart className={wished ? "h-4 w-4 fill-primary text-primary" : "h-4 w-4"} />
+                      <Heart className={wished ? "h-3.5 w-3.5 sm:h-4 sm:w-4 fill-primary text-primary" : "h-3.5 w-3.5 sm:h-4 sm:w-4"} />
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
                       onClick={openReviews}
-                      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted"
+                      className="flex items-center gap-0.5 sm:gap-1 rounded-md px-1 sm:px-1.5 py-0.5 transition-colors hover:bg-muted"
                       aria-label="Jump to reviews"
                     >
                       {Array.from({ length: 5 }).map((_, i) => (
@@ -562,43 +562,43 @@ const ProductDetail = () => {
                           key={i}
                           className={
                             i < Math.floor(rating)
-                              ? "h-4 w-4 fill-primary text-primary"
-                              : "h-4 w-4 text-muted-foreground/30"
+                              ? "h-3 w-3 sm:h-4 sm:w-4 fill-primary text-primary"
+                              : "h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/30"
                           }
                         />
                       ))}
                       {reviewCount ? (
-                        <span className="ml-1 text-sm text-muted-foreground">
-                          {rating.toFixed(1)} ({reviewCount} reviews)
+                        <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-sm text-muted-foreground">
+                          {rating.toFixed(1)} ({reviewCount})
                         </span>
                       ) : (
-                        <span className="ml-1 text-sm text-muted-foreground">No ratings yet</span>
+                        <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-sm text-muted-foreground">No ratings</span>
                       )}
                     </button>
 
                     {inStock ? (
                       <Badge
                         className={cn(
-                          "rounded-full",
+                          "rounded-full text-[10px] sm:text-xs px-1.5 sm:px-2",
                           lowStock ? "bg-amber-500 text-white hover:bg-amber-500" : "bg-emerald-600 text-white hover:bg-emerald-600",
                         )}
                       >
                         {lowStock ? `Only ${stock} left` : "In Stock"}
                       </Badge>
                     ) : (
-                      <Badge variant="destructive" className="rounded-full">
+                      <Badge variant="destructive" className="rounded-full text-[10px] sm:text-xs px-1.5 sm:px-2">
                         Out of Stock
                       </Badge>
                     )}
 
                   </div>
 
-                  <div className="flex items-end gap-3 pt-1">
-                    <div className="text-3xl font-bold tracking-tight">{priceText}</div>
+                  <div className="flex flex-wrap items-end gap-2 sm:gap-3 pt-0.5 sm:pt-1">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{priceText}</div>
                     {compareAtText ? (
-                      <div className="flex items-center gap-2 pb-1">
-                        <span className="text-sm text-muted-foreground line-through">{compareAtText}</span>
-                        <Badge variant="destructive" className="rounded-full">
+                      <div className="flex items-center gap-1.5 sm:gap-2 pb-0.5 sm:pb-1">
+                        <span className="text-xs sm:text-sm text-muted-foreground line-through">{compareAtText}</span>
+                        <Badge variant="destructive" className="rounded-full text-[10px] sm:text-xs">
                           {discountPct}% OFF
                         </Badge>
                       </div>
@@ -607,10 +607,10 @@ const ProductDetail = () => {
                 </header>
 
                 <Card>
-                  <CardContent className="p-4 sm:p-5 space-y-4">
+                  <CardContent className="p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
                     <div>
-                      <h2 className="text-sm font-semibold">Highlights</h2>
-                      <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground list-disc pl-5">
+                      <h2 className="text-xs sm:text-sm font-semibold">Highlights</h2>
+                      <ul className="mt-1.5 sm:mt-2 space-y-1 sm:space-y-1.5 text-xs sm:text-sm text-muted-foreground list-disc pl-4 sm:pl-5">
                         {product.tags?.length ? (
                           product.tags.slice(0, 5).map((t) => <li key={t}>{t}</li>)
                         ) : (
@@ -625,10 +625,10 @@ const ProductDetail = () => {
 
                     <Separator />
 
-                    <div className="grid gap-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium">Quantity</span>
-                        <div className="flex items-center gap-2">
+                    <div className="grid gap-2 sm:gap-3">
+                      <div className="flex items-center justify-between gap-2 sm:gap-3">
+                        <span className="text-xs sm:text-sm font-medium">Quantity</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -636,8 +636,9 @@ const ProductDetail = () => {
                             onClick={() => clampQty(qty - 1)}
                             disabled={!inStock || qty <= 1}
                             aria-label="Decrease quantity"
+                            className="h-8 w-8 sm:h-10 sm:w-10"
                           >
-                            <Minus className="h-4 w-4" />
+                            <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
 
                           <Input
@@ -645,7 +646,7 @@ const ProductDetail = () => {
                             inputMode="numeric"
                             value={qty}
                             onChange={(e) => clampQty(Number(e.target.value))}
-                            className="w-20 text-center"
+                            className="w-14 sm:w-20 h-8 sm:h-10 text-center text-sm"
                             min={1}
                             max={inStock ? stock : 1}
                             aria-label="Quantity"
@@ -658,31 +659,32 @@ const ProductDetail = () => {
                             onClick={() => clampQty(qty + 1)}
                             disabled={!inStock || qty >= stock}
                             aria-label="Increase quantity"
+                            className="h-8 w-8 sm:h-10 sm:w-10"
                           >
-                            <Plus className="h-4 w-4" />
+                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
                       </div>
 
-                      <div className="grid gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
                         <Button
                           size="lg"
                           className={cn(
-                            "w-full transition-transform active:scale-[0.99]",
+                            "w-full h-10 sm:h-11 text-sm sm:text-base transition-transform active:scale-[0.99]",
                             "bg-[#ff9f00] text-black hover:bg-[#f39c00]",
                             "dark:bg-[#ffb020] dark:hover:bg-[#f0a515]",
                           )}
                           onClick={addCurrentToCart}
                           disabled={!inStock}
                         >
-                          <ShoppingCart className="mr-2 h-5 w-5" />
-                          Add to Cart
+                          <ShoppingCart className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="hidden xs:inline">Add to </span>Cart
                         </Button>
 
                         <Button
                           size="lg"
                           className={cn(
-                            "w-full transition-transform active:scale-[0.99]",
+                            "w-full h-10 sm:h-11 text-sm sm:text-base transition-transform active:scale-[0.99]",
                             "bg-[#fb641b] text-white hover:bg-[#f05a13]",
                             "dark:bg-[#ff6a2a] dark:hover:bg-[#ff5a1f]",
                           )}
@@ -693,7 +695,7 @@ const ProductDetail = () => {
                         </Button>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1">
                         <Button
                           type="button"
                           variant="outline"
@@ -714,16 +716,16 @@ const ProductDetail = () => {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-4 sm:p-5 space-y-4">
-                    <div className="flex items-center justify-between gap-4">
+                  <CardContent className="p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                       <div className="flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-muted-foreground" />
+                        <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                         <div>
-                          <p className="text-sm font-semibold">Delivery</p>
-                          <p className="text-xs text-muted-foreground">Check estimate by pincode</p>
+                          <p className="text-xs sm:text-sm font-semibold">Delivery</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Check estimate by pincode</p>
                         </div>
                       </div>
-                      <div className="w-[200px]">
+                      <div className="w-full sm:w-[200px]">
                         <Input
                           placeholder="Enter pincode"
                           value={pincode}
@@ -731,38 +733,39 @@ const ProductDetail = () => {
                           onBlur={() => setPincodeTouched(true)}
                           inputMode="numeric"
                           aria-label="Enter pincode"
+                          className="h-8 sm:h-10 text-sm"
                         />
                       </div>
                     </div>
 
                     {pincodeStatus ? (
-                      <p className={cn("text-sm", pincodeStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+                      <p className={cn("text-xs sm:text-sm", pincodeStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
                         {pincodeStatus.message}
                       </p>
                     ) : null}
 
                     <Separator />
 
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="flex items-start gap-2">
-                        <BadgeCheck className="mt-0.5 h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <div className="grid gap-2 sm:gap-3 grid-cols-1 xs:grid-cols-3 sm:grid-cols-3">
+                      <div className="flex items-start gap-1.5 sm:gap-2">
+                        <BadgeCheck className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium">Cash on Delivery</p>
-                          <p className="text-xs text-muted-foreground">Available on eligible pincodes</p>
+                          <p className="text-[11px] sm:text-sm font-medium">Cash on Delivery</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Available on eligible pincodes</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <Truck className="mt-0.5 h-5 w-5 text-primary" />
+                      <div className="flex items-start gap-1.5 sm:gap-2">
+                        <Truck className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium">Easy Returns</p>
-                          <p className="text-xs text-muted-foreground">Simple pickup & refund flow</p>
+                          <p className="text-[11px] sm:text-sm font-medium">Easy Returns</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Simple pickup & refund</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+                      <div className="flex items-start gap-1.5 sm:gap-2">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium">Secure Payments</p>
-                          <p className="text-xs text-muted-foreground">Protected checkout</p>
+                          <p className="text-[11px] sm:text-sm font-medium">Secure Payments</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Protected checkout</p>
                         </div>
                       </div>
                     </div>
@@ -781,15 +784,15 @@ const ProductDetail = () => {
             </div>
 
             {/* Tabs: Description / Specs / How to Use / Reviews */}
-            <section aria-label="Product details" className="space-y-4">
+            <section aria-label="Product details" className="space-y-3 sm:space-y-4">
               <div ref={reviewsAnchorRef} />
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <TabsList className="w-full sm:w-auto">
-                    <TabsTrigger value="description">Description</TabsTrigger>
-                    <TabsTrigger value="specs">Specifications</TabsTrigger>
-                    <TabsTrigger value="how">How to Use</TabsTrigger>
-                    <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap -mx-3 px-3 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+                  <TabsList className="w-full sm:w-auto h-9 sm:h-10 p-1">
+                    <TabsTrigger value="description" className="text-[10px] sm:text-sm px-2 sm:px-3">Description</TabsTrigger>
+                    <TabsTrigger value="specs" className="text-[10px] sm:text-sm px-2 sm:px-3">Specs</TabsTrigger>
+                    <TabsTrigger value="how" className="text-[10px] sm:text-sm px-2 sm:px-3">How to Use</TabsTrigger>
+                    <TabsTrigger value="reviews" className="text-[10px] sm:text-sm px-2 sm:px-3">Reviews</TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -889,9 +892,9 @@ const ProductDetail = () => {
 
                 <TabsContent value="reviews">
                   <Card>
-                    <CardContent className="p-5">
-                      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-                        <div className="rounded-xl border bg-background p-4">
+                    <CardContent className="p-3 sm:p-4 md:p-5">
+                      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr]">
+                        <div className="rounded-lg sm:rounded-xl border bg-background p-3 sm:p-4">
                           <p className="text-sm font-semibold">Write a review</p>
                           {!isAuthenticated ? (
                             <div className="mt-2">
@@ -1072,37 +1075,38 @@ const ProductDetail = () => {
             ) : null}
 
             {/* Mobile Sticky CTA Bar */}
-            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              <div className="container py-3">
-                <div className="flex items-center gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Price</p>
-                    <p className="truncate text-base font-semibold">{priceText}</p>
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 safe-area-inset-bottom">
+              <div className="container px-3 py-2 sm:py-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="min-w-0 flex-shrink-0">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Price</p>
+                    <p className="truncate text-sm sm:text-base font-semibold">{priceText}</p>
                   </div>
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                     <Button
                       size="lg"
                       className={cn(
-                        "h-11 px-4 transition-transform active:scale-[0.99]",
+                        "h-9 sm:h-11 px-3 sm:px-4 text-sm sm:text-base transition-transform active:scale-[0.99]",
                         "bg-[#ff9f00] text-black hover:bg-[#f39c00]",
                         "dark:bg-[#ffb020] dark:hover:bg-[#f0a515]",
                       )}
                       onClick={addCurrentToCart}
                       disabled={!inStock}
                     >
-                      Add
+                      <ShoppingCart className="h-4 w-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Add</span>
                     </Button>
                     <Button
                       size="lg"
                       className={cn(
-                        "h-11 px-4 transition-transform active:scale-[0.99]",
+                        "h-9 sm:h-11 px-4 sm:px-5 text-sm sm:text-base transition-transform active:scale-[0.99]",
                         "bg-[#fb641b] text-white hover:bg-[#f05a13]",
                         "dark:bg-[#ff6a2a] dark:hover:bg-[#ff5a1f]",
                       )}
                       onClick={buyNow}
                       disabled={!inStock}
                     >
-                      Buy
+                      Buy Now
                     </Button>
                   </div>
                 </div>

@@ -217,25 +217,25 @@ const Products = () => {
       <Navbar />
 
       <main className="flex-1">
-        <div className="container py-10 md:py-12">
+        <div className="container px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
           <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
+            <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 sm:mb-8">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{pageTitle}</h1>
-                <p className="mt-2 text-sm text-muted-foreground">Showing {filteredProducts.length} product(s)</p>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight">{pageTitle}</h1>
+                <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">Showing {filteredProducts.length} product(s)</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden"
+                  className="lg:hidden h-8 sm:h-9 text-xs sm:text-sm"
                 >
-                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  <SlidersHorizontal className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Filters
                 </Button>
                 <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[140px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,17 +250,17 @@ const Products = () => {
             </div>
 
             {recentlyViewed.length ? (
-              <section aria-label="Recently viewed" className="mb-10">
+              <section aria-label="Recently viewed" className="mb-6 sm:mb-8 md:mb-10">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold tracking-tight">Recently viewed</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Quick access to products you opened</p>
+                    <h2 className="text-base sm:text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">Quick access to products you opened</p>
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                <div className="mt-3 sm:mt-4 flex gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
                   {recentlyViewed.slice(0, 6).map((p) => (
-                    <div key={p.id} className="min-w-[280px] max-w-[320px]">
+                    <div key={p.id} className="min-w-[220px] sm:min-w-[260px] md:min-w-[280px] max-w-[280px] sm:max-w-[320px] flex-shrink-0">
                       <RecentlyViewedMiniCard
                         id={p.id}
                         name={p.name}
@@ -274,9 +274,9 @@ const Products = () => {
               </section>
             ) : null}
 
-            <div className="grid lg:grid-cols-[280px_1fr] gap-8">
-              <aside className={`space-y-5 ${showFilters ? "block" : "hidden lg:block"}`}>
-                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="grid lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr] gap-4 sm:gap-6 lg:gap-8">
+              <aside className={`space-y-3 sm:space-y-4 lg:space-y-5 ${showFilters ? "block" : "hidden lg:block"}`}>
+                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
                   <h3 className="text-sm font-semibold">Categories</h3>
                   <div className="mt-4 space-y-3">
                     <div className="space-y-3">
@@ -341,24 +341,24 @@ const Products = () => {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold">Price Range</h3>
+                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+                  <h3 className="text-xs sm:text-sm font-semibold">Price Range</h3>
                   <Slider
                     value={priceRange}
                     onValueChange={(value) => setPriceRange(value as [number, number])}
                     max={priceSliderMax}
                     step={50}
-                    className="mt-4 mb-4"
+                    className="mt-3 sm:mt-4 mb-3 sm:mb-4"
                   />
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
                     <span>₹{priceRange[0]}</span>
                     <span>₹{priceRange[1]}</span>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold">Rating</h3>
-                  <div className="space-y-3">
+                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+                  <h3 className="text-xs sm:text-sm font-semibold">Rating</h3>
+                  <div className="space-y-2 sm:space-y-3">
                     {[4, 3, 2, 1].map((rating) => {
                       const id = `rating-${rating}`;
                       const checked = minRating === rating;
@@ -407,7 +407,7 @@ const Products = () => {
                 </div>
               ) : (
                 <div className="mx-auto w-full">
-                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredProducts.map((product) => (
                       <ProductCard
                         key={product.id}

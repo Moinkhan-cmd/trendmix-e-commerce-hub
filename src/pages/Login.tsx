@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, CheckCircle, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -25,16 +25,11 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, resetPassword, error, clearError } = useAuth();
+  const { signIn, error, clearError } = useAuth();
   const cardRef = useRef<HTMLDivElement>(null);
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotError, setForgotError] = useState("");
   const [transform, setTransform] = useState("");
   const [glareStyle, setGlareStyle] = useState({});
 
@@ -89,26 +84,6 @@ export default function Login() {
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forgotEmail) {
-      setForgotError("Please enter your email address");
-      return;
-    }
-
-    setForgotLoading(true);
-    setForgotError("");
-
-    try {
-      await resetPassword(forgotEmail);
-      setResetEmailSent(true);
-    } catch (err) {
-      setForgotError((err as Error).message);
-    } finally {
-      setForgotLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/30 perspective-1500">
       <Navbar />
@@ -160,7 +135,6 @@ export default function Login() {
             </CardHeader>
 
             <CardContent className="relative z-0">
-              {!showForgotPassword ? (
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   {error && (
                     <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -190,13 +164,12 @@ export default function Login() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotPassword(true)}
+                      <Link
+                        to="/forgot-password"
                         className="text-sm text-primary hover:underline transition-colors hover:text-primary/80"
                       >
                         Forgot password?
-                      </button>
+                      </Link>
                     </div>
                     <div className="relative group">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
@@ -236,71 +209,6 @@ export default function Login() {
                     )}
                   </Button>
                 </form>
-              ) : (
-                <form onSubmit={handleForgotPassword} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                  {resetEmailSent ? (
-                    <Alert className="border-green-500 bg-green-50 dark:bg-green-950 animate-in zoom-in duration-300">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-700 dark:text-green-300">
-                        Password reset email sent! Check your inbox and follow the instructions.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <>
-                      {forgotError && (
-                        <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>{forgotError}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      <p className="text-sm text-muted-foreground">
-                        Enter your email address and we'll send you a link to reset your password.
-                      </p>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="forgot-email">Email</Label>
-                        <div className="relative group">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                          <Input
-                            id="forgot-email"
-                            type="email"
-                            placeholder="name@example.com"
-                            className="pl-10 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10"
-                            value={forgotEmail}
-                            onChange={(e) => setForgotEmail(e.target.value)}
-                            disabled={forgotLoading}
-                          />
-                        </div>
-                      </div>
-
-                      <Button type="submit" className="w-full btn-3d shine-effect" disabled={forgotLoading}>
-                        {forgotLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          "Send reset link"
-                        )}
-                      </Button>
-                    </>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="w-full hover-lift"
-                    onClick={() => {
-                      setShowForgotPassword(false);
-                      setResetEmailSent(false);
-                      setForgotError("");
-                    }}
-                  >
-                    Back to sign in
-                  </Button>
-                </form>
-              )}
             </CardContent>
 
             <Separator />

@@ -28,10 +28,10 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
   }, [selected, onImageChange]);
 
   return (
-    <section className={cn("space-y-4", className)} aria-label="Product images">
+    <section className={cn("space-y-2 sm:space-y-3 md:space-y-4", className)} aria-label="Product images">
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="relative aspect-[4/3] max-h-[350px] sm:max-h-[400px] bg-muted mx-auto">
+          <div className="relative aspect-square sm:aspect-[4/3] max-h-[280px] xs:max-h-[320px] sm:max-h-[350px] md:max-h-[400px] bg-muted mx-auto">
             {selected ? (
               <div className="group relative h-full w-full overflow-hidden flex items-center justify-center">
                 <img
@@ -58,18 +58,18 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                   }}
                 />
                 <div className="pointer-events-none absolute inset-0 hidden sm:block">
-                  <div className="absolute bottom-3 left-3 rounded-full bg-background/70 px-3 py-1 text-xs text-foreground shadow-sm backdrop-blur">
+                  <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 rounded-full bg-background/70 px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs text-foreground shadow-sm backdrop-blur">
                     Hover to zoom
                   </div>
                 </div>
               </div>
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border bg-background/60">
-                    <ImageIcon className="h-6 w-6" />
+                <div className="flex flex-col items-center gap-1.5 sm:gap-2 text-muted-foreground">
+                  <div className="flex h-10 w-10 sm:h-12 md:h-14 sm:w-12 md:w-14 items-center justify-center rounded-xl sm:rounded-2xl border bg-background/60">
+                    <ImageIcon className="h-4 w-4 sm:h-5 md:h-6 sm:w-5 md:w-6" />
                   </div>
-                  <p className="text-xs">No image available</p>
+                  <p className="text-[10px] sm:text-xs">No image available</p>
                 </div>
               </div>
             )}
@@ -78,18 +78,18 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
       </Card>
 
       {safeImages.length > 1 ? (
-        <div className="space-y-2">
-          <div className="hidden sm:flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="hidden sm:flex gap-2 md:gap-3 overflow-x-auto pb-1 scrollbar-hide">
             {safeImages.map((url, idx) => (
               <button
                 key={`${url}-${idx}`}
                 type="button"
                 onClick={() => setSelected(url)}
                 className={cn(
-                  "relative aspect-square w-20 flex-none overflow-hidden rounded-lg border bg-muted",
+                  "relative aspect-square w-14 sm:w-16 md:w-20 flex-none overflow-hidden rounded-md sm:rounded-lg border bg-muted",
                   "transition-all duration-200",
                   selected === url
-                    ? "ring-2 ring-primary ring-offset-2 opacity-100"
+                    ? "ring-2 ring-primary ring-offset-1 sm:ring-offset-2 opacity-100"
                     : "opacity-70 hover:opacity-100 hover:ring-2 hover:ring-primary/50",
                 )}
                 aria-label={`View image ${idx + 1}`}
@@ -120,16 +120,16 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
 
           {/* Mobile: scroll-snap slider */}
           <div className="sm:hidden">
-            <div className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-3 px-3">
               {safeImages.map((url, idx) => (
                 <button
                   key={`${url}-mobile-${idx}`}
                   type="button"
                   onClick={() => setSelected(url)}
                   className={cn(
-                    "snap-start w-[78%] flex-none",
-                    "overflow-hidden rounded-xl border bg-muted",
-                    selected === url ? "ring-2 ring-primary ring-offset-2" : "",
+                    "snap-start w-[65%] xs:w-[70%] flex-none",
+                    "overflow-hidden rounded-lg sm:rounded-xl border bg-muted",
+                    selected === url ? "ring-2 ring-primary ring-offset-1" : "",
                   )}
                   aria-label={`Select image ${idx + 1}`}
                 >
@@ -152,7 +152,7 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Swipe to see more</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground text-center mt-1">Swipe to see more</p>
           </div>
         </div>
       ) : null}
