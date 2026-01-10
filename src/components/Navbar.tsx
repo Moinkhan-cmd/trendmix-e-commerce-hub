@@ -19,25 +19,22 @@ import {
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import logoImg from "@/assets/images/logo.png";
-import productCosmetics from "@/assets/product-cosmetics.jpg";
-import productJewelry from "@/assets/product-jewelry.jpg";
-import productSocks from "@/assets/product-socks.jpg";
-import productAccessories from "@/assets/product-accessories.jpg";
+import logoImg from "@/assets/logo.png";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { CategoryDoc } from "@/lib/models";
+import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 
 type NavItem = {
   label: string;
   to: string;
-  category?: "beauty" | "jewelry" | "socks" | "accessories" | "henna";
+  category?: "cosmetic" | "jewelry" | "socks" | "accessories" | "henna";
 };
 
 const NAV_ITEMS: NavItem[] = [
   { label: "All Products", to: "/products" },
-  // Category slug is "beauty" in Firestore (AdminCategories seed + typical setup).
-  { label: "Cosmetics", to: "/products?category=beauty", category: "beauty" },
+  // Category slug is "cosmetic" in Firestore (AdminCategories seed + typical setup).
+  { label: "Cosmetics", to: "/products?category=cosmetic", category: "cosmetic" },
   { label: "Jewelry", to: "/products?category=jewelry", category: "jewelry" },
   { label: "Socks", to: "/products?category=socks", category: "socks" },
   { label: "Accessories", to: "/products?category=accessories", category: "accessories" },
@@ -107,20 +104,17 @@ const Navbar = () => {
     return NAV_ITEMS.find((i) => i.category === activeCategory)?.label ?? null;
   }, [activeCategory, isProductsPage]);
 
-  const categoryFallbackImages = useMemo(
-    () => ({
-      beauty: productCosmetics,
-      jewelry: productJewelry,
-      socks: productSocks,
-      accessories: productAccessories,
-      henna: productAccessories,
-    }),
-    [],
-  );
-
   const getCategoryThumb = (slug: string | undefined) => {
     if (!slug) return undefined;
-    return categoryImagesBySlug[slug] ?? (categoryFallbackImages as Record<string, string | undefined>)[slug];
+    const canonical = getCategorySlug(slug, slug);
+
+    // Prefer local/static mappings first; fall back to Firestore URLs (custom categories).
+    return (
+      getCategoryImage(canonical) ||
+      categoryImagesBySlug[canonical] ||
+      getCategoryImage(slug) ||
+      categoryImagesBySlug[slug]
+    );
   };
 
   return (
@@ -239,12 +233,19 @@ const Navbar = () => {
                                 src={thumb}
                                 alt=""
                                 className="h-7 w-7 rounded-md border border-border object-cover"
-                                loading="lazy"
+                                loading="eager"
                                 decoding="async"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  // Replace broken thumbnails with a consistent placeholder block.
+                                  const img = e.currentTarget;
+                                  img.style.display = "none";
+                                }}
                               />
-                            ) : (
+                            ) : null}
+                            {!thumb ? (
                               <span className="h-7 w-7 rounded-md border border-border bg-muted" />
-                            )}
+                            ) : null}
                             <span className="truncate">{item.label}</span>
                           </span>
                           {active ? <Check className="h-4 w-4 text-primary" /> : null}
@@ -302,8 +303,13 @@ const Navbar = () => {
                                 src={thumb}
                                 alt=""
                                 className="h-9 w-9 rounded-lg border border-border object-cover"
-                                loading="lazy"
+                                loading="eager"
                                 decoding="async"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  const img = e.currentTarget;
+                                  img.style.display = "none";
+                                }}
                               />
                             ) : (
                               <span className="h-9 w-9 rounded-lg border border-border bg-muted" />

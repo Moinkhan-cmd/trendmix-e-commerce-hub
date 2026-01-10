@@ -10,6 +10,7 @@ import { Heart, ShoppingCart } from "lucide-react";
 import { db } from "@/lib/firebase";
 import type { ProductDoc } from "@/lib/models";
 import { useShop } from "@/store/shop";
+import { cn } from "@/lib/utils";
 
 type ProductWithId = ProductDoc & { id: string };
 
@@ -19,6 +20,7 @@ const ProductDetail = () => {
 
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<ProductWithId | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,6 +54,7 @@ const ProductDetail = () => {
         }
 
         setProduct({ id: snap.id, ...data });
+        setSelectedImage(data.imageUrls?.[0] ?? null);
         setLoading(false);
       } catch (e: any) {
         if (cancelled) return;
@@ -108,17 +111,47 @@ const ProductDetail = () => {
           </div>
         ) : (
           <div className="grid gap-8 lg:grid-cols-2">
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="aspect-square bg-muted">
-                  {imageUrl ? (
-                    <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full" />
-                  )}
+
+            <div className="space-y-4">
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="aspect-square bg-muted">
+                    {selectedImage ? (
+                      <img
+                        src={selectedImage}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {product.imageUrls && product.imageUrls.length > 1 && (
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {product.imageUrls.map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(url)}
+                      className={cn(
+                        "relative aspect-square w-20 flex-none overflow-hidden rounded-md border bg-muted transition-all",
+                        selectedImage === url
+                          ? "ring-2 ring-primary ring-offset-2 opacity-100"
+                          : "opacity-70 hover:opacity-100 hover:ring-2 hover:ring-primary/50"
+                      )}
+                    >
+                      <img
+                        src={url}
+                        alt={`${product.name} view ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
 
             <div className="space-y-4">
               <div>

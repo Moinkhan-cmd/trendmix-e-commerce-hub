@@ -103,7 +103,7 @@ const Hero = () => {
         y: ((e.clientY - rect.top) / rect.height - 0.5) * 20,
       });
     };
-    
+
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
@@ -117,14 +117,14 @@ const Hero = () => {
       {/* Animated 3D Background Elements */}
       <div aria-hidden className="pointer-events-none absolute inset-0 preserve-3d">
         {/* Primary glow orb */}
-        <div 
+        <div
           className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl morph-3d"
           style={{ transform: `translateX(${mousePosition.x}px) translateY(${mousePosition.y}px)` }}
         />
         {/* Secondary glow orb */}
-        <div 
+        <div
           className="absolute -bottom-28 -right-28 h-[500px] w-[500px] rounded-full bg-secondary/15 blur-3xl"
-          style={{ 
+          style={{
             transform: `translateX(${-mousePosition.x * 0.5}px) translateY(${-mousePosition.y * 0.5}px)`,
             animation: "morph3d 12s ease-in-out infinite reverse"
           }}
@@ -204,7 +204,7 @@ const Hero = () => {
               </h1>
 
               <p className="mx-auto max-w-[42rem] text-muted-foreground text-lg md:text-xl lg:mx-0 reveal-up stagger-3">
-                Shop the latest trends in beauty, jewelry, and fashion accessories.
+                Shop the latest trends in cosmetic, jewelry, and fashion accessories.
                 Curated collections that blend style with affordability.
               </p>
             </div>
@@ -247,7 +247,7 @@ const Hero = () => {
 
           {/* Hero Image with 3D Effect */}
           <div className="relative flex items-center justify-center lg:justify-end perspective-1000">
-            <Card3D 
+            <Card3D
               className="w-full max-w-xl"
               rotateIntensity={10}
               scaleOnHover={1.03}
@@ -256,7 +256,7 @@ const Hero = () => {
               <div className="relative">
                 {/* Glow backdrop */}
                 <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-r from-primary/30 via-pink-500/20 to-secondary/30 blur-2xl opacity-60 animate-pulse" />
-                
+
                 {/* Main image container */}
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/50 bg-muted shadow-3d">
                   <img
@@ -264,14 +264,14 @@ const Hero = () => {
                     alt="TrendMix featured products showcase"
                     className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
-                  
+
                   {/* Overlay gradient */}
                   <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
-                  
+
                   {/* Floating badges */}
-                  <FloatingElement 
-                    className="absolute top-4 right-4" 
-                    delay={0.5} 
+                  <FloatingElement
+                    className="absolute top-4 right-4"
+                    delay={0.5}
                     duration={5}
                   >
                     <div className="flex items-center gap-2 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 text-sm font-medium shadow-lg border border-border">
@@ -279,10 +279,10 @@ const Hero = () => {
                       New In
                     </div>
                   </FloatingElement>
-                  
-                  <FloatingElement 
-                    className="absolute bottom-4 left-4" 
-                    delay={1} 
+
+                  <FloatingElement
+                    className="absolute bottom-4 left-4"
+                    delay={1}
                     duration={6}
                   >
                     <div className="flex items-center gap-2 rounded-full bg-primary/90 backdrop-blur px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-lg">

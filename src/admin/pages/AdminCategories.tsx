@@ -183,9 +183,10 @@ export default function AdminCategories() {
       { name: "Clothing", slug: "clothing", imageUrl: "https://placehold.co/600x600/png?text=Clothing" },
       { name: "Henna", slug: "henna", imageUrl: "https://placehold.co/600x600/png?text=Henna" },
       { name: "Accessories", slug: "accessories", imageUrl: "https://placehold.co/600x600/png?text=Accessories" },
+      { name: "Socks", slug: "socks", imageUrl: "https://placehold.co/600x600/png?text=Socks" },
       { name: "Jewelry", slug: "jewelry", imageUrl: "https://placehold.co/600x600/png?text=Jewelry" },
-      { name: "Beauty", slug: "beauty", imageUrl: "https://placehold.co/600x600/png?text=Beauty" },
-      { name: "Electronics", slug: "electronics", imageUrl: "https://placehold.co/600x600/png?text=Electronics" },
+      { name: "Cosmetic", slug: "cosmetic", imageUrl: "https://placehold.co/600x600/png?text=Cosmetic" },
+
       { name: "Home", slug: "home", imageUrl: "https://placehold.co/600x600/png?text=Home" },
       { name: "Bags", slug: "bags", imageUrl: "https://placehold.co/600x600/png?text=Bags" },
     ];

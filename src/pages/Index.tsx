@@ -5,12 +5,9 @@ import Hero from "@/components/Hero";
 import CategoryCard from "@/components/CategoryCard";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import { Sparkles, Gem, Shirt, Package } from "lucide-react";
-import productCosmetics from "@/assets/product-cosmetics.jpg";
-import productJewelry from "@/assets/product-jewelry.jpg";
-import productSocks from "@/assets/product-socks.jpg";
-import productAccessories from "@/assets/product-accessories.jpg";
+import { Gem, Shirt, Package, Hand, Sparkles } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { getCategoryImage, getCategorySlug, getFallbackImage } from "@/lib/category-images";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
 
 type WithId<T> = T & { id: string };
@@ -21,6 +18,8 @@ function isPublished(value: unknown): boolean {
   if (typeof value === "string") return value.toLowerCase().trim() === "true";
   return false;
 }
+
+
 
 const Index = () => {
   const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
@@ -67,20 +66,76 @@ const Index = () => {
   }, [products]);
 
   const homepageCategories = useMemo(() => {
-    const fallbackImages = [productCosmetics, productJewelry, productSocks, productAccessories];
     const icons = [Sparkles, Gem, Shirt, Package];
 
-    return categories.map((c, idx) => {
-      const image = c.imageUrl || fallbackImages[idx % fallbackImages.length];
-      const icon = icons[idx % icons.length];
+    const processedCategories = categories.map((c, idx) => {
+      const slug = getCategorySlug(c.name, c.slug);
+      let title = c.name;
+
+      // Keep the display title tidy for legacy beauty category.
+      if ((c.slug ?? "").toLowerCase() === "beauty") {
+        title = "Cosmetic";
+      }
+
+      console.log(`Category: ${title}, Slug: ${slug}`); // Debugging
+
+      const mappedImage = getCategoryImage(slug);
+      const image = mappedImage || c.imageUrl || getFallbackImage(idx);
+      
+      // Select icon based on slug
+      let IconToUse = icons[idx % icons.length];
+      if (slug === 'henna' || slug === 'mehndi' || slug === 'mehandi') {
+        IconToUse = Hand;
+      } else if (slug === 'cosmetic') {
+        IconToUse = Sparkles;
+      } else if (slug === 'jewelry') {
+        IconToUse = Gem;
+      } else if (slug === 'socks' || slug === 'clothing') {
+        IconToUse = Shirt;
+      } else if (slug === 'accessories') {
+        IconToUse = Package;
+      }
+
+      const icon = IconToUse;
       return {
-        title: c.name,
+        title: title,
         description: "Browse products",
         image,
         icon,
-        href: `/products?category=${encodeURIComponent((c.slug ?? "").toLowerCase())}`,
+        href: `/products?category=${encodeURIComponent(slug)}`,
+        slug
       };
-    });
+    }).filter(c => c.href !== '/products?category=electronics');
+
+    // Force "Socks" if missing
+    if (!processedCategories.find(c => c.slug === 'socks')) {
+      const slug = 'socks';
+      const image = getCategoryImage(slug) || getFallbackImage(processedCategories.length);
+      processedCategories.push({
+        title: "Socks",
+        description: "Browse products",
+        image,
+        icon: Shirt,
+        href: `/products?category=${encodeURIComponent(slug)}`,
+        slug
+      });
+    }
+
+    // Force "Cosmetic" if missing (e.g. if DB had no "beauty" and no "cosmetic")
+    if (!processedCategories.find(c => c.slug === 'cosmetic')) {
+      const slug = 'cosmetic';
+      const image = getCategoryImage(slug) || getFallbackImage(processedCategories.length);
+      processedCategories.push({
+        title: "Cosmetic",
+        description: "Browse products",
+        image,
+        icon: Sparkles,
+        href: `/products?category=${encodeURIComponent(slug)}`,
+        slug
+      });
+    }
+
+    return processedCategories;
   }, [categories]);
 
   return (
@@ -97,7 +152,7 @@ const Index = () => {
                 Shop by Category
               </h2>
               <p className="mt-3 text-muted-foreground text-base sm:text-lg">
-                Explore curated collections across beauty, jewelry, and fashion accessories.
+                Explore curated collections across cosmetic, jewelry, and fashion accessories.
               </p>
             </div>
 

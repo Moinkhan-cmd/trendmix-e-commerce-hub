@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import logoImg from "@/assets/images/logo.png";
+import logoImg from "@/assets/logo.png";
 import { doc, deleteDoc, deleteField, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
@@ -174,10 +174,10 @@ export default function AdminProfile() {
           socialLinks:
             Array.isArray(data.socialLinks) && data.socialLinks.length
               ? data.socialLinks.map((l) => ({
-                  label: l.label ?? "",
-                  url: l.url ?? "",
-                  platform: l.platform ?? "",
-                }))
+                label: l.label ?? "",
+                url: l.url ?? "",
+                platform: l.platform ?? "",
+              }))
               : [{ label: "", url: "" }],
           bioHtml: data.bioHtml ?? "",
           featured: {

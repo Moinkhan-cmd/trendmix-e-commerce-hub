@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, ImageIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import type { ProductDoc, CategoryDoc } from "@/lib/models";
 
 type WithId<T> = T & { id: string };
@@ -190,27 +191,27 @@ const Products = () => {
                 <p className="mt-2 text-sm text-muted-foreground">Showing {filteredProducts.length} product(s)</p>
               </div>
               <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="lg:hidden"
-            >
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
-              Filters
-            </Button>
-            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="featured">Featured</SelectItem>
-                <SelectItem value="price-low">Price: Low to High</SelectItem>
-                <SelectItem value="price-high">Price: High to Low</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="rating">Rating</SelectItem>
-              </SelectContent>
-            </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="lg:hidden"
+                >
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  Filters
+                </Button>
+                <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="featured">Featured</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="rating">Rating</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -219,88 +220,104 @@ const Products = () => {
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                   <h3 className="text-sm font-semibold">Categories</h3>
                   <div className="mt-4 space-y-3">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="category-all"
-                    checked={!activeCategory}
-                    onCheckedChange={(v) => {
-                      if (v) setCategoryParam(null);
-                    }}
-                  />
-                  <label
-                    htmlFor="category-all"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    All
-                  </label>
-                </div>
-                {categories.map((category) => {
-                  const checked = activeCategory === category.slug;
-                  const id = `category-${category.slug}`;
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="category-all"
+                          checked={!activeCategory}
+                          onCheckedChange={(v) => {
+                            if (v) setCategoryParam(null);
+                          }}
+                        />
+                        <label
+                          htmlFor="category-all"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          All
+                        </label>
+                      </div>
+                      {categories.map((category) => {
+                        const checked = activeCategory === category.slug;
+                        const id = `category-${category.slug}`;
 
-                  return (
-                    <div key={category.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={id}
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          if (v) {
-                            setCategoryParam(category.slug);
-                          } else {
-                            setCategoryParam(null);
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor={id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {category.name}
-                      </label>
+                        return (
+                          <div key={category.id} className="flex items-center space-x-3">
+                            <Checkbox
+                              id={id}
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                if (v) {
+                                  setCategoryParam(category.slug);
+                                } else {
+                                  setCategoryParam(null);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={id}
+                              className="flex items-center text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                            >
+                              {(() => {
+                                const slug = getCategorySlug(category.name, category.slug);
+                                const image = getCategoryImage(slug) || category.imageUrl;
+
+                                return image ? (
+                                  <img
+                                    src={image}
+                                    alt={category.name}
+                                    className="h-8 w-8 rounded object-cover mr-2 border border-border"
+                                  />
+                                ) : (
+                                  <div className="h-8 w-8 rounded bg-muted flex items-center justify-center mr-2 border border-border">
+                                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                );
+                              })()}
+                              {category.name}
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                   <h3 className="text-sm font-semibold">Price Range</h3>
-              <Slider
-                value={priceRange}
-                onValueChange={(value) => setPriceRange(value as [number, number])}
-                max={priceSliderMax}
-                step={50}
-                className="mt-4 mb-4"
-              />
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>₹{priceRange[0]}</span>
-                <span>₹{priceRange[1]}</span>
-              </div>
-            </div>
+                  <Slider
+                    value={priceRange}
+                    onValueChange={(value) => setPriceRange(value as [number, number])}
+                    max={priceSliderMax}
+                    step={50}
+                    className="mt-4 mb-4"
+                  />
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>₹{priceRange[0]}</span>
+                    <span>₹{priceRange[1]}</span>
+                  </div>
+                </div>
 
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                   <h3 className="text-sm font-semibold">Rating</h3>
-              <div className="space-y-3">
-                {[4, 3, 2, 1].map((rating) => {
-                  const id = `rating-${rating}`;
-                  const checked = minRating === rating;
+                  <div className="space-y-3">
+                    {[4, 3, 2, 1].map((rating) => {
+                      const id = `rating-${rating}`;
+                      const checked = minRating === rating;
 
-                  return (
-                    <div key={id} className="flex items-center space-x-2">
-                      <Checkbox id={id} checked={checked} onCheckedChange={() => toggleMinRating(rating)} />
-                      <label
-                        htmlFor={id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {rating}★ & above
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                      return (
+                        <div key={id} className="flex items-center space-x-2">
+                          <Checkbox id={id} checked={checked} onCheckedChange={() => toggleMinRating(rating)} />
+                          <label
+                            htmlFor={id}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {rating}★ & above
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <Button variant="outline" className="w-full" onClick={clearFilters}>
                   Clear Filters
                 </Button>
