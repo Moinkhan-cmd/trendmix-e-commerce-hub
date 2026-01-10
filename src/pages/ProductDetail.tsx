@@ -1,15 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
+import ProductImageGallery from "@/components/ProductImageGallery";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
+
 import {
   BadgeCheck,
   Copy,
@@ -22,18 +39,49 @@ import {
   Star,
   Truck,
 } from "lucide-react";
+
 import { db } from "@/lib/firebase";
 import type { ProductDoc } from "@/lib/models";
+import { useAuth } from "@/auth/AuthProvider";
 import { useShop } from "@/store/shop";
 import { cn } from "@/lib/utils";
-import ProductImageGallery from "@/components/ProductImageGallery";
 
 type ProductWithId = ProductDoc & { id: string };
+
+type ProductReview = {
+  id: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt?: Timestamp | Date | string | number | null;
+};
+
+function clampInt(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.floor(value)));
+}
+
+function formatReviewDate(value: ProductReview["createdAt"]): string {
+  try {
+    if (!value) return "";
+    if (value instanceof Timestamp) return value.toDate().toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+    if (value instanceof Date) return value.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+    if (typeof value === "number") return new Date(value).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+    if (typeof value === "string") {
+      const d = new Date(value);
+      if (!Number.isNaN(d.getTime())) return d.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+    }
+    return "";
+  } catch {
+    return "";
+  }
+}
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart, toggleWishlist, isWishlisted } = useShop();
+  const { user, profile, isAuthenticated } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<ProductWithId | null>(null);
@@ -42,6 +90,17 @@ const ProductDetail = () => {
   const [pincode, setPincode] = useState<string>("");
   const [pincodeTouched, setPincodeTouched] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+
+  const [activeTab, setActiveTab] = useState<"description" | "specs" | "how" | "reviews">("description");
+  const reviewsAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const [newRating, setNewRating] = useState<number>(5);
+  const [newComment, setNewComment] = useState<string>("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +158,98 @@ const ProductDetail = () => {
     };
   }, [id]);
 
+  const fetchReviews = useCallback(async (productId: string) => {
+    setReviewsLoading(true);
+    setReviewsError(null);
+
+    try {
+      // Primary strategy: order by createdAt desc
+      const q1 = query(
+        collection(db, "products", productId, "reviews"),
+        orderBy("createdAt", "desc"),
+        limit(25),
+      );
+
+      const snap = await getDocs(q1);
+      const parsed = snap.docs.map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        const userNameRaw = data.userName ?? data.username ?? data.name;
+        const commentRaw = data.comment ?? data.text ?? data.message;
+        const ratingRaw = data.rating ?? data.stars;
+        const createdAtRaw = data.createdAt ?? data.date;
+
+        const userName = String(userNameRaw ?? "Customer").trim() || "Customer";
+        const comment = String(commentRaw ?? "").trim();
+        const rating = clampInt(Number(ratingRaw ?? 0), 1, 5);
+
+        return {
+          id: d.id,
+          userName,
+          rating,
+          comment,
+          createdAt: (createdAtRaw as ProductReview["createdAt"]) ?? null,
+        } satisfies ProductReview;
+      });
+
+      setReviews(parsed);
+      setReviewsLoading(false);
+    } catch (e: unknown) {
+      // Fallback: if indexing/orderBy fails, still try to fetch a few reviews.
+      try {
+        const q2 = query(collection(db, "products", productId, "reviews"), limit(25));
+        const snap = await getDocs(q2);
+        const parsed = snap.docs.map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          const userNameRaw = data.userName ?? data.username ?? data.name;
+          const commentRaw = data.comment ?? data.text ?? data.message;
+          const ratingRaw = data.rating ?? data.stars;
+          const createdAtRaw = data.createdAt ?? data.date;
+          const userName = String(userNameRaw ?? "Customer").trim() || "Customer";
+          const comment = String(commentRaw ?? "").trim();
+          const rating = clampInt(Number(ratingRaw ?? 0), 1, 5);
+          return {
+            id: d.id,
+            userName,
+            rating,
+            comment,
+            createdAt: (createdAtRaw as ProductReview["createdAt"]) ?? null,
+          } satisfies ProductReview;
+        });
+        setReviews(parsed);
+        setReviewsLoading(false);
+      } catch (fallbackErr: unknown) {
+        setReviewsLoading(false);
+        const message =
+          fallbackErr instanceof Error
+            ? fallbackErr.message
+            : typeof fallbackErr === "string"
+              ? fallbackErr
+              : e instanceof Error
+                ? e.message
+                : "Failed to load reviews";
+        setReviewsError(message);
+        setReviews([]);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!product?.id) {
+      setReviews([]);
+      setReviewsError(null);
+      setReviewsLoading(false);
+      return;
+    }
+    void (async () => {
+      await fetchReviews(product.id);
+      if (cancelled) return;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchReviews, product?.id]);
+
   const imageUrl = useMemo(() => {
     if (!product?.imageUrls?.length) return undefined;
     return product.imageUrls[0];
@@ -121,9 +272,21 @@ const ProductDetail = () => {
     [compareAtPrice, hasDiscount],
   );
 
-  // Ratings aren't stored in ProductDoc yet; keep UI ready while remaining truthful.
-  const rating = 0;
-  const reviewCount = 0;
+  const reviewCount = reviews.length;
+  const rating = useMemo(() => {
+    if (!reviewCount) return 0;
+    const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+    return sum / reviewCount;
+  }, [reviewCount, reviews]);
+
+  const ratingBreakdown = useMemo(() => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const r of reviews) {
+      const s = clampInt(Number(r.rating ?? 0), 1, 5);
+      counts[s] = (counts[s] ?? 0) + 1;
+    }
+    return counts;
+  }, [reviews]);
 
   const productUrl = (() => {
     try {
@@ -174,6 +337,72 @@ const ProductDetail = () => {
     navigate("/checkout");
   };
 
+  const openReviews = () => {
+    setActiveTab("reviews");
+    window.requestAnimationFrame(() => {
+      reviewsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const submitReview = async () => {
+    if (!product?.id) return;
+    if (!isAuthenticated || !user) {
+      toast.error("Please sign in to write a review");
+      navigate("/login");
+      return;
+    }
+
+    const ratingValue = clampInt(newRating, 1, 5);
+    const comment = newComment.trim();
+    if (comment.length < 10) {
+      toast.error("Please write at least 10 characters");
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      // One review per user per product (enforced by query + UX).
+      const existingQ = query(
+        collection(db, "products", product.id, "reviews"),
+        where("userId", "==", user.uid),
+        limit(1),
+      );
+      const existingSnap = await getDocs(existingQ);
+      if (!existingSnap.empty) {
+        toast.error("You have already reviewed this product");
+        setSubmittingReview(false);
+        return;
+      }
+
+      const userName =
+        String(profile?.displayName ?? user.displayName ?? user.email ?? "Customer").trim() || "Customer";
+
+      await addDoc(collection(db, "products", product.id, "reviews"), {
+        userId: user.uid,
+        userName,
+        rating: ratingValue,
+        comment,
+        createdAt: serverTimestamp(),
+      });
+
+      toast.success("Review submitted");
+      setNewRating(5);
+      setNewComment("");
+      await fetchReviews(product.id);
+      openReviews();
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : "Failed to submit review";
+      toast.error(message);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const pincodeStatus = useMemo(() => {
     const normalized = (pincode ?? "").trim();
     if (!pincodeTouched && normalized.length === 0) return null;
@@ -197,8 +426,21 @@ const ProductDetail = () => {
 
       <main className="flex-1 container py-6 sm:py-10 pb-28 md:pb-10">
         {loading ? (
-          <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
-            <h1 className="text-2xl font-semibold">Loading product…</h1>
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="space-y-4">
+              <div className="aspect-square rounded-2xl border bg-muted animate-pulse" />
+              <div className="flex gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-20 w-20 rounded-xl border bg-muted animate-pulse" />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-8 w-3/4 rounded-lg bg-muted animate-pulse" />
+              <div className="h-5 w-1/3 rounded-lg bg-muted animate-pulse" />
+              <div className="h-10 w-1/2 rounded-lg bg-muted animate-pulse" />
+              <div className="h-36 w-full rounded-2xl border bg-muted animate-pulse" />
+            </div>
           </div>
         ) : loadError ? (
           <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
@@ -225,6 +467,24 @@ const ProductDetail = () => {
           </div>
         ) : (
           <div className="space-y-10">
+            <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+              <ol className="flex flex-wrap items-center gap-2">
+                <li>
+                  <Link className="hover:text-foreground" to="/">
+                    Home
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li>
+                  <Link className="hover:text-foreground" to="/products">
+                    Products
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="text-foreground font-medium line-clamp-1">{product.name}</li>
+              </ol>
+            </nav>
+
             <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
               {/* Left: Image Gallery */}
               <ProductImageGallery
@@ -268,7 +528,12 @@ const ProductDetail = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={openReviews}
+                      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted"
+                      aria-label="Jump to reviews"
+                    >
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
@@ -279,10 +544,14 @@ const ProductDetail = () => {
                           }
                         />
                       ))}
-                      <span className="ml-1 text-sm text-muted-foreground">
-                        {rating.toFixed(1)} ({reviewCount} reviews)
-                      </span>
-                    </div>
+                      {reviewCount ? (
+                        <span className="ml-1 text-sm text-muted-foreground">
+                          {rating.toFixed(1)} ({reviewCount} reviews)
+                        </span>
+                      ) : (
+                        <span className="ml-1 text-sm text-muted-foreground">No ratings yet</span>
+                      )}
+                    </button>
 
                     {inStock ? (
                       <Badge
@@ -387,7 +656,11 @@ const ProductDetail = () => {
                       <div className="grid gap-2">
                         <Button
                           size="lg"
-                          className="w-full transition-transform active:scale-[0.99]"
+                          className={cn(
+                            "w-full transition-transform active:scale-[0.99]",
+                            "bg-[#ff9f00] text-black hover:bg-[#f39c00]",
+                            "dark:bg-[#ffb020] dark:hover:bg-[#f0a515]",
+                          )}
                           onClick={addCurrentToCart}
                           disabled={!inStock}
                         >
@@ -397,8 +670,11 @@ const ProductDetail = () => {
 
                         <Button
                           size="lg"
-                          variant="secondary"
-                          className="w-full transition-transform active:scale-[0.99]"
+                          className={cn(
+                            "w-full transition-transform active:scale-[0.99]",
+                            "bg-[#fb641b] text-white hover:bg-[#f05a13]",
+                            "dark:bg-[#ff6a2a] dark:hover:bg-[#ff5a1f]",
+                          )}
                           onClick={buyNow}
                           disabled={!inStock}
                         >
@@ -495,7 +771,8 @@ const ProductDetail = () => {
 
             {/* Tabs: Description / Specs / How to Use / Reviews */}
             <section aria-label="Product details" className="space-y-4">
-              <Tabs defaultValue="description" className="w-full">
+              <div ref={reviewsAnchorRef} />
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <TabsList className="w-full sm:w-auto">
                     <TabsTrigger value="description">Description</TabsTrigger>
@@ -525,22 +802,53 @@ const ProductDetail = () => {
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">Brand</p>
-                          <p className="text-sm font-medium">{product.brand ?? "—"}</p>
+                          <p className="mt-1 font-medium">{product.brand ?? "—"}</p>
                         </div>
+
                         <div className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">SKU</p>
-                          <p className="text-sm font-medium">{product.sku ?? "—"}</p>
+                          <p className="mt-1 font-medium">{product.sku ?? "—"}</p>
                         </div>
+
+                        <div className="rounded-lg border bg-background p-4">
+                          <p className="text-xs text-muted-foreground">Category</p>
+                          <p className="mt-1 font-medium">
+                            {(product.categorySlug ?? "—").replace(/-/g, " ")}
+                          </p>
+                        </div>
+
+                        <div className="rounded-lg border bg-background p-4">
+                          <p className="text-xs text-muted-foreground">Tags</p>
+                          {product.tags?.length ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {product.tags.slice(0, 10).map((t) => (
+                                <Badge key={t} variant="secondary">
+                                  {t}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-1 font-medium">—</p>
+                          )}
+                        </div>
+
                         <div className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">Weight</p>
-                          <p className="text-sm font-medium">{product.weightKg ? `${product.weightKg} kg` : "—"}</p>
+                          <p className="mt-1 font-medium">{product.weightKg ? `${product.weightKg} kg` : "—"}</p>
                         </div>
+
                         <div className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">Dimensions</p>
-                          <p className="text-sm font-medium">
-                            {product.dimensionsCm?.length || product.dimensionsCm?.width || product.dimensionsCm?.height
-                              ? `${product.dimensionsCm?.length ?? "–"}×${product.dimensionsCm?.width ?? "–"}×${product.dimensionsCm?.height ?? "–"} cm`
-                              : "—"}
+                          <p className="mt-1 font-medium">
+                            {(() => {
+                              const d = product.dimensionsCm;
+                              const hasAny = Boolean(d?.length || d?.width || d?.height);
+                              if (!hasAny) return "—";
+                              const l = d?.length ?? "—";
+                              const w = d?.width ?? "—";
+                              const h = d?.height ?? "—";
+                              return `${l} × ${w} × ${h} cm`;
+                            })()}
                           </p>
                         </div>
                       </div>
@@ -550,56 +858,167 @@ const ProductDetail = () => {
 
                 <TabsContent value="how">
                   <Card>
-                    <CardContent className="p-5 space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Usage instructions vary by product and category.
-                      </p>
-                      <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-                        <li>Read the label / packaging carefully before use.</li>
-                        <li>Keep the invoice for easy returns and warranty claims.</li>
-                        <li>Contact support from your account page for order help.</li>
-                      </ul>
+                    <CardContent className="p-5">
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Quick tips to get the best experience from this product.
+                        </p>
+                        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-2">
+                          <li>Check the product specifications before ordering.</li>
+                          <li>Store in a cool, dry place and avoid direct sunlight.</li>
+                          <li>Keep the original packaging for easier returns and warranty support.</li>
+                          <li>If you face any issue, contact support with your order details.</li>
+                        </ul>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
                 <TabsContent value="reviews">
                   <Card>
-                    <CardContent className="p-5 space-y-6">
-                      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+                    <CardContent className="p-5">
+                      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
                         <div className="rounded-xl border bg-background p-4">
-                          <p className="text-sm font-semibold">Ratings & Reviews</p>
-                          <div className="mt-2 flex items-end gap-2">
-                            <span className="text-4xl font-bold">{rating.toFixed(1)}</span>
-                            <span className="pb-1 text-sm text-muted-foreground">/ 5</span>
-                          </div>
-                          <p className="mt-1 text-sm text-muted-foreground">Based on {reviewCount} reviews</p>
+                          <p className="text-sm font-semibold">Write a review</p>
+                          {!isAuthenticated ? (
+                            <div className="mt-2">
+                              <p className="text-sm text-muted-foreground">Sign in to rate and review.</p>
+                              <Button className="mt-3" onClick={() => navigate("/login")}>
+                                Sign in
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="mt-3 space-y-3">
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: 5 }).map((_, i) => {
+                                  const value = i + 1;
+                                  const active = value <= newRating;
+                                  return (
+                                    <button
+                                      key={value}
+                                      type="button"
+                                      onClick={() => setNewRating(value)}
+                                      className="rounded-md p-1 transition-colors hover:bg-muted"
+                                      aria-label={`${value} star`}
+                                    >
+                                      <Star
+                                        className={
+                                          active
+                                            ? "h-5 w-5 fill-primary text-primary"
+                                            : "h-5 w-5 text-muted-foreground/30"
+                                        }
+                                      />
+                                    </button>
+                                  );
+                                })}
+                              </div>
 
-                          <div className="mt-4 space-y-2">
-                            {[5, 4, 3, 2, 1].map((s) => {
-                              const pct = 0;
-                              return (
-                                <div key={s} className="flex items-center gap-2 text-sm">
-                                  <span className="w-8 text-muted-foreground">{s}★</span>
-                                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                                    <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                                  </div>
-                                  <span className="w-10 text-right text-muted-foreground">0%</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                              <Textarea
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="Share details about quality, fit, comfort, delivery…"
+                                className="min-h-[110px]"
+                              />
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs text-muted-foreground">Min 10 characters</p>
+                                <Button onClick={submitReview} disabled={submittingReview}>
+                                  {submittingReview ? "Submitting…" : "Submit"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-4">
-                          {reviewCount === 0 ? (
+                          <div className="rounded-xl border bg-background p-4">
+                            <p className="text-sm font-semibold">Ratings summary</p>
+                            <div className="mt-2 flex items-end gap-2">
+                              <span className="text-4xl font-bold">{reviewCount ? rating.toFixed(1) : "—"}</span>
+                              <span className="pb-1 text-sm text-muted-foreground">/ 5</span>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {reviewsLoading
+                                ? "Loading reviews…"
+                                : reviewsError
+                                  ? "Couldn’t load reviews"
+                                  : reviewCount
+                                    ? `Based on ${reviewCount} review(s)`
+                                    : "No reviews yet"}
+                            </p>
+
+                            <div className="mt-4 space-y-2">
+                              {[5, 4, 3, 2, 1].map((s) => {
+                                const count = ratingBreakdown[s] ?? 0;
+                                const pct = reviewCount ? Math.round((count / reviewCount) * 100) : 0;
+                                return (
+                                  <div key={s} className="flex items-center gap-2 text-sm">
+                                    <span className="w-8 text-muted-foreground">{s}★</span>
+                                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <span className="w-10 text-right text-muted-foreground">{pct}%</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {reviewsError ? (
+                            <div className="rounded-xl border border-dashed p-6 text-center">
+                              <p className="text-sm font-semibold">Reviews unavailable</p>
+                              <p className="mt-1 text-sm text-muted-foreground">{reviewsError}</p>
+                            </div>
+                          ) : reviewsLoading ? (
+                            <div className="space-y-3">
+                              {Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="rounded-xl border bg-background p-4">
+                                  <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+                                  <div className="mt-3 h-3 w-full rounded bg-muted animate-pulse" />
+                                  <div className="mt-2 h-3 w-5/6 rounded bg-muted animate-pulse" />
+                                </div>
+                              ))}
+                            </div>
+                          ) : reviewCount === 0 ? (
                             <div className="rounded-xl border border-dashed p-6 text-center">
                               <p className="text-sm font-semibold">No reviews yet</p>
                               <p className="mt-1 text-sm text-muted-foreground">
                                 Be the first to share your feedback after purchase.
                               </p>
                             </div>
-                          ) : null}
+                          ) : (
+                            <div className="space-y-3">
+                              {reviews.map((r) => {
+                                const dateText = formatReviewDate(r.createdAt);
+                                return (
+                                  <div key={r.id} className="rounded-xl border bg-background p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <p className="text-sm font-semibold">{r.userName}</p>
+                                        {dateText ? <p className="text-xs text-muted-foreground">{dateText}</p> : null}
+                                      </div>
+                                      <div className="flex items-center gap-1" aria-label={`${r.rating} out of 5 stars`}>
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star
+                                            key={i}
+                                            className={
+                                              i < r.rating
+                                                ? "h-4 w-4 fill-primary text-primary"
+                                                : "h-4 w-4 text-muted-foreground/30"
+                                            }
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {r.comment ? (
+                                      <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">{r.comment}</p>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
+                              <p className="text-xs text-muted-foreground">Showing latest {reviewCount} review(s).</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -619,7 +1038,11 @@ const ProductDetail = () => {
                   <div className="ml-auto flex items-center gap-2">
                     <Button
                       size="lg"
-                      className="h-11 px-4 transition-transform active:scale-[0.99]"
+                      className={cn(
+                        "h-11 px-4 transition-transform active:scale-[0.99]",
+                        "bg-[#ff9f00] text-black hover:bg-[#f39c00]",
+                        "dark:bg-[#ffb020] dark:hover:bg-[#f0a515]",
+                      )}
                       onClick={addCurrentToCart}
                       disabled={!inStock}
                     >
@@ -627,8 +1050,11 @@ const ProductDetail = () => {
                     </Button>
                     <Button
                       size="lg"
-                      variant="secondary"
-                      className="h-11 px-4 transition-transform active:scale-[0.99]"
+                      className={cn(
+                        "h-11 px-4 transition-transform active:scale-[0.99]",
+                        "bg-[#fb641b] text-white hover:bg-[#f05a13]",
+                        "dark:bg-[#ff6a2a] dark:hover:bg-[#ff5a1f]",
+                      )}
                       onClick={buyNow}
                       disabled={!inStock}
                     >

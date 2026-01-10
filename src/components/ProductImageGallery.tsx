@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImageIcon } from "lucide-react";
 
 type Props = {
   images?: string[];
@@ -12,10 +13,12 @@ type Props = {
 export default function ProductImageGallery({ images, alt, className, onImageChange }: Props) {
   const safeImages = useMemo(() => (images ?? []).filter(Boolean), [images]);
   const [selected, setSelected] = useState<string | null>(safeImages[0] ?? null);
+  const [broken, setBroken] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     const first = safeImages[0] ?? null;
     setSelected(first);
+    setBroken(new Set());
     onImageChange?.(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeImages.join("|")]);
@@ -41,6 +44,18 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                   )}
                   loading="eager"
                   decoding="async"
+                  fetchPriority="high"
+                  onError={() => {
+                    setBroken((prev) => {
+                      const next = new Set(prev);
+                      next.add(selected);
+                      return next;
+                    });
+
+                    // If the selected image fails, move to the next available one.
+                    const nextGood = safeImages.find((u) => u && u !== selected);
+                    setSelected(nextGood ?? null);
+                  }}
                 />
                 <div className="pointer-events-none absolute inset-0 hidden sm:block">
                   <div className="absolute bottom-3 left-3 rounded-full bg-background/70 px-3 py-1 text-xs text-foreground shadow-sm backdrop-blur">
@@ -49,7 +64,14 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                 </div>
               </div>
             ) : (
-              <div className="h-full w-full" />
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border bg-background/60">
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                  <p className="text-xs">No image available</p>
+                </div>
+              </div>
             )}
           </div>
         </CardContent>
@@ -71,6 +93,7 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                     : "opacity-70 hover:opacity-100 hover:ring-2 hover:ring-primary/50",
                 )}
                 aria-label={`View image ${idx + 1}`}
+                disabled={broken.has(url)}
               >
                 <img
                   src={url}
@@ -78,7 +101,19 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                   className="h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
+                  onError={() => {
+                    setBroken((prev) => {
+                      const next = new Set(prev);
+                      next.add(url);
+                      return next;
+                    });
+                  }}
                 />
+                {broken.has(url) ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                ) : null}
               </button>
             ))}
           </div>
@@ -105,6 +140,13 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                       className="h-full w-full object-cover"
                       loading={idx === 0 ? "eager" : "lazy"}
                       decoding="async"
+                      onError={() => {
+                        setBroken((prev) => {
+                          const next = new Set(prev);
+                          next.add(url);
+                          return next;
+                        });
+                      }}
                     />
                   </div>
                 </button>

@@ -72,7 +72,7 @@ const SHIPPING_COST = 49;
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { cart, clearCart } = useShop();
+  const { cartItems, cartCount, subtotal: cartSubtotal, clearCart } = useShop();
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ orderNumber: string } | null>(null);
 
@@ -91,12 +91,12 @@ export default function Checkout() {
     },
   });
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const subtotal = cartSubtotal;
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
   const total = subtotal + shipping;
 
   const onSubmit = async (data: CheckoutFormData) => {
-    if (cart.length === 0) {
+    if (cartItems.length === 0) {
       toast.error("Your cart is empty");
       return;
     }
@@ -106,7 +106,7 @@ export default function Checkout() {
     try {
       // Validate stock availability
       const validation = await validateOrderItems(
-        cart.map((item) => ({ productId: item.id, qty: item.qty }))
+        cartItems.map((item) => ({ productId: item.product.id, qty: item.qty }))
       );
 
       if (!validation.valid) {
@@ -115,12 +115,12 @@ export default function Checkout() {
         return;
       }
 
-      const orderItems = cart.map((item) => ({
-        productId: item.id,
-        name: item.name,
+      const orderItems = cartItems.map((item) => ({
+        productId: item.product.id,
+        name: item.product.name,
         qty: item.qty,
-        price: item.price,
-        imageUrl: item.imageUrls[0] || "",
+        price: item.product.price,
+        imageUrl: item.product.image || "",
       }));
 
       const result = await createOrder({
@@ -151,7 +151,7 @@ export default function Checkout() {
     }
   };
 
-  if (cart.length === 0 && !orderSuccess) {
+  if (cartItems.length === 0 && !orderSuccess) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -456,23 +456,23 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
                 <CardDescription>
-                  {cart.length} item{cart.length !== 1 ? "s" : ""} in your cart
+                    {cartCount} item{cartCount !== 1 ? "s" : ""} in your cart
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Cart Items */}
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex gap-3">
+                    {cartItems.map((item) => (
+                      <div key={item.product.id} className="flex gap-3">
                       <img
-                        src={item.imageUrls[0]}
-                        alt={item.name}
+                          src={item.product.image || "/placeholder.svg"}
+                          alt={item.product.name}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{item.name}</p>
+                          <p className="font-medium text-sm truncate">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">Qty: {item.qty}</p>
-                        <p className="text-sm font-medium">{formatCurrency(item.price * item.qty)}</p>
+                          <p className="text-sm font-medium">{formatCurrency(item.product.price * item.qty)}</p>
                       </div>
                     </div>
                   ))}

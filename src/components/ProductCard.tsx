@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, ShoppingCart, Star } from "lucide-react";
+import { Heart, ImageIcon, ShoppingCart, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useShop } from "@/store/shop";
 
@@ -50,7 +50,14 @@ const ProductCard = ({
                 decoding="async"
               />
             ) : (
-              <div className="h-full w-full" />
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border bg-background/60">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+                  <span className="text-[11px]">Image unavailable</span>
+                </div>
+              </div>
             )}
           </div>
         </Link>
