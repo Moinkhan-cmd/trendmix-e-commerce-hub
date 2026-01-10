@@ -309,7 +309,7 @@ export default function Login() {
               <p className="text-sm text-muted-foreground text-center">
                 Don't have an account?{" "}
                 <Link to="/signup" className="text-primary font-medium hover:underline transition-all hover:text-primary/80">
-                  Sign up
+                  Create account
                 </Link>
               </p>
             </CardFooter>

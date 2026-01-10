@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/auth/AuthProvider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -77,6 +78,7 @@ type PaymentModalStatus = "processing" | "success" | "failed";
 export default function Checkout() {
   const navigate = useNavigate();
   const { cartItems, cartCount, subtotal: cartSubtotal, clearCart } = useShop();
+  const { isAuthenticated, loading: authLoading, profile } = useAuth();
   
   // Multi-step state
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("address");
@@ -121,6 +123,22 @@ export default function Checkout() {
       notes: "",
     },
   });
+
+  // Pre-fill form with user profile data
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        name: profile.displayName || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        address: profile.address?.street || "",
+        city: profile.address?.city || "",
+        state: profile.address?.state || "",
+        pincode: profile.address?.pincode || "",
+        notes: "",
+      });
+    }
+  }, [profile, form]);
 
   const subtotal = cartSubtotal;
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
@@ -293,6 +311,62 @@ export default function Checkout() {
       },
     });
   };
+
+  // Auth loading view
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Login required view
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <Card className="w-full max-w-md text-center">
+            <CardHeader className="space-y-4">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                <User className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-2xl">Login Required</CardTitle>
+              <CardDescription>
+                Please log in or create an account to complete your purchase.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button asChild className="flex-1">
+                  <Link to="/login" state={{ from: { pathname: "/checkout" } }}>Log In</Link>
+                </Button>
+                <Button variant="outline" asChild className="flex-1">
+                  <Link to="/signup">Create Account</Link>
+                </Button>
+              </div>
+              <Separator />
+              <Button variant="ghost" asChild className="w-full">
+                <Link to="/cart">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Cart
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   // Empty cart view
   if (cartItems.length === 0 && !paymentResult.orderNumber) {
