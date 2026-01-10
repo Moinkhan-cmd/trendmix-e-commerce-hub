@@ -875,6 +875,33 @@ const ProductDetail = () => {
                           </p>
                         </div>
                       </div>
+
+                      {Array.isArray(product.specifications) && product.specifications.length > 0 && (
+                        <div className="mt-6 space-y-6">
+                          {product.specifications
+                            .filter((s) => s?.title && Array.isArray(s.items) && s.items.length)
+                            .map((section, si) => (
+                              <div key={`${section.title}-${si}`} className="overflow-hidden rounded-lg border">
+                                <div className="border-b bg-muted/30 px-4 py-3">
+                                  <p className="text-base font-semibold">{section.title}</p>
+                                </div>
+                                <div className="divide-y">
+                                  {section.items
+                                    .filter((it) => it?.label && it?.value)
+                                    .map((item, ii) => (
+                                      <div
+                                        key={`${item.label}-${ii}`}
+                                        className="grid gap-2 px-4 py-3 sm:grid-cols-[220px_1fr]"
+                                      >
+                                        <p className="text-sm text-muted-foreground">{item.label}</p>
+                                        <p className="text-sm font-medium">{item.value}</p>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

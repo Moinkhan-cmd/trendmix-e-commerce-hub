@@ -3,6 +3,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   onSnapshot,
   serverTimestamp,
@@ -11,6 +12,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { Control } from "react-hook-form";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/components/ui/sonner";
@@ -66,6 +68,16 @@ const optionalNumber = z.preprocess((v) => {
   return v;
 }, z.number().min(0, "Must be ≥ 0").optional());
 
+const specItemSchema = z.object({
+  label: z.string().trim().min(1, "Label is required").max(80, "Label is too long"),
+  value: z.string().trim().min(1, "Value is required").max(200, "Value is too long"),
+});
+
+const specSectionSchema = z.object({
+  title: z.string().trim().min(1, "Section title is required").max(60, "Section title is too long"),
+  items: z.array(specItemSchema).min(1, "Add at least 1 specification"),
+});
+
 const productFormSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(120, "Name is too long"),
@@ -106,6 +118,8 @@ const productFormSchema = z
             }),
         { message: "All Image URLs must be valid URLs" },
       ),
+
+    specifications: z.array(specSectionSchema).optional().default([]),
   })
   .refine(
     (v) => v.compareAtPrice === undefined || v.compareAtPrice >= v.price,
@@ -134,6 +148,7 @@ const defaultProductValues: ProductFormValues = {
   stock: 10,
   published: true,
   imageUrls: [""],
+  specifications: [],
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -153,6 +168,11 @@ export default function AdminProducts() {
   const imageUrlsArray = useFieldArray({
     control: productForm.control,
     name: "imageUrls",
+  });
+
+  const specSectionsArray = useFieldArray({
+    control: productForm.control,
+    name: "specifications",
   });
 
   const [imagePreviewErrors, setImagePreviewErrors] = useState<Record<number, boolean>>({});
@@ -250,6 +270,7 @@ export default function AdminProducts() {
       stock: Number(p.stock ?? 0),
       published: Boolean(p.published),
       imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [""],
+      specifications: Array.isArray(p.specifications) ? p.specifications : [],
     });
     setImagePreviewErrors({});
     setOpen(true);
@@ -272,6 +293,18 @@ export default function AdminProducts() {
 
     const urls = values.imageUrls.map((u) => u.trim()).filter(Boolean);
     const tags = parseTags(values.tagsText);
+    const cleanedSpecs = (values.specifications ?? [])
+      .map((s) => {
+        const title = (s.title ?? "").trim();
+        const items = (s.items ?? [])
+          .map((it) => ({
+            label: (it.label ?? "").trim(),
+            value: (it.value ?? "").trim(),
+          }))
+          .filter((it) => it.label && it.value);
+        return { title, items };
+      })
+      .filter((s) => s.title && s.items.length);
 
     const payload: any = {
       name: values.name.trim(),
@@ -303,6 +336,9 @@ export default function AdminProducts() {
       };
     }
     if (values.featured) payload.featured = values.featured;
+
+    if (cleanedSpecs.length) payload.specifications = cleanedSpecs;
+    else if (editing) payload.specifications = deleteField();
 
     setSaving(true);
     try {
@@ -352,6 +388,27 @@ export default function AdminProducts() {
     imageUrlsArray.append("");
   };
 
+  const addSpecSection = () => {
+    specSectionsArray.append({ title: "", items: [{ label: "", value: "" }] });
+  };
+
+  const addSpecTemplate = () => {
+    specSectionsArray.append({
+      title: "In The Box",
+      items: [
+        { label: "Pack of", value: "" },
+        { label: "Sales Package", value: "" },
+      ],
+    });
+    specSectionsArray.append({
+      title: "General",
+      items: [
+        { label: "Brand", value: "" },
+        { label: "Model Name", value: "" },
+      ],
+    });
+  };
+
   const removeImageUrlField = (idx: number) => {
     imageUrlsArray.remove(idx);
     setImagePreviewErrors((prev) => {
@@ -369,6 +426,100 @@ export default function AdminProducts() {
     if (stock === 0) return <Badge variant="destructive">Out of stock</Badge>;
     if (stock <= 5) return <Badge variant="secondary" className="bg-amber-100 text-amber-700">Low: {stock}</Badge>;
     return <Badge variant="outline">{stock}</Badge>;
+  };
+
+  const SpecSectionEditor = ({
+    control,
+    sectionIndex,
+    onRemove,
+  }: {
+    control: Control<ProductFormValues>;
+    sectionIndex: number;
+    onRemove: () => void;
+  }) => {
+    const itemsArray = useFieldArray({
+      control,
+      name: `specifications.${sectionIndex}.items` as const,
+    });
+
+    return (
+      <div className="rounded-lg border p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <FormField
+            control={control}
+            name={`specifications.${sectionIndex}.title` as const}
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Section title</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. General" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type="button" variant="outline" onClick={onRemove}>
+            Remove section
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Rows</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => itemsArray.append({ label: "", value: "" })}
+            >
+              Add row
+            </Button>
+          </div>
+
+          {itemsArray.fields.map((row, rowIdx) => (
+            <div key={row.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-end">
+              <FormField
+                control={control}
+                name={`specifications.${sectionIndex}.items.${rowIdx}.label` as const}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sm:sr-only">Label</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Label (e.g. Brand)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={control}
+                name={`specifications.${sectionIndex}.items.${rowIdx}.value` as const}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sm:sr-only">Value</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Value (e.g. Iba)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => itemsArray.remove(rowIdx)}
+                disabled={itemsArray.fields.length === 1}
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -679,6 +830,41 @@ export default function AdminProducts() {
                     </FormItem>
                   )}
                 />
+
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">Specifications (optional)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Add sections and rows (label/value). This shows on the product page like your screenshot.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={addSpecTemplate}>
+                        Add template
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={addSpecSection}>
+                        Add section
+                      </Button>
+                    </div>
+                  </div>
+
+                  {specSectionsArray.fields.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No specifications added.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {specSectionsArray.fields.map((section, idx) => (
+                        <SpecSectionEditor
+                          key={section.id}
+                          control={productForm.control}
+                          sectionIndex={idx}
+                          onRemove={() => specSectionsArray.remove(idx)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField

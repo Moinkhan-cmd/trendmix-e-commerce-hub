@@ -10,6 +10,16 @@ export type CategoryDoc = {
   updatedAt?: Timestamp;
 };
 
+export type ProductSpecificationItem = {
+  label: string;
+  value: string;
+};
+
+export type ProductSpecificationSection = {
+  title: string;
+  items: ProductSpecificationItem[];
+};
+
 export type ProductDoc = {
   name: string;
   price: number;
@@ -29,6 +39,8 @@ export type ProductDoc = {
   description: string;
   stock: number;
   imageUrls: string[];
+  /** Optional structured specs shown on product detail page */
+  specifications?: ProductSpecificationSection[];
   published: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
