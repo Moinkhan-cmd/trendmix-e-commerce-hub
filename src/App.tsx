@@ -38,6 +38,7 @@ import AdminUsers from '@/admin/pages/AdminUsers';
 import AdminSettings from '@/admin/pages/AdminSettings';
 import AdminProfile from '@/admin/pages/AdminProfile';
 import AdminNotificationSettings from '@/admin/pages/AdminNotificationSettings';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -84,47 +85,49 @@ const App = () => (
         <AdminAuthProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ScrollToHash />
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/wishlist" element={<Wishlist />} />
-              <Route path="/track-order" element={<OrderTracking />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/shipping" element={<Shipping />} />
-              <Route path="/returns" element={<Returns />} />
-              <Route path="/faq" element={<FAQ />} />
-              
-              {/* Auth routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<SignUp />} />
-              
-              {/* Protected customer routes */}
-              <Route path="/account" element={<Account />} />
-              <Route path="/checkout" element={<Checkout />} />
+            <AppErrorBoundary>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/wishlist" element={<Wishlist />} />
+                <Route path="/track-order" element={<OrderTracking />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/shipping" element={<Shipping />} />
+                <Route path="/returns" element={<Returns />} />
+                <Route path="/faq" element={<FAQ />} />
 
-              {/* Admin routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<RequireAdmin />}>
-                <Route element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="analytics" element={<AdminDashboard />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="categories" element={<AdminCategories />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="profile" element={<AdminProfile />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="notifications" element={<AdminNotificationSettings />} />
+                {/* Auth routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+
+                {/* Protected customer routes */}
+                <Route path="/account" element={<Account />} />
+                <Route path="/checkout" element={<Checkout />} />
+
+                {/* Admin routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<RequireAdmin />}>
+                  <Route element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="analytics" element={<AdminDashboard />} />
+                    <Route path="products" element={<AdminProducts />} />
+                    <Route path="categories" element={<AdminCategories />} />
+                    <Route path="orders" element={<AdminOrders />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="profile" element={<AdminProfile />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="notifications" element={<AdminNotificationSettings />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                {/* Catch-all */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppErrorBoundary>
           </BrowserRouter>
         </AdminAuthProvider>
       </AuthProvider>

@@ -84,8 +84,12 @@ const Products = () => {
     };
   }, []);
 
-  const categoryParamRaw = (searchParams.get("category") ?? "").toLowerCase().trim();
-  const activeCategory = categoryParamRaw || null;
+  const activeCategoryParamRaw = (searchParams.get("category") ?? "").toLowerCase().trim();
+
+  const activeCategory = useMemo(() => {
+    if (!activeCategoryParamRaw) return null;
+    return getCategorySlug(activeCategoryParamRaw, activeCategoryParamRaw) || null;
+  }, [activeCategoryParamRaw]);
 
   const queryParam = (searchParams.get("q") ?? "").toLowerCase().trim();
 
@@ -109,9 +113,27 @@ const Products = () => {
   const filteredProducts = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
 
+    const categoryById = new Map(categories.map((c) => [c.id, c] as const));
+
+    const getProductCategorySlug = (product: WithId<ProductDoc>): string => {
+      const cat = product.categoryId ? categoryById.get(product.categoryId) : undefined;
+
+      // Prefer explicit category slug fields; fall back to category doc name/slug.
+      // Avoid using product.name here (it can accidentally override slugs via getCategorySlug heuristics).
+      const rawSlug =
+        String((product as any)?.categorySlug ?? "").trim() ||
+        String((product as any)?.category ?? "").trim() ||
+        String((product as any)?.categoryName ?? "").trim() ||
+        String(cat?.slug ?? "").trim();
+
+      const name = String(cat?.name ?? (product as any)?.categoryName ?? rawSlug ?? "").trim();
+
+      return getCategorySlug(name, rawSlug);
+    };
+
     const next = products.filter((product) => {
       const publishedOk = isPublished(product.published);
-      const categoryOk = activeCategory ? product.categorySlug === activeCategory : true;
+      const categoryOk = activeCategory ? getProductCategorySlug(product) === activeCategory : true;
       const queryOk = queryParam ? (product.name ?? "").toLowerCase().includes(queryParam) : true;
       const price = Number(product.price ?? 0);
       const priceOk = price >= minPrice && price <= maxPrice;
@@ -140,11 +162,11 @@ const Products = () => {
           return 0;
       }
     });
-  }, [activeCategory, minRating, priceRange, products, queryParam, sort]);
+  }, [activeCategory, categories, minRating, priceRange, products, queryParam, sort]);
 
   const pageTitle = useMemo(() => {
     if (!activeCategory) return "All Products";
-    const cat = categories.find((c) => c.slug === activeCategory);
+    const cat = categories.find((c) => getCategorySlug(c.name, c.slug) === activeCategory);
     if (cat?.name) return cat.name;
     // If the category isn't present in the categories collection yet,
     // keep the UI consistent with the URL instead of falling back to "All Products".
@@ -177,6 +199,10 @@ const Products = () => {
     setSort("featured");
     setCategoryParam(null);
   };
+
+  const hasAnyPublishedProduct = useMemo(() => {
+    return products.some((p) => isPublished(p.published));
+  }, [products]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -237,8 +263,9 @@ const Products = () => {
                         </label>
                       </div>
                       {categories.map((category) => {
-                        const checked = activeCategory === category.slug;
-                        const id = `category-${category.slug}`;
+                        const slug = getCategorySlug(category.name, category.slug);
+                        const checked = activeCategory === slug;
+                        const id = `category-${slug}`;
 
                         return (
                           <div key={category.id} className="flex items-center space-x-3">
@@ -247,7 +274,7 @@ const Products = () => {
                               checked={checked}
                               onCheckedChange={(v) => {
                                 if (v) {
-                                  setCategoryParam(category.slug);
+                                  setCategoryParam(slug);
                                 } else {
                                   setCategoryParam(null);
                                 }
@@ -258,7 +285,6 @@ const Products = () => {
                               className="flex items-center text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                             >
                               {(() => {
-                                const slug = getCategorySlug(category.name, category.slug);
                                 const image = getCategoryImage(slug) || category.imageUrl;
 
                                 return image ? (
@@ -335,11 +361,15 @@ const Products = () => {
                 </div>
               ) : filteredProducts.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
-                  <h2 className="text-lg font-semibold">No products available</h2>
+                  <h2 className="text-lg font-semibold">
+                    {products.length === 0 || !hasAnyPublishedProduct ? "Coming soon" : "No products found"}
+                  </h2>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {products.length === 0
-                      ? "Add products from the admin panel and mark them as published."
-                      : "No published products match the current filters."}
+                      ? "We’re setting things up. Check back soon for new arrivals."
+                      : !hasAnyPublishedProduct
+                        ? "We’re stocking the store right now. New products will be available soon."
+                        : "Nothing matches your filters right now. Try clearing filters or selecting a different category."}
                   </p>
                 </div>
               ) : (

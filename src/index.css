@@ -259,4 +259,11 @@
   .ripple-3d:active::after { transform: scale(0, 0); opacity: 0.3; transition: 0s; }
 
   .magnetic { transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); }
+
+  /* Keep Sparkles icon non-responsive when it's sized as w-6/h-6.
+     This prevents breakpoint classes like sm:w-8/sm:h-8 from changing its size. */
+  .lucide-sparkles.w-6.h-6 {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
 }

@@ -36,6 +36,12 @@ export function getCategorySlug(name: string, rawSlug?: string): string {
     // Handle legacy "beauty" slug by treating it as "cosmetic"
     if (slug === "beauty") slug = "cosmetic";
 
+    // Canonicalize common category slug variants
+    if (slug === "mehndi" || slug === "mehandi" || slug === "mehendi") slug = "henna";
+    if (slug === "cosmetics") slug = "cosmetic";
+    if (slug === "jewelery" || slug === "jewellery") slug = "jewelry";
+    if (slug === "accessory") slug = "accessories";
+
     // If slug is missing or inconsistent, prefer a name-derived canonical slug
     // for the key categories used in the UI.
     const canonicalFromName = (() => {
