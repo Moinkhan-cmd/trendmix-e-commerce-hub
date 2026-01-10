@@ -38,9 +38,9 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                   src={selected}
                   alt={alt}
                   className={cn(
-                    "h-full w-full object-contain",
+                    "h-full w-full object-cover",
                     "transition-transform duration-300 ease-out",
-                    "sm:group-hover:scale-[1.15]",
+                    "sm:group-hover:scale-[1.25]",
                   )}
                   loading="eager"
                   decoding="async"
