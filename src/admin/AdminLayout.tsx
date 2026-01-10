@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
   BadgeDollarSign,
   Boxes,
@@ -44,6 +46,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/sonner";
 
 type NavItem = {
   to: string;
@@ -157,6 +160,10 @@ export default function AdminLayout() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const lastNotifiedOrderIdRef = useRef<string | null>(null);
+  const ordersInitializedRef = useRef(false);
+
   // Get page title from current route
   const currentPage = navItems.find(
     (item) =>
@@ -174,6 +181,65 @@ export default function AdminLayout() {
       root.classList.toggle("dark", savedTheme === "dark");
     }
   }, []);
+
+  // Live store settings (used for the global notification toggle)
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "settings", "store"),
+      (snap) => {
+        if (!snap.exists()) return;
+        const enabled = snap.data()?.enableNotifications;
+        if (typeof enabled === "boolean") setNotificationsEnabled(enabled);
+      },
+      (err) => {
+        console.error("Failed to subscribe to store settings:", err);
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
+  // In-app new order notifications (toast)
+  useEffect(() => {
+    if (!notificationsEnabled) return;
+
+    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(1));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const docSnap = snap.docs[0];
+        if (!docSnap) return;
+
+        const orderId = docSnap.id;
+        const data = docSnap.data() as any;
+        const orderNumber = typeof data?.orderNumber === "string" ? data.orderNumber : orderId.slice(0, 8);
+        const total = typeof data?.total === "number" ? data.total : Number(data?.total ?? 0);
+
+        // Avoid firing a notification on first load.
+        if (!ordersInitializedRef.current) {
+          ordersInitializedRef.current = true;
+          lastNotifiedOrderIdRef.current = orderId;
+          return;
+        }
+
+        if (lastNotifiedOrderIdRef.current === orderId) return;
+        lastNotifiedOrderIdRef.current = orderId;
+
+        toast.success(`New order received: ${orderNumber}`, {
+          description: total ? `Total: Rs.${Number(total).toLocaleString("en-IN")}` : undefined,
+          action: {
+            label: "View",
+            onClick: () => navigate("/admin/orders"),
+          },
+        });
+      },
+      (err) => {
+        console.error("Failed to subscribe to latest order:", err);
+      }
+    );
+
+    return () => unsub();
+  }, [navigate, notificationsEnabled]);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";

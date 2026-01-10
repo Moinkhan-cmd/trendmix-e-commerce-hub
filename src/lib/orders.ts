@@ -325,6 +325,10 @@ async function sendOrderNotificationEmail(
   order: Omit<OrderDoc, "createdAt" | "updatedAt">
 ): Promise<void> {
   try {
+    // Global on/off switch lives in settings/store (Admin Settings page)
+    const storeSnap = await getDoc(doc(db, "settings", "store"));
+    if (storeSnap.exists() && storeSnap.data()?.enableNotifications === false) return;
+
     const settingsSnap = await getDoc(doc(db, "settings", "notifications"));
     if (!settingsSnap.exists()) return;
 
@@ -354,8 +358,10 @@ async function sendOrderNotificationEmail(
       order_date: new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" }),
     };
 
-    const emailjs = await import("@emailjs/browser");
-    await emailjs.send(emailjsServiceId, emailjsTemplateId, emailParams, emailjsPublicKey);
+    const emailjsModule = await import("@emailjs/browser");
+    const emailjsClient = emailjsModule.default;
+    if (!emailjsClient) return;
+    await emailjsClient.send(emailjsServiceId, emailjsTemplateId, emailParams, emailjsPublicKey);
     await updateDoc(doc(db, "orders", orderId), { emailSent: true });
   } catch (error) {
     console.error("Failed to send admin notification email:", error);
@@ -367,6 +373,9 @@ async function sendCustomerConfirmationEmail(
   order: Omit<OrderDoc, "createdAt" | "updatedAt">
 ): Promise<void> {
   try {
+    const storeSnap = await getDoc(doc(db, "settings", "store"));
+    if (storeSnap.exists() && storeSnap.data()?.enableNotifications === false) return;
+
     const settingsSnap = await getDoc(doc(db, "settings", "notifications"));
     if (!settingsSnap.exists()) return;
 
@@ -391,8 +400,10 @@ async function sendCustomerConfirmationEmail(
       order_date: new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" }),
     };
 
-    const emailjs = await import("@emailjs/browser");
-    await emailjs.send(emailjsServiceId, customerOrderConfirmationTemplateId, emailParams, emailjsPublicKey);
+    const emailjsModule = await import("@emailjs/browser");
+    const emailjsClient = emailjsModule.default;
+    if (!emailjsClient) return;
+    await emailjsClient.send(emailjsServiceId, customerOrderConfirmationTemplateId, emailParams, emailjsPublicKey);
     await updateDoc(doc(db, "orders", orderId), { customerEmailSent: true });
   } catch (error) {
     console.error("Failed to send customer confirmation email:", error);
@@ -401,6 +412,9 @@ async function sendCustomerConfirmationEmail(
 
 async function sendStatusUpdateEmail(orderId: string, order: OrderDoc): Promise<void> {
   try {
+    const storeSnap = await getDoc(doc(db, "settings", "store"));
+    if (storeSnap.exists() && storeSnap.data()?.enableNotifications === false) return;
+
     const settingsSnap = await getDoc(doc(db, "settings", "notifications"));
     if (!settingsSnap.exists()) return;
 
@@ -428,8 +442,10 @@ async function sendStatusUpdateEmail(orderId: string, order: OrderDoc): Promise<
       shipping_carrier: order.shippingCarrier || "N/A",
     };
 
-    const emailjs = await import("@emailjs/browser");
-    await emailjs.send(emailjsServiceId, customerStatusUpdateTemplateId, emailParams, emailjsPublicKey);
+    const emailjsModule = await import("@emailjs/browser");
+    const emailjsClient = emailjsModule.default;
+    if (!emailjsClient) return;
+    await emailjsClient.send(emailjsServiceId, customerStatusUpdateTemplateId, emailParams, emailjsPublicKey);
   } catch (error) {
     console.error("Failed to send status update email:", error);
   }
