@@ -145,7 +145,14 @@ export default function Checkout() {
       toast.success("Order placed successfully!");
     } catch (error) {
       console.error("Order error:", error);
-      toast.error("Failed to place order. Please try again.");
+      const code = (error as { code?: unknown } | null)?.code;
+      if (code === "permission-denied") {
+        toast.error("Checkout is temporarily unavailable (permission denied).");
+      } else if (code === "unavailable") {
+        toast.error("Network error while placing order. Please try again.");
+      } else {
+        toast.error("Failed to place order. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

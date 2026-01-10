@@ -4,6 +4,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
+import RecentlyViewedMiniCard from "@/components/RecentlyViewedMiniCard";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,6 +19,7 @@ import { SlidersHorizontal, ImageIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import type { ProductDoc, CategoryDoc } from "@/lib/models";
+import { getRecentlyViewed, type RecentlyViewedItem } from "@/lib/recently-viewed";
 
 type WithId<T> = T & { id: string };
 
@@ -44,6 +46,8 @@ const Products = () => {
   const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([]);
 
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
   const [minRating, setMinRating] = useState<number | null>(null);
@@ -82,6 +86,10 @@ const Products = () => {
       unsubProducts();
       unsubCategories();
     };
+  }, []);
+
+  useEffect(() => {
+    setRecentlyViewed(getRecentlyViewed());
   }, []);
 
   const activeCategoryParamRaw = (searchParams.get("category") ?? "").toLowerCase().trim();
@@ -240,6 +248,31 @@ const Products = () => {
                 </Select>
               </div>
             </div>
+
+            {recentlyViewed.length ? (
+              <section aria-label="Recently viewed" className="mb-10">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Quick access to products you opened</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                  {recentlyViewed.slice(0, 6).map((p) => (
+                    <div key={p.id} className="min-w-[280px] max-w-[320px]">
+                      <RecentlyViewedMiniCard
+                        id={p.id}
+                        name={p.name}
+                        price={p.price}
+                        originalPrice={p.originalPrice}
+                        image={p.image}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <div className="grid lg:grid-cols-[280px_1fr] gap-8">
               <aside className={`space-y-5 ${showFilters ? "block" : "hidden lg:block"}`}>

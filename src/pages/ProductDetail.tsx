@@ -17,6 +17,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductImageGallery from "@/components/ProductImageGallery";
+import RecentlyViewedMiniCard from "@/components/RecentlyViewedMiniCard";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ import type { ProductDoc } from "@/lib/models";
 import { useAuth } from "@/auth/AuthProvider";
 import { useShop } from "@/store/shop";
 import { cn } from "@/lib/utils";
+import { addRecentlyViewed, getRecentlyViewed, type RecentlyViewedItem } from "@/lib/recently-viewed";
 
 type ProductWithId = ProductDoc & { id: string };
 
@@ -102,6 +104,8 @@ const ProductDetail = () => {
   const [newComment, setNewComment] = useState<string>("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -157,6 +161,25 @@ const ProductDetail = () => {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    // Load existing list (so we can render immediately on first paint)
+    setRecentlyViewed(getRecentlyViewed());
+  }, []);
+
+  useEffect(() => {
+    // Track this product view once product is loaded.
+    if (!product?.id) return;
+    const image = product.imageUrls?.[0] ?? undefined;
+    const next = addRecentlyViewed({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price ?? 0),
+      originalPrice: product.compareAtPrice != null ? Number(product.compareAtPrice) : undefined,
+      image,
+    });
+    setRecentlyViewed(next);
+  }, [product?.compareAtPrice, product?.id, product?.imageUrls, product?.name, product?.price]);
 
   const fetchReviews = useCallback(async (productId: string) => {
     setReviewsLoading(true);
@@ -1026,6 +1049,37 @@ const ProductDetail = () => {
                 </TabsContent>
               </Tabs>
             </section>
+
+            {recentlyViewed.filter((p) => p.id !== product.id).length ? (
+              <section aria-label="Recently viewed" className="space-y-4">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <p className="text-sm text-muted-foreground">Pick up where you left off</p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/products">Browse all</Link>
+                  </Button>
+                </div>
+
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {recentlyViewed
+                    .filter((p) => p.id !== product.id)
+                    .slice(0, 6)
+                    .map((p) => (
+                      <div key={p.id} className="min-w-[280px] max-w-[320px]">
+                        <RecentlyViewedMiniCard
+                          id={p.id}
+                          name={p.name}
+                          price={p.price}
+                          originalPrice={p.originalPrice}
+                          image={p.image}
+                        />
+                      </div>
+                    ))}
+                </div>
+              </section>
+            ) : null}
 
             {/* Mobile Sticky CTA Bar */}
             <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

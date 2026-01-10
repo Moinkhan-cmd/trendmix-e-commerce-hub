@@ -83,7 +83,14 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     updatedAt: serverTimestamp(),
   });
 
-  await updateProductStock(input.items);
+  // Stock updates require elevated privileges in this project (see firestore.rules).
+  // Guest checkout should still succeed even if stock decrement is not permitted
+  // from the client.
+  try {
+    await updateProductStock(input.items);
+  } catch (error) {
+    console.warn("Order placed, but failed to update stock (non-fatal):", error);
+  }
 
   Promise.all([
     sendOrderNotificationEmail(docRef.id, orderData),
