@@ -146,6 +146,20 @@ export default function Checkout() {
     } catch (error) {
       console.error("Order error:", error);
       const code = (error as { code?: unknown } | null)?.code;
+      const message = (error as { message?: unknown } | null)?.message;
+
+      // In development, surface the underlying error to speed up debugging.
+      if (import.meta.env.DEV) {
+        const details = [
+          typeof code === "string" ? `code=${code}` : null,
+          typeof message === "string" ? message : null,
+        ]
+          .filter(Boolean)
+          .join(" • ");
+        toast.error(details ? `Failed to place order: ${details}` : "Failed to place order (unknown error)");
+        return;
+      }
+
       if (code === "permission-denied") {
         toast.error("Checkout is temporarily unavailable (permission denied).");
       } else if (code === "unavailable") {
