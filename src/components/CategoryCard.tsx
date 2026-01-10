@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 
 interface CategoryCardProps {
   title: string;
@@ -11,58 +11,39 @@ interface CategoryCardProps {
 }
 
 const CategoryCard = ({ title, description, image, icon: Icon, href }: CategoryCardProps) => {
-  const cardRef = useRef<HTMLAnchorElement>(null);
-  const [transform, setTransform] = useState("");
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = (y - centerY) / 15;
-    const rotateY = (centerX - x) / 15;
-    setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`);
-  };
-
-  const handleMouseLeave = () => {
-    setTransform("perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)");
-    setIsHovered(false);
-  };
-
   return (
     <Link
-      ref={cardRef}
       to={href}
-      className="group relative overflow-hidden rounded-xl bg-card border border-border transition-all duration-500 block preserve-3d"
-      style={{
-        transform,
-        transition: "transform 0.15s ease-out, box-shadow 0.3s ease",
-        boxShadow: isHovered ? "0 30px 60px -15px rgba(0, 0, 0, 0.3)" : "0 10px 40px -15px rgba(0, 0, 0, 0.1)",
-      }}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
+      className="group relative block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      aria-label={`Browse ${title}`}
     >
-      <div className="aspect-square overflow-hidden">
-        <img src={image} alt={title} className="h-full w-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-2" style={{ transformOrigin: "center center" }} />
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "linear-gradient(45deg, hsl(351 83% 64% / 0.2), hsl(180 51% 52% / 0.2))" }} />
-      </div>
+      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+        <img
+          src={image}
+          alt={title}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          decoding="async"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/95 via-background/30 to-transparent" />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/50 to-transparent flex flex-col justify-end p-6" style={{ transform: "translateZ(20px)" }}>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="p-2 rounded-lg bg-primary/10 backdrop-blur-sm border border-primary/20 transition-all duration-300 group-hover:bg-primary/20 group-hover:scale-110 group-hover:rotate-6" style={{ transform: "translateZ(30px)" }}>
-            <Icon className="h-5 w-5 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold transition-transform duration-300 group-hover:translate-x-1" style={{ transform: "translateZ(25px)" }}>{title}</h3>
+        <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1.5 backdrop-blur">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/10">
+            <Icon className="h-4 w-4 text-primary" />
+          </span>
+          <span className="text-sm font-medium">{title}</span>
         </div>
-        <p className="text-sm text-muted-foreground transition-all duration-300 group-hover:text-foreground" style={{ transform: "translateZ(15px)" }}>{description}</p>
 
-        <div className="absolute bottom-6 right-6 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0 translate-x-4" style={{ transform: "translateZ(40px)" }}>
-          <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
+        <div className="absolute inset-x-0 bottom-0 p-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold leading-tight">{title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/50 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 translate-x-2">
+              <ChevronRight className="h-5 w-5 text-foreground" />
+            </span>
+          </div>
         </div>
       </div>
     </Link>

@@ -1,6 +1,14 @@
-import { Heart, Menu, Search, ShoppingCart, User } from "lucide-react";
+import { Check, ChevronDown, Heart, LayoutGrid, Search, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -12,7 +20,13 @@ import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logoImg from "@/assets/images/logo.png";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import productCosmetics from "@/assets/product-cosmetics.jpg";
+import productJewelry from "@/assets/product-jewelry.jpg";
+import productSocks from "@/assets/product-socks.jpg";
+import productAccessories from "@/assets/product-accessories.jpg";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { CategoryDoc } from "@/lib/models";
 
 type NavItem = {
   label: string;
@@ -33,7 +47,8 @@ const NAV_ITEMS: NavItem[] = [
 const Navbar = () => {
   const [cartCount] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
 
   const location = useLocation();
   const locationSearchParams = useMemo(
@@ -57,10 +72,56 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Optional: use category images from Firestore when present.
+  // Falls back to local images for the default categories.
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "categories"),
+      (snap) => {
+        const next: Record<string, string> = {};
+        snap.docs.forEach((d) => {
+          const data = d.data() as CategoryDoc;
+          const slug = String(data.slug ?? "").toLowerCase().trim();
+          const imageUrl = String(data.imageUrl ?? "").trim();
+          if (slug && imageUrl) next[slug] = imageUrl;
+        });
+        setCategoryImagesBySlug(next);
+      },
+      () => {
+        // Keep fallbacks only on error.
+        setCategoryImagesBySlug({});
+      },
+    );
+
+    return () => unsub();
+  }, []);
+
   // Close mobile menu on route change
   useEffect(() => {
-    setMobileMenuOpen(false);
+    setMobileCategoriesOpen(false);
   }, [location.pathname, location.search]);
+
+  const activeCategoryLabel = useMemo(() => {
+    if (!isProductsPage) return null;
+    if (!activeCategory) return "All Products";
+    return NAV_ITEMS.find((i) => i.category === activeCategory)?.label ?? null;
+  }, [activeCategory, isProductsPage]);
+
+  const categoryFallbackImages = useMemo(
+    () => ({
+      beauty: productCosmetics,
+      jewelry: productJewelry,
+      socks: productSocks,
+      accessories: productAccessories,
+      henna: productAccessories,
+    }),
+    [],
+  );
+
+  const getCategoryThumb = (slug: string | undefined) => {
+    if (!slug) return undefined;
+    return categoryImagesBySlug[slug] ?? (categoryFallbackImages as Record<string, string | undefined>)[slug];
+  };
 
   return (
     <header
@@ -69,8 +130,8 @@ const Navbar = () => {
         isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border/50",
       )}
     >
-      <div className="container flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
+      <div className="container flex h-16 items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <Link
             to="/"
             className="group flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -90,75 +151,178 @@ const Navbar = () => {
               TrendMix
             </h1>
           </Link>
-
-          <nav className="hidden lg:flex items-center space-x-1 text-sm font-medium">
-            {NAV_ITEMS.map((item) => {
-              const active = isNavItemActive(item);
-              return (
-                <Link
-                  key={item.label}
-                  to={item.to}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "relative px-3 py-2 rounded-md transition-colors duration-200 whitespace-nowrap",
-                    "text-muted-foreground hover:text-foreground hover:bg-accent/40",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    "after:absolute after:left-3 after:right-3 after:-bottom-0.5 after:h-[2px] after:rounded-full after:bg-primary",
-                    "after:origin-left after:scale-x-0 after:transition-transform after:duration-300",
-                    "hover:after:scale-x-100",
-                    active && "text-foreground bg-accent/50 after:scale-x-100",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
-
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          <div className="hidden md:flex items-center relative">
-            <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <div className="relative hidden sm:block w-full max-w-[520px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
-              className="pl-9 w-48 lg:w-64 rounded-full border-border/50 bg-background/50 transition-shadow focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Search products"
+              className="h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden flex-shrink-0 transition-colors hover:bg-accent/50"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5" />
-          </Button>
+          <div className="relative sm:hidden flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search"
+              className="h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
 
-          <ThemeToggle />
+          {/* Categories: Dropdown (desktop) + Sheet (mobile) */}
+          <div className="hidden md:block">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-full border-border/50 bg-background/40 px-4 font-medium hover:bg-accent/40"
+                >
+                  <span className="truncate max-w-[140px]">
+                    {activeCategoryLabel ?? "Categories"}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[360px] p-2">
+                <DropdownMenuLabel className="px-2">Categories</DropdownMenuLabel>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden sm:inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
-            aria-label="Wishlist"
-            asChild
-          >
-            <Link to="/wishlist">
-              <Heart className="h-5 w-5" />
-            </Link>
-          </Button>
+                {/* All Products (full width) */}
+                {(() => {
+                  const item = NAV_ITEMS[0];
+                  const active = isNavItemActive(item);
+                  return (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        to={item.to}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "flex items-center justify-between rounded-md px-2 py-2 text-sm",
+                          active
+                            ? "bg-accent text-accent-foreground"
+                            : "text-foreground/90 hover:bg-accent/50",
+                        )}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className="grid h-7 w-7 place-items-center rounded-md border border-border bg-muted">
+                            <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                          </span>
+                          <span className="truncate">{item.label}</span>
+                        </span>
+                        {active ? <Check className="h-4 w-4 text-primary" /> : null}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })()}
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden sm:inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
-            aria-label="Account"
-            asChild
-          >
-            <Link to="/account">
-              <User className="h-5 w-5" />
-            </Link>
-          </Button>
+                <DropdownMenuSeparator />
+
+                {/* Category grid (2 columns) */}
+                <div className="grid grid-cols-2 gap-1 p-1">
+                  {NAV_ITEMS.slice(1).map((item) => {
+                    const active = isNavItemActive(item);
+                    const thumb = getCategoryThumb(item.category);
+                    return (
+                      <DropdownMenuItem key={item.label} asChild>
+                        <Link
+                          to={item.to}
+                          aria-current={active ? "page" : undefined}
+                          className={cn(
+                            "flex items-center justify-between rounded-md px-2 py-2 text-sm",
+                            active
+                              ? "bg-accent text-accent-foreground"
+                              : "text-foreground/90 hover:bg-accent/50",
+                          )}
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt=""
+                                className="h-7 w-7 rounded-md border border-border object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              <span className="h-7 w-7 rounded-md border border-border bg-muted" />
+                            )}
+                            <span className="truncate">{item.label}</span>
+                          </span>
+                          {active ? <Check className="h-4 w-4 text-primary" /> : null}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="md:hidden h-10 w-10 rounded-full border-border/50 bg-background/40 hover:bg-accent/40"
+                aria-label="Open categories"
+              >
+                <LayoutGrid className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="flex w-[320px] flex-col overflow-hidden sm:w-[380px]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <img src={logoImg} alt="TrendMix logo" className="h-8 w-8 rounded-full object-cover" />
+                  <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    TrendMix
+                  </span>
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+                <nav className="mt-6 flex flex-col gap-1">
+                  {NAV_ITEMS.map((item) => {
+                    const active = isNavItemActive(item);
+                    const thumb = getCategoryThumb(item.category);
+                    return (
+                      <Link
+                        key={item.label}
+                        to={item.to}
+                        onClick={() => setMobileCategoriesOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "flex items-center justify-between rounded-lg px-3 py-3 text-base font-medium transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          active && "bg-accent text-accent-foreground",
+                        )}
+                      >
+                        <span className="flex items-center gap-3">
+                          {item.category ? (
+                            thumb ? (
+                              <img
+                                src={thumb}
+                                alt=""
+                                className="h-9 w-9 rounded-lg border border-border object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              <span className="h-9 w-9 rounded-lg border border-border bg-muted" />
+                            )
+                          ) : (
+                            <span className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-muted">
+                              <LayoutGrid className="h-5 w-5 text-muted-foreground" />
+                            </span>
+                          )}
+                          <span>{item.label}</span>
+                        </span>
+                        {active ? <Check className="h-5 w-5 text-primary" /> : null}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <Button
             variant="ghost"
@@ -177,113 +341,29 @@ const Navbar = () => {
             </Link>
           </Button>
 
-          {/* Mobile Menu */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden flex-shrink-0 transition-colors hover:bg-accent/50"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="flex w-[300px] flex-col overflow-hidden sm:w-[350px]">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <img
-                    src={logoImg}
-                    alt="TrendMix logo"
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                  <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    TrendMix
-                  </span>
-                </SheetTitle>
-              </SheetHeader>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
+            aria-label="Wishlist"
+            asChild
+          >
+            <Link to="/wishlist">
+              <Heart className="h-5 w-5" />
+            </Link>
+          </Button>
 
-              <div className="flex-1 overflow-y-auto overscroll-contain">
-                {/* Mobile Search */}
-                <div className="mt-6 md:hidden">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search products..."
-                      className="h-10 w-full rounded-full border-border/50 bg-background/50 pl-9"
-                    />
-                  </div>
-                </div>
-
-                {/* Mobile Navigation Links */}
-                <nav className="mt-6 flex flex-col gap-1">
-                  {NAV_ITEMS.map((item) => {
-                    const active = isNavItemActive(item);
-                    return (
-                      <Link
-                        key={item.label}
-                        to={item.to}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center rounded-lg px-3 py-3 text-base font-medium transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground",
-                          active && "bg-accent text-accent-foreground",
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-
-                {/* Divider */}
-                <div className="my-6 border-t border-border" />
-
-                {/* Mobile Action Links */}
-                <div className="flex flex-col gap-1">
-                  <Link
-                    to="/wishlist"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Heart className="h-5 w-5" />
-                    Wishlist
-                  </Link>
-                  <Link
-                    to="/account"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <User className="h-5 w-5" />
-                    Account
-                  </Link>
-                  <Link
-                    to="/cart"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    Cart
-                    {cartCount > 0 && (
-                      <span className="ml-auto h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                        {cartCount}
-                      </span>
-                    )}
-                  </Link>
-                </div>
-
-                {/* Theme Toggle in Mobile */}
-                <div className="mt-6 pt-6 border-t border-border">
-                  <div className="flex items-center justify-between px-3">
-                    <span className="text-sm text-muted-foreground">Theme</span>
-                    <ThemeToggle />
-                  </div>
-                </div>
-
-                <div className="h-6" />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
+            aria-label="Profile"
+            asChild
+          >
+            <Link to="/account">
+              <User className="h-5 w-5" />
+            </Link>
+          </Button>
         </div>
       </div>
     </header>

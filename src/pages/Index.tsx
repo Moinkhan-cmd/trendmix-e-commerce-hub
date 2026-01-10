@@ -90,77 +90,74 @@ const Index = () => {
       <main className="flex-1">
         <Hero />
 
-        <section id="categories" className="container py-16 md:py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4 relative inline-block">
-              <span className="relative z-10">Shop by Category</span>
-              <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-primary/20 to-secondary/20 -skew-x-12 rounded" />
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Explore our curated collections of beauty products, jewelry, and fashion accessories
-            </p>
-          </div>
-
-          <div className="perspective-1500 preserve-3d">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {homepageCategories.map((category, index) => (
-                <div
-                  key={category.title}
-                  className="opacity-0 animate-in fade-in slide-in-from-bottom-4"
-                  style={{ animationDelay: `${index * 100}ms`, animationFillMode: "forwards", animationDuration: "0.5s" }}
-                >
-                  <CategoryCard {...category} />
-                </div>
-              ))}
+        <section id="categories" className="border-y border-border/50 bg-muted/10">
+          <div className="container py-14 md:py-20">
+            <div className="mx-auto max-w-3xl text-center mb-10 md:mb-12">
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                Shop by Category
+              </h2>
+              <p className="mt-3 text-muted-foreground text-base sm:text-lg">
+                Explore curated collections across beauty, jewelry, and fashion accessories.
+              </p>
             </div>
-          </div>
 
-          {!categoriesLoading && homepageCategories.length === 0 ? (
-            <div className="mt-10 rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
-              <p className="text-sm text-muted-foreground">No categories yet.</p>
-              <p className="mt-2 text-sm">Go to <span className="font-medium">Admin ? Categories</span> to add categories.</p>
+            <div className="mx-auto max-w-7xl">
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {homepageCategories.map((category) => (
+                  <CategoryCard key={category.title} {...category} />
+                ))}
+              </div>
             </div>
-          ) : null}
+
+            {!categoriesLoading && homepageCategories.length === 0 ? (
+              <div className="mt-10 rounded-2xl border border-dashed border-border bg-background p-10 text-center">
+                <p className="text-sm text-muted-foreground">No categories yet.</p>
+                <p className="mt-2 text-sm">Go to <span className="font-medium">Admin → Categories</span> to add categories.</p>
+              </div>
+            ) : null}
+          </div>
         </section>
 
-        <section className="bg-muted/30 py-16 md:py-20">
+        <section className="py-14 md:py-20">
           <div className="container">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Products</h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Products will appear here once you add them from the admin panel.
+            <div className="mx-auto max-w-3xl text-center mb-10 md:mb-12">
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Featured Products</h2>
+              <p className="mt-3 text-muted-foreground text-base sm:text-lg">
+                A quick look at what’s new and popular.
               </p>
             </div>
 
             {productsLoading ? (
-              <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+              <div className="mx-auto max-w-3xl rounded-2xl border border-dashed border-border bg-background p-10 text-center">
                 <p className="text-sm text-muted-foreground">Loading products…</p>
               </div>
             ) : productsError ? (
-              <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+              <div className="mx-auto max-w-3xl rounded-2xl border border-dashed border-border bg-background p-10 text-center">
                 <p className="text-sm text-muted-foreground">Couldn’t load products.</p>
                 <p className="mt-2 text-sm text-muted-foreground">{productsError}</p>
               </div>
             ) : homepageProducts.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center shadow-3d">
+              <div className="mx-auto max-w-3xl rounded-2xl border border-dashed border-border bg-background p-10 text-center">
                 <p className="text-sm text-muted-foreground">No products yet.</p>
                 <p className="mt-2 text-sm">
                   Go to <span className="font-medium">Admin ? Products</span> to add your first product.
                 </p>
               </div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {homepageProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={Number(product.price ?? 0)}
-                    image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
-                    rating={0}
-                    reviews={0}
-                  />
-                ))}
+              <div className="mx-auto max-w-7xl">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {homepageProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      id={product.id}
+                      name={product.name}
+                      price={Number(product.price ?? 0)}
+                      image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
+                      rating={0}
+                      reviews={0}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>

@@ -181,13 +181,15 @@ const Products = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 container py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{pageTitle}</h1>
-            <p className="text-muted-foreground">Showing {filteredProducts.length} product(s)</p>
-          </div>
-          <div className="flex items-center gap-4">
+      <main className="flex-1">
+        <div className="container py-10 md:py-12">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{pageTitle}</h1>
+                <p className="mt-2 text-sm text-muted-foreground">Showing {filteredProducts.length} product(s)</p>
+              </div>
+              <div className="flex items-center gap-3">
             <Button
               variant="outline"
               size="sm"
@@ -209,13 +211,14 @@ const Products = () => {
                 <SelectItem value="rating">Rating</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        <div className="grid lg:grid-cols-[240px_1fr] gap-8">
-          <aside className={`space-y-6 ${showFilters ? "block" : "hidden lg:block"}`}>
-            <div className="rounded-lg border border-border p-4">
-              <h3 className="font-semibold mb-4">Categories</h3>
+            <div className="grid lg:grid-cols-[280px_1fr] gap-8">
+              <aside className={`space-y-5 ${showFilters ? "block" : "hidden lg:block"}`}>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold">Categories</h3>
+                  <div className="mt-4 space-y-3">
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -260,15 +263,16 @@ const Products = () => {
                 })}
               </div>
             </div>
+                </div>
 
-            <div className="rounded-lg border border-border p-4">
-              <h3 className="font-semibold mb-4">Price Range</h3>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold">Price Range</h3>
               <Slider
                 value={priceRange}
                 onValueChange={(value) => setPriceRange(value as [number, number])}
                 max={priceSliderMax}
                 step={50}
-                className="mb-4"
+                className="mt-4 mb-4"
               />
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>₹{priceRange[0]}</span>
@@ -276,8 +280,8 @@ const Products = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border p-4">
-              <h3 className="font-semibold mb-4">Rating</h3>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold">Rating</h3>
               <div className="space-y-3">
                 {[4, 3, 2, 1].map((rating) => {
                   const id = `rating-${rating}`;
@@ -297,46 +301,49 @@ const Products = () => {
                 })}
               </div>
             </div>
+                <Button variant="outline" className="w-full" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              </aside>
 
-            <Button variant="outline" className="w-full" onClick={clearFilters}>
-              Clear Filters
-            </Button>
-          </aside>
-
-          {loading ? (
-            <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
-              <h2 className="text-xl font-semibold">Loading products…</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Fetching published products from the admin catalog.</p>
+              {loading ? (
+                <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
+                  <h2 className="text-lg font-semibold">Loading products…</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">Fetching published products from the admin catalog.</p>
+                </div>
+              ) : loadError ? (
+                <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
+                  <h2 className="text-lg font-semibold">Couldn’t load products</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
+                  <h2 className="text-lg font-semibold">No products available</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {products.length === 0
+                      ? "Add products from the admin panel and mark them as published."
+                      : "No published products match the current filters."}
+                  </p>
+                </div>
+              ) : (
+                <div className="mx-auto w-full">
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {filteredProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        id={product.id}
+                        name={product.name}
+                        price={Number(product.price ?? 0)}
+                        image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
+                        rating={0}
+                        reviews={0}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          ) : loadError ? (
-            <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
-              <h2 className="text-xl font-semibold">Couldn’t load products</h2>
-              <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
-              <h2 className="text-xl font-semibold">No products available</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {products.length === 0
-                  ? "Add products from the admin panel and mark them as published."
-                  : "No published products match the current filters."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={Number(product.price ?? 0)}
-                  image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
-                  rating={0}
-                  reviews={0}
-                />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </main>
 
