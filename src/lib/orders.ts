@@ -79,6 +79,12 @@ export type CreateOrderInput = {
   userId?: string;
   couponCode?: string;
   discount?: number;
+  payment?: {
+    method: "cod" | "online" | "upi";
+    status: "pending" | "completed" | "failed";
+    transactionId?: string;
+    paidAt?: Timestamp;
+  };
 };
 
 export type UpdateOrderInput = {
@@ -130,7 +136,7 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     emailSent: false,
     customerEmailSent: false,
     timeline: createInitialTimeline(),
-    payment: {
+    payment: input.payment ?? {
       method: "cod",
       status: "pending",
     },

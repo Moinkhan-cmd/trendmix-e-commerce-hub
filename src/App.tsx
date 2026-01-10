@@ -18,6 +18,7 @@ import Wishlist from './pages/Wishlist';
 import Account from './pages/Account';
 import Checkout from './pages/Checkout';
 import OrderTracking from './pages/OrderTracking';
+import OrderConfirmation from './pages/OrderConfirmation';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import About from './pages/About';
@@ -94,6 +95,7 @@ const App = () => (
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/track-order" element={<OrderTracking />} />
+                <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/shipping" element={<Shipping />} />

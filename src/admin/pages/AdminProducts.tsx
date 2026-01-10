@@ -86,10 +86,6 @@ const productFormSchema = z
     sku: z.string().trim().max(64, "SKU is too long").optional(),
     brand: z.string().trim().max(64, "Brand is too long").optional(),
     tagsText: z.string().optional().default(""),
-    weightKg: optionalNumber,
-    dimensionLengthCm: optionalNumber,
-    dimensionWidthCm: optionalNumber,
-    dimensionHeightCm: optionalNumber,
     featured: z.boolean().default(false),
     categoryId: z.string().min(1, "Category is required"),
     description: z.string().max(4000, "Description is too long").optional().default(""),
@@ -138,10 +134,6 @@ const defaultProductValues: ProductFormValues = {
   sku: "",
   brand: "",
   tagsText: "",
-  weightKg: undefined,
-  dimensionLengthCm: undefined,
-  dimensionWidthCm: undefined,
-  dimensionHeightCm: undefined,
   featured: false,
   categoryId: "",
   description: "",
@@ -260,10 +252,6 @@ export default function AdminProducts() {
       sku: p.sku ?? "",
       brand: p.brand ?? "",
       tagsText: Array.isArray(p.tags) ? p.tags.join(", ") : "",
-      weightKg: typeof p.weightKg === "number" ? p.weightKg : undefined,
-      dimensionLengthCm: typeof p.dimensionsCm?.length === "number" ? p.dimensionsCm.length : undefined,
-      dimensionWidthCm: typeof p.dimensionsCm?.width === "number" ? p.dimensionsCm.width : undefined,
-      dimensionHeightCm: typeof p.dimensionsCm?.height === "number" ? p.dimensionsCm.height : undefined,
       featured: Boolean(p.featured),
       categoryId: p.categoryId ?? "",
       description: p.description ?? "",
@@ -323,18 +311,6 @@ export default function AdminProducts() {
     if (values.sku?.trim()) payload.sku = values.sku.trim();
     if (values.brand?.trim()) payload.brand = values.brand.trim();
     if (tags.length) payload.tags = tags;
-    if (values.weightKg !== undefined) payload.weightKg = values.weightKg;
-    if (
-      values.dimensionLengthCm !== undefined ||
-      values.dimensionWidthCm !== undefined ||
-      values.dimensionHeightCm !== undefined
-    ) {
-      payload.dimensionsCm = {
-        ...(values.dimensionLengthCm !== undefined && { length: values.dimensionLengthCm }),
-        ...(values.dimensionWidthCm !== undefined && { width: values.dimensionWidthCm }),
-        ...(values.dimensionHeightCm !== undefined && { height: values.dimensionHeightCm }),
-      };
-    }
     if (values.featured) payload.featured = values.featured;
 
     if (cleanedSpecs.length) payload.specifications = cleanedSpecs;
@@ -869,19 +845,6 @@ export default function AdminProducts() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={productForm.control}
-                    name="weightKg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Weight (kg) (optional)</FormLabel>
-                        <FormControl>
-                          <Input type="number" min={0} step="0.01" placeholder="e.g. 0.5" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={productForm.control}
                     name="featured"
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-md border p-3">
@@ -896,48 +859,6 @@ export default function AdminProducts() {
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <div className="grid gap-2">
-                  <p className="text-sm font-medium">Dimensions (cm) (optional)</p>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <FormField
-                      control={productForm.control}
-                      name="dimensionLengthCm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input type="number" min={0} step="0.01" placeholder="Length" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={productForm.control}
-                      name="dimensionWidthCm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input type="number" min={0} step="0.01" placeholder="Width" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={productForm.control}
-                      name="dimensionHeightCm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input type="number" min={0} step="0.01" placeholder="Height" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                 </div>
 
                 <FormField

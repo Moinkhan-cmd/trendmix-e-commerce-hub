@@ -591,11 +591,6 @@ const ProductDetail = () => {
                       </Badge>
                     )}
 
-                    {product.sku ? (
-                      <Badge variant="secondary" className="rounded-full">
-                        SKU: {product.sku}
-                      </Badge>
-                    ) : null}
                   </div>
 
                   <div className="flex items-end gap-3 pt-1">
@@ -621,15 +616,8 @@ const ProductDetail = () => {
                         ) : (
                           <>
                             {product.brand ? <li>Trusted {product.brand} quality</li> : <li>Premium build and finish</li>}
-                            {product.weightKg ? <li>Weight: {product.weightKg} kg</li> : <li>Fast delivery available</li>}
-                            {product.dimensionsCm?.length || product.dimensionsCm?.width || product.dimensionsCm?.height ? (
-                              <li>
-                                Size: {product.dimensionsCm?.length ?? "–"}×{product.dimensionsCm?.width ?? "–"}×
-                                {product.dimensionsCm?.height ?? "–"} cm
-                              </li>
-                            ) : (
-                              <li>Easy returns and secure packaging</li>
-                            )}
+                            <li>Fast delivery available</li>
+                            <li>Easy returns and secure packaging</li>
                           </>
                         )}
                       </ul>
@@ -829,11 +817,6 @@ const ProductDetail = () => {
                         </div>
 
                         <div className="rounded-lg border bg-background p-4">
-                          <p className="text-xs text-muted-foreground">SKU</p>
-                          <p className="mt-1 font-medium">{product.sku ?? "—"}</p>
-                        </div>
-
-                        <div className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">Category</p>
                           <p className="mt-1 font-medium">
                             {(product.categorySlug ?? "—").replace(/-/g, " ")}
@@ -853,26 +836,6 @@ const ProductDetail = () => {
                           ) : (
                             <p className="mt-1 font-medium">—</p>
                           )}
-                        </div>
-
-                        <div className="rounded-lg border bg-background p-4">
-                          <p className="text-xs text-muted-foreground">Weight</p>
-                          <p className="mt-1 font-medium">{product.weightKg ? `${product.weightKg} kg` : "—"}</p>
-                        </div>
-
-                        <div className="rounded-lg border bg-background p-4">
-                          <p className="text-xs text-muted-foreground">Dimensions</p>
-                          <p className="mt-1 font-medium">
-                            {(() => {
-                              const d = product.dimensionsCm;
-                              const hasAny = Boolean(d?.length || d?.width || d?.height);
-                              if (!hasAny) return "—";
-                              const l = d?.length ?? "—";
-                              const w = d?.width ?? "—";
-                              const h = d?.height ?? "—";
-                              return `${l} × ${w} × ${h} cm`;
-                            })()}
-                          </p>
                         </div>
                       </div>
 
