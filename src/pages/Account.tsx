@@ -216,15 +216,15 @@ export default function Account() {
               <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                 <User className="h-8 w-8 text-muted-foreground" />
               </div>
-              <CardTitle className="text-2xl">Sign In Required</CardTitle>
+              <CardTitle className="text-2xl">Log In Required</CardTitle>
               <CardDescription>
-                Please sign in to view your account and order history.
+                Please log in to view your account and order history.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="flex-1">
-                  <Link to="/login">Sign In</Link>
+                  <Link to="/login">Log In</Link>
                 </Button>
                 <Button variant="outline" asChild className="flex-1">
                   <Link to="/signup">Create Account</Link>

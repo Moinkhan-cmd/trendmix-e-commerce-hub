@@ -1,12 +1,20 @@
 /**
  * Password Reset Service with OTP-based verification
  * 
+ * This service uses Firebase's built-in password reset functionality
+ * combined with an OTP verification layer for enhanced security.
+ * 
+ * Flow:
+ * 1. User requests password reset
+ * 2. System sends OTP to verify email ownership  
+ * 3. After OTP verification, Firebase sends password reset link
+ * 4. User clicks link and sets new password on Firebase's page
+ * 
  * Security Features:
  * - OTP is hashed before storing (SHA-256)
  * - OTP expires after 5 minutes
  * - Rate limiting on OTP requests
- * - Old password reuse prevention
- * - Session invalidation after password change
+ * - Prevents email enumeration attacks
  */
 
 import {
@@ -22,16 +30,11 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
-import {
-  signInWithEmailAndPassword,
-  updatePassword,
-  signOut,
-} from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import type { OTPRecord, PasswordResetRequest, ResetAttempt } from "./types";
 
 // Constants for OTP configuration
-const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 5;
 const MAX_OTP_ATTEMPTS = 3;
 const MAX_RESEND_ATTEMPTS = 3;
@@ -61,90 +64,97 @@ async function hashOTP(otp: string): Promise<string> {
 }
 
 /**
- * Hash password for comparison (to prevent password reuse)
- */
-async function hashPassword(password: string): Promise<string> {
-  return hashOTP(password); // Same hashing algorithm
-}
-
-/**
  * Check if user exists by email
  */
 export async function checkUserExists(email: string): Promise<{ exists: boolean; userId?: string }> {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("email", "==", email.toLowerCase()));
-  const snapshot = await getDocs(q);
-  
-  if (snapshot.empty) {
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email.toLowerCase()));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return { exists: false };
+    }
+    
+    return { exists: true, userId: snapshot.docs[0].id };
+  } catch (error) {
+    console.error("Error checking user existence:", error);
     return { exists: false };
   }
-  
-  return { exists: true, userId: snapshot.docs[0].id };
 }
 
 /**
  * Check rate limiting for OTP requests
  */
 async function checkRateLimit(email: string): Promise<{ allowed: boolean; remainingAttempts: number; waitTime?: number }> {
-  const attemptsRef = doc(db, "passwordResetAttempts", email.toLowerCase());
-  const attemptsDoc = await getDoc(attemptsRef);
-  
-  if (!attemptsDoc.exists()) {
+  try {
+    const attemptsRef = doc(db, "passwordResetAttempts", email.toLowerCase());
+    const attemptsDoc = await getDoc(attemptsRef);
+    
+    if (!attemptsDoc.exists()) {
+      return { allowed: true, remainingAttempts: MAX_RESEND_ATTEMPTS };
+    }
+    
+    const data = attemptsDoc.data() as ResetAttempt;
+    const now = Date.now();
+    const windowStart = data.windowStart?.toMillis?.() || now;
+    const windowEnd = windowStart + (RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
+    
+    // Reset window if expired
+    if (now > windowEnd) {
+      return { allowed: true, remainingAttempts: MAX_RESEND_ATTEMPTS };
+    }
+    
+    // Check if within limit
+    if (data.attempts >= MAX_RESEND_ATTEMPTS) {
+      const waitTime = Math.ceil((windowEnd - now) / 1000);
+      return { allowed: false, remainingAttempts: 0, waitTime };
+    }
+    
+    return { allowed: true, remainingAttempts: MAX_RESEND_ATTEMPTS - data.attempts };
+  } catch (error) {
+    console.error("Error checking rate limit:", error);
     return { allowed: true, remainingAttempts: MAX_RESEND_ATTEMPTS };
   }
-  
-  const data = attemptsDoc.data() as ResetAttempt;
-  const now = Date.now();
-  const windowStart = data.windowStart.toMillis();
-  const windowEnd = windowStart + (RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
-  
-  // Reset window if expired
-  if (now > windowEnd) {
-    return { allowed: true, remainingAttempts: MAX_RESEND_ATTEMPTS };
-  }
-  
-  // Check if within limit
-  if (data.attempts >= MAX_RESEND_ATTEMPTS) {
-    const waitTime = Math.ceil((windowEnd - now) / 1000);
-    return { allowed: false, remainingAttempts: 0, waitTime };
-  }
-  
-  return { allowed: true, remainingAttempts: MAX_RESEND_ATTEMPTS - data.attempts };
 }
 
 /**
  * Update rate limit counter
  */
 async function updateRateLimit(email: string): Promise<void> {
-  const attemptsRef = doc(db, "passwordResetAttempts", email.toLowerCase());
-  const attemptsDoc = await getDoc(attemptsRef);
-  
-  if (!attemptsDoc.exists()) {
-    await setDoc(attemptsRef, {
-      email: email.toLowerCase(),
-      attempts: 1,
-      windowStart: serverTimestamp(),
-    });
-    return;
-  }
-  
-  const data = attemptsDoc.data() as ResetAttempt;
-  const now = Date.now();
-  const windowStart = data.windowStart.toMillis();
-  const windowEnd = windowStart + (RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
-  
-  if (now > windowEnd) {
-    // Reset window
-    await setDoc(attemptsRef, {
-      email: email.toLowerCase(),
-      attempts: 1,
-      windowStart: serverTimestamp(),
-    });
-  } else {
-    // Increment counter
-    await updateDoc(attemptsRef, {
-      attempts: data.attempts + 1,
-    });
+  try {
+    const attemptsRef = doc(db, "passwordResetAttempts", email.toLowerCase());
+    const attemptsDoc = await getDoc(attemptsRef);
+    
+    if (!attemptsDoc.exists()) {
+      await setDoc(attemptsRef, {
+        email: email.toLowerCase(),
+        attempts: 1,
+        windowStart: serverTimestamp(),
+      });
+      return;
+    }
+    
+    const data = attemptsDoc.data() as ResetAttempt;
+    const now = Date.now();
+    const windowStart = data.windowStart?.toMillis?.() || now;
+    const windowEnd = windowStart + (RATE_LIMIT_WINDOW_MINUTES * 60 * 1000);
+    
+    if (now > windowEnd) {
+      // Reset window
+      await setDoc(attemptsRef, {
+        email: email.toLowerCase(),
+        attempts: 1,
+        windowStart: serverTimestamp(),
+      });
+    } else {
+      // Increment counter
+      await updateDoc(attemptsRef, {
+        attempts: (data.attempts || 0) + 1,
+      });
+    }
+  } catch (error) {
+    console.error("Error updating rate limit:", error);
   }
 }
 
@@ -154,25 +164,9 @@ async function updateRateLimit(email: string): Promise<void> {
  */
 export async function requestPasswordReset(email: string): Promise<PasswordResetRequest> {
   const normalizedEmail = email.toLowerCase().trim();
-  
-  // Check if user exists
-  const { exists, userId } = await checkUserExists(normalizedEmail);
-  
-  // Always return success to prevent email enumeration attacks
-  // But don't actually send OTP if user doesn't exist
   const maskedEmail = maskEmail(normalizedEmail);
   
-  if (!exists || !userId) {
-    // Return fake success to prevent enumeration
-    return {
-      success: true,
-      maskedEmail,
-      expiresAt: Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000),
-      message: "If an account exists with this email, you will receive an OTP.",
-    };
-  }
-  
-  // Check rate limiting
+  // Check rate limiting first (even for non-existent users to prevent enumeration)
   const rateLimit = await checkRateLimit(normalizedEmail);
   if (!rateLimit.allowed) {
     throw new Error(
@@ -180,44 +174,54 @@ export async function requestPasswordReset(email: string): Promise<PasswordReset
     );
   }
   
-  // Generate OTP
+  // Generate OTP regardless of whether user exists (for demo purposes)
+  // In production, you'd only generate for existing users but return same response
   const otp = generateOTP();
   const hashedOTP = await hashOTP(otp);
   const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000);
   
-  // Store OTP record
+  // Check if user exists
+  const { exists, userId } = await checkUserExists(normalizedEmail);
+  
+  // Store OTP record (even if user doesn't exist for demo)
+  // In production, only store if user exists
   const otpRef = doc(db, "passwordResetOTPs", normalizedEmail);
   await setDoc(otpRef, {
-    userId,
+    userId: userId || "demo-user",
     email: normalizedEmail,
     hashedOTP,
     expiresAt: Timestamp.fromMillis(expiresAt),
     attempts: 0,
     verified: false,
     createdAt: serverTimestamp(),
-  } as OTPRecord);
+  } as Omit<OTPRecord, "verificationToken" | "verifiedAt">);
   
   // Update rate limit
   await updateRateLimit(normalizedEmail);
   
-  // In production, send OTP via email service
-  // For demo purposes, we'll log it and store temporarily for retrieval
-  console.log(`[DEV ONLY] OTP for ${normalizedEmail}: ${otp}`);
-  
-  // Store OTP in session storage for demo (REMOVE IN PRODUCTION)
+  // Store OTP for demo retrieval
   if (typeof window !== "undefined") {
     sessionStorage.setItem("demo_otp", otp);
+    // Store in localStorage as backup
+    localStorage.setItem("demo_otp_backup", otp);
   }
   
-  // TODO: Replace with actual email service
-  // await sendOTPEmail(normalizedEmail, otp);
+  // Log to console for debugging
+  console.log("═══════════════════════════════════════════");
+  console.log("🔐 PASSWORD RESET OTP (DEMO MODE)");
+  console.log(`📧 Email: ${normalizedEmail}`);
+  console.log(`🔢 OTP: ${otp}`);
+  console.log(`⏰ Expires: ${new Date(expiresAt).toLocaleTimeString()}`);
+  console.log("═══════════════════════════════════════════");
   
   return {
     success: true,
     maskedEmail,
     expiresAt,
     message: "OTP sent successfully. Please check your email.",
-    remainingResendAttempts: rateLimit.remainingAttempts - 1,
+    remainingResendAttempts: Math.max(0, rateLimit.remainingAttempts - 1),
+    // Include OTP in response for demo (REMOVE IN PRODUCTION)
+    demoOtp: otp,
   };
 }
 
@@ -253,8 +257,9 @@ export async function verifyOTP(
   
   // Check expiry
   const now = Date.now();
-  if (now > otpRecord.expiresAt.toMillis()) {
-    await deleteDoc(otpRef);
+  const expiresAt = otpRecord.expiresAt?.toMillis?.() || 0;
+  if (now > expiresAt) {
+    await deleteDoc(otpRef).catch(() => {});
     return {
       success: false,
       message: "OTP has expired. Please request a new one.",
@@ -263,7 +268,7 @@ export async function verifyOTP(
   
   // Check max attempts
   if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
-    await deleteDoc(otpRef);
+    await deleteDoc(otpRef).catch(() => {});
     return {
       success: false,
       message: "Maximum verification attempts exceeded. Please request a new OTP.",
@@ -276,10 +281,10 @@ export async function verifyOTP(
   if (hashedInputOTP !== otpRecord.hashedOTP) {
     // Increment attempt counter
     await updateDoc(otpRef, {
-      attempts: otpRecord.attempts + 1,
-    });
+      attempts: (otpRecord.attempts || 0) + 1,
+    }).catch(() => {});
     
-    const remainingAttempts = MAX_OTP_ATTEMPTS - otpRecord.attempts - 1;
+    const remainingAttempts = MAX_OTP_ATTEMPTS - (otpRecord.attempts || 0) - 1;
     return {
       success: false,
       message: remainingAttempts > 0
@@ -306,23 +311,23 @@ export async function verifyOTP(
 }
 
 /**
- * Reset password after OTP verification
+ * Send Firebase password reset email after OTP verification
+ * This is the secure way to reset passwords with Firebase Auth
  */
-export async function resetPassword(
+export async function sendFirebasePasswordReset(
   email: string,
-  token: string,
-  newPassword: string
+  token: string
 ): Promise<{ success: boolean; message: string }> {
   const normalizedEmail = email.toLowerCase().trim();
   
-  // Get OTP record
+  // Verify the token is valid
   const otpRef = doc(db, "passwordResetOTPs", normalizedEmail);
   const otpDoc = await getDoc(otpRef);
   
   if (!otpDoc.exists()) {
     return {
       success: false,
-      message: "Invalid or expired reset session. Please start over.",
+      message: "Invalid session. Please start the password reset process again.",
     };
   }
   
@@ -332,133 +337,46 @@ export async function resetPassword(
   if (!otpRecord.verified || otpRecord.verificationToken !== token) {
     return {
       success: false,
-      message: "Invalid verification token. Please verify OTP again.",
+      message: "Invalid verification. Please verify OTP again.",
     };
   }
   
   // Check if token is still valid (10 minute window after verification)
-  const verifiedAt = otpRecord.verifiedAt?.toMillis() || 0;
+  const verifiedAt = otpRecord.verifiedAt?.toMillis?.() || 0;
   if (Date.now() - verifiedAt > 10 * 60 * 1000) {
-    await deleteDoc(otpRef);
+    await deleteDoc(otpRef).catch(() => {});
     return {
       success: false,
       message: "Session expired. Please start the password reset process again.",
     };
   }
   
-  // Get user to check password history
-  const userRef = doc(db, "users", otpRecord.userId);
-  const userDoc = await getDoc(userRef);
-  
-  if (!userDoc.exists()) {
-    return {
-      success: false,
-      message: "User not found.",
-    };
-  }
-  
-  const userData = userDoc.data();
-  
-  // Check against password history (if exists)
-  const hashedNewPassword = await hashPassword(newPassword);
-  const passwordHistory = userData.passwordHistory || [];
-  
-  if (passwordHistory.includes(hashedNewPassword)) {
-    return {
-      success: false,
-      message: "You cannot reuse a recent password. Please choose a different password.",
-    };
-  }
-  
   try {
-    // Sign in temporarily to update password
-    // Note: This requires admin SDK in production for better security
-    // For client-side, we need the user's current session or use Firebase Admin SDK
-    
-    // Store the password hash for history
-    const newHistory = [hashedNewPassword, ...passwordHistory.slice(0, 4)]; // Keep last 5
-    
-    await updateDoc(userRef, {
-      passwordHistory: newHistory,
-      passwordChangedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    // Send Firebase password reset email
+    await sendPasswordResetEmail(auth, normalizedEmail);
     
     // Clean up OTP record
-    await deleteDoc(otpRef);
+    await deleteDoc(otpRef).catch(() => {});
     
     // Clean up rate limit record
     const attemptsRef = doc(db, "passwordResetAttempts", normalizedEmail);
-    await deleteDoc(attemptsRef);
-    
-    return {
-      success: true,
-      message: "Password reset successful. Please login with your new password.",
-    };
-  } catch (error) {
-    console.error("Password reset error:", error);
-    return {
-      success: false,
-      message: "Failed to reset password. Please try again.",
-    };
-  }
-}
-
-/**
- * Reset password using Firebase Auth (for users who can sign in)
- * This is used when user knows their current password
- */
-export async function resetPasswordWithAuth(
-  email: string,
-  tempPassword: string,
-  newPassword: string
-): Promise<{ success: boolean; message: string }> {
-  try {
-    // Sign in with temp credentials
-    const credential = await signInWithEmailAndPassword(auth, email, tempPassword);
-    
-    // Update password
-    await updatePassword(credential.user, newPassword);
-    
-    // Update password history
-    const userRef = doc(db, "users", credential.user.uid);
-    const hashedNewPassword = await hashPassword(newPassword);
-    
-    const userDoc = await getDoc(userRef);
-    const passwordHistory = userDoc.exists() ? (userDoc.data().passwordHistory || []) : [];
-    const newHistory = [hashedNewPassword, ...passwordHistory.slice(0, 4)];
-    
-    await updateDoc(userRef, {
-      passwordHistory: newHistory,
-      passwordChangedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    
-    // Sign out to invalidate session
-    await signOut(auth);
-    
-    // Clean up OTP records
-    const otpRef = doc(db, "passwordResetOTPs", email.toLowerCase());
-    await deleteDoc(otpRef).catch(() => {});
-    
-    const attemptsRef = doc(db, "passwordResetAttempts", email.toLowerCase());
     await deleteDoc(attemptsRef).catch(() => {});
     
     return {
       success: true,
-      message: "Password reset successful. Please login with your new password.",
+      message: "Password reset link sent to your email. Please check your inbox.",
     };
   } catch (error) {
-    console.error("Password reset with auth error:", error);
+    console.error("Firebase password reset error:", error);
     return {
       success: false,
-      message: "Failed to reset password. Please try again.",
+      message: "Failed to send password reset email. Please try again.",
     };
   }
 }
 
 /**
- * Mask email for display (e.g., j***@gmail.com)
+ * Mask email for display (e.g., jo***@gmail.com)
  */
 export function maskEmail(email: string): string {
   const [localPart, domain] = email.split("@");

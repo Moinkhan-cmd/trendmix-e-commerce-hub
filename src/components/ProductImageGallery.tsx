@@ -29,18 +29,18 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
 
   return (
     <section className={cn("space-y-2 sm:space-y-3 md:space-y-4", className)} aria-label="Product images">
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border-0 sm:border rounded-none sm:rounded-lg">
         <CardContent className="p-0">
-          <div className="relative aspect-square sm:aspect-[4/3] max-h-[280px] xs:max-h-[320px] sm:max-h-[350px] md:max-h-[400px] bg-muted mx-auto">
+          <div className="relative w-full aspect-square sm:aspect-[4/3] lg:aspect-square bg-muted">
             {selected ? (
-              <div className="group relative h-full w-full overflow-hidden flex items-center justify-center">
+              <div className="group relative h-full w-full overflow-hidden flex items-center justify-center bg-gradient-to-b from-muted/50 to-muted">
                 <img
                   src={selected}
                   alt={alt}
                   className={cn(
-                    "max-h-full max-w-full object-contain",
+                    "h-full w-full object-cover sm:object-contain",
                     "transition-transform duration-300 ease-out",
-                    "sm:group-hover:scale-[1.1]",
+                    "sm:group-hover:scale-[1.05]",
                   )}
                   loading="eager"
                   decoding="async"
@@ -78,18 +78,18 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
       </Card>
 
       {safeImages.length > 1 ? (
-        <div className="space-y-1.5 sm:space-y-2">
-          <div className="hidden sm:flex gap-2 md:gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="space-y-1.5 sm:space-y-2 px-3 sm:px-0">
+          <div className="hidden sm:flex gap-2 md:gap-3 overflow-x-auto pb-1 scrollbar-hide justify-center lg:justify-start">
             {safeImages.map((url, idx) => (
               <button
                 key={`${url}-${idx}`}
                 type="button"
                 onClick={() => setSelected(url)}
                 className={cn(
-                  "relative aspect-square w-14 sm:w-16 md:w-20 flex-none overflow-hidden rounded-md sm:rounded-lg border bg-muted",
+                  "relative aspect-square w-16 md:w-20 flex-none overflow-hidden rounded-lg border bg-muted",
                   "transition-all duration-200",
                   selected === url
-                    ? "ring-2 ring-primary ring-offset-1 sm:ring-offset-2 opacity-100"
+                    ? "ring-2 ring-primary ring-offset-2 opacity-100"
                     : "opacity-70 hover:opacity-100 hover:ring-2 hover:ring-primary/50",
                 )}
                 aria-label={`View image ${idx + 1}`}
@@ -118,22 +118,22 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
             ))}
           </div>
 
-          {/* Mobile: scroll-snap slider */}
+          {/* Mobile: horizontal thumbnail strip */}
           <div className="sm:hidden">
-            <div className="flex gap-2 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-3 px-3">
+            <div className="flex gap-2 overflow-x-auto scroll-smooth pb-1 scrollbar-hide">
               {safeImages.map((url, idx) => (
                 <button
                   key={`${url}-mobile-${idx}`}
                   type="button"
                   onClick={() => setSelected(url)}
                   className={cn(
-                    "snap-start w-[65%] xs:w-[70%] flex-none",
-                    "overflow-hidden rounded-lg sm:rounded-xl border bg-muted",
-                    selected === url ? "ring-2 ring-primary ring-offset-1" : "",
+                    "flex-none w-16 h-16 xs:w-18 xs:h-18",
+                    "overflow-hidden rounded-lg border bg-muted",
+                    selected === url ? "ring-2 ring-primary ring-offset-1" : "opacity-70",
                   )}
                   aria-label={`Select image ${idx + 1}`}
                 >
-                  <div className="aspect-square">
+                  <div className="h-full w-full">
                     <img
                       src={url}
                       alt={`${alt} image ${idx + 1}`}
@@ -152,7 +152,6 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                 </button>
               ))}
             </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground text-center mt-1">Swipe to see more</p>
           </div>
         </div>
       ) : null}

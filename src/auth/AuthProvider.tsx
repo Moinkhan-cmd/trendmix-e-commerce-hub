@@ -128,6 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       await logOut();
+      // Immediately clear local state to ensure UI updates
+      setUser(null);
       setProfile(null);
       setIsAdminUser(false);
     } catch (err) {

@@ -8,6 +8,8 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  browserSessionPersistence,
+  setPersistence,
   type User,
 } from "firebase/auth";
 import {
@@ -129,6 +131,9 @@ export async function signUp(
   password: string,
   displayName: string
 ): Promise<User> {
+  // Use session persistence so the user is logged out when the browser is closed
+  await setPersistence(auth, browserSessionPersistence);
+  
   // Create Firebase Auth user
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   const user = credential.user;
@@ -147,6 +152,9 @@ export async function signUp(
 
 // Sign in existing user
 export async function signIn(email: string, password: string): Promise<User> {
+  // Use session persistence so the user is logged out when the browser is closed
+  await setPersistence(auth, browserSessionPersistence);
+  
   const credential = await signInWithEmailAndPassword(auth, email, password);
   
   // Update last login
@@ -157,7 +165,11 @@ export async function signIn(email: string, password: string): Promise<User> {
 
 // Sign out
 export async function logOut(): Promise<void> {
+  // Clear the Firebase auth state
   await signOut(auth);
+  
+  // Force clear any cached auth state by reloading if needed
+  // The onAuthStateChanged listener will handle the state update
 }
 
 // Send password reset email

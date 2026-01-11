@@ -81,6 +81,8 @@ export interface PasswordResetRequest {
   expiresAt: number;
   message: string;
   remainingResendAttempts?: number;
+  /** OTP included for demo purposes only - REMOVE IN PRODUCTION */
+  demoOtp?: string;
 }
 
 /**

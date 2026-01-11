@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,14 +43,11 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 export default function SignUp() {
   const navigate = useNavigate();
   const { signUp, error, clearError } = useAuth();
-  const cardRef = useRef<HTMLDivElement>(null);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [transform, setTransform] = useState("");
-  const [glareStyle, setGlareStyle] = useState({});
 
   const {
     register,
@@ -72,29 +69,6 @@ export default function SignUp() {
   const passwordStrength = useMemo(() => {
     return checkPasswordStrength(password || "");
   }, [password]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = (y - centerY) / 40;
-    const rotateY = (centerX - x) / 40;
-    setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`);
-    
-    const glareX = (x / rect.width) * 100;
-    const glareY = (y / rect.height) * 100;
-    setGlareStyle({
-      background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.12) 0%, transparent 60%)`,
-    });
-  };
-
-  const handleMouseLeave = () => {
-    setTransform("perspective(1000px) rotateX(0deg) rotateY(0deg)");
-    setGlareStyle({});
-  };
 
   const onSubmit = async (data: SignUpFormData) => {
     setIsLoading(true);
@@ -174,24 +148,10 @@ export default function SignUp() {
           </FloatingElement>
         </div>
 
-        <div 
-          ref={cardRef}
-          className="relative preserve-3d"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          style={{
-            transform,
-            transition: "transform 0.2s ease-out",
-          }}
-        >
-          <Card className="w-full max-w-md shadow-3d-elevated glass-card border-border/50 overflow-hidden relative reveal-up">
-            {/* Glare effect */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-10 transition-opacity duration-300"
-              style={glareStyle}
-            />
+        <div className="relative w-full max-w-md">
+          <Card className="w-full max-w-md glass-card border-border/50 overflow-hidden relative reveal-up">
             
-            <CardHeader className="space-y-1 text-center relative z-0">
+            <CardHeader className="space-y-1 text-center relative z-20">
               <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center glow-pulse">
                 <User className="h-6 w-6 text-primary" />
               </div>
@@ -203,7 +163,7 @@ export default function SignUp() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="relative z-0">
+            <CardContent className="relative z-20">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {error && (
                   <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -353,11 +313,11 @@ export default function SignUp() {
 
             <Separator />
 
-            <CardFooter className="flex flex-col gap-4 pt-6 relative z-0">
+            <CardFooter className="flex flex-col gap-4 pt-6 relative z-20">
               <p className="text-sm text-muted-foreground text-center">
                 Already have an account?{" "}
                 <Link to="/login" className="text-primary font-medium hover:underline transition-all hover:text-primary/80">
-                  Sign in
+                  Log in
                 </Link>
               </p>
             </CardFooter>

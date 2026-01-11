@@ -370,7 +370,7 @@ const ProductDetail = () => {
   const submitReview = async () => {
     if (!product?.id) return;
     if (!isAuthenticated || !user) {
-      toast.error("Please sign in to write a review");
+      toast.error("Please log in to write a review");
       navigate("/login");
       return;
     }
@@ -447,18 +447,19 @@ const ProductDetail = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 container px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-10 pb-24 sm:pb-28 md:pb-10">
+      <main className="flex-1 pb-24 sm:pb-28 md:pb-10">
+        <div className="container px-0 sm:px-4 md:px-6 py-0 sm:py-6 md:py-10">
         {loading ? (
-          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="px-3 sm:px-0 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-4">
-              <div className="aspect-[4/3] max-h-[350px] sm:max-h-[400px] mx-auto rounded-2xl border bg-muted animate-pulse" />
-              <div className="flex gap-3 justify-center">
+              <div className="aspect-square sm:aspect-[4/3] lg:aspect-square rounded-none sm:rounded-2xl border bg-muted animate-pulse" />
+              <div className="flex gap-3 justify-center px-3 sm:px-0">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="h-16 w-16 rounded-xl border bg-muted animate-pulse" />
                 ))}
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 px-3 sm:px-0">
               <div className="h-8 w-3/4 rounded-lg bg-muted animate-pulse" />
               <div className="h-5 w-1/3 rounded-lg bg-muted animate-pulse" />
               <div className="h-10 w-1/2 rounded-lg bg-muted animate-pulse" />
@@ -489,8 +490,8 @@ const ProductDetail = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-10">
-            <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-muted-foreground">
+          <div className="space-y-6 sm:space-y-10">
+            <nav aria-label="Breadcrumb" className="text-xs sm:text-sm text-muted-foreground px-3 sm:px-0 pt-3 sm:pt-0">
               <ol className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <li>
                   <Link className="hover:text-foreground transition-colors" to="/">
@@ -508,16 +509,17 @@ const ProductDetail = () => {
               </ol>
             </nav>
 
-            <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[1.1fr_0.9fr] xl:grid-cols-[1.15fr_0.85fr]">
               {/* Left: Image Gallery */}
               <ProductImageGallery
                 images={product.imageUrls}
                 alt={product.name}
                 onImageChange={setSelectedImage}
+                className="lg:sticky lg:top-4 lg:self-start"
               />
 
               {/* Right: Product Info */}
-              <section className="space-y-3 sm:space-y-4 lg:space-y-5" aria-label="Product information">
+              <section className="space-y-3 sm:space-y-4 lg:space-y-5 px-3 sm:px-0" aria-label="Product information">
                 <header className="space-y-1.5 sm:space-y-2">
                   <div className="flex items-start justify-between gap-2 sm:gap-4">
                     <div className="min-w-0 flex-1">
@@ -784,10 +786,10 @@ const ProductDetail = () => {
             </div>
 
             {/* Tabs: Description / Specs / How to Use / Reviews */}
-            <section aria-label="Product details" className="space-y-3 sm:space-y-4">
+            <section aria-label="Product details" className="space-y-3 sm:space-y-4 px-3 sm:px-0">
               <div ref={reviewsAnchorRef} />
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-                <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap -mx-3 px-3 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+                <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap overflow-x-auto scrollbar-hide">
                   <TabsList className="w-full sm:w-auto h-9 sm:h-10 p-1">
                     <TabsTrigger value="description" className="text-[10px] sm:text-sm px-2 sm:px-3">Description</TabsTrigger>
                     <TabsTrigger value="specs" className="text-[10px] sm:text-sm px-2 sm:px-3">Specs</TabsTrigger>
@@ -898,9 +900,9 @@ const ProductDetail = () => {
                           <p className="text-sm font-semibold">Write a review</p>
                           {!isAuthenticated ? (
                             <div className="mt-2">
-                              <p className="text-sm text-muted-foreground">Sign in to rate and review.</p>
+                              <p className="text-sm text-muted-foreground">Log in to rate and review.</p>
                               <Button className="mt-3" onClick={() => navigate("/login")}>
-                                Sign in
+                                Log in
                               </Button>
                             </div>
                           ) : (
@@ -1044,7 +1046,7 @@ const ProductDetail = () => {
             </section>
 
             {recentlyViewed.filter((p) => p.id !== product.id).length ? (
-              <section aria-label="Recently viewed" className="space-y-4">
+              <section aria-label="Recently viewed" className="space-y-4 px-3 sm:px-0">
                 <div className="flex items-end justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold tracking-tight">Recently viewed</h2>
@@ -1055,12 +1057,12 @@ const ProductDetail = () => {
                   </Button>
                 </div>
 
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0">
                   {recentlyViewed
                     .filter((p) => p.id !== product.id)
                     .slice(0, 6)
                     .map((p) => (
-                      <div key={p.id} className="min-w-[280px] max-w-[320px]">
+                      <div key={p.id} className="min-w-[260px] sm:min-w-[280px] max-w-[320px]">
                         <RecentlyViewedMiniCard
                           id={p.id}
                           name={p.name}
@@ -1114,6 +1116,7 @@ const ProductDetail = () => {
             </div>
           </div>
         )}
+        </div>
       </main>
 
       <Footer />

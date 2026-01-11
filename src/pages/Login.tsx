@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,12 +26,9 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, error, clearError } = useAuth();
-  const cardRef = useRef<HTMLDivElement>(null);
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [transform, setTransform] = useState("");
-  const [glareStyle, setGlareStyle] = useState({});
 
   const from = (location.state as { from?: Location })?.from?.pathname || "/";
 
@@ -46,29 +43,6 @@ export default function Login() {
       password: "",
     },
   });
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = (y - centerY) / 30;
-    const rotateY = (centerX - x) / 30;
-    setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`);
-    
-    const glareX = (x / rect.width) * 100;
-    const glareY = (y / rect.height) * 100;
-    setGlareStyle({
-      background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.15) 0%, transparent 60%)`,
-    });
-  };
-
-  const handleMouseLeave = () => {
-    setTransform("perspective(1000px) rotateX(0deg) rotateY(0deg)");
-    setGlareStyle({});
-  };
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -105,24 +79,10 @@ export default function Login() {
           </FloatingElement>
         </div>
 
-        <div 
-          ref={cardRef}
-          className="relative preserve-3d"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          style={{
-            transform,
-            transition: "transform 0.2s ease-out",
-          }}
-        >
-          <Card className="w-full max-w-md shadow-3d-elevated glass-card border-border/50 overflow-hidden relative reveal-up">
-            {/* Glare effect */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-10 transition-opacity duration-300"
-              style={glareStyle}
-            />
+        <div className="relative w-full max-w-md">
+          <Card className="w-full max-w-md glass-card border-border/50 overflow-hidden relative reveal-up">
             
-            <CardHeader className="space-y-1 text-center relative z-0">
+            <CardHeader className="space-y-1 text-center relative z-20">
               <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center glow-pulse">
                 <Lock className="h-6 w-6 text-primary" />
               </div>
@@ -130,11 +90,11 @@ export default function Login() {
                 Welcome back
               </CardTitle>
               <CardDescription>
-                Sign in to your account to continue
+                Log in to your account to continue
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="relative z-0">
+            <CardContent className="relative z-20">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   {error && (
                     <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -202,10 +162,10 @@ export default function Login() {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing in...
+                        Logging in...
                       </>
                     ) : (
-                      <span className="relative z-10">Sign in</span>
+                      <span className="relative z-10">Log in</span>
                     )}
                   </Button>
                 </form>
@@ -213,7 +173,7 @@ export default function Login() {
 
             <Separator />
 
-            <CardFooter className="flex flex-col gap-4 pt-6 relative z-0">
+            <CardFooter className="flex flex-col gap-4 pt-6 relative z-20">
               <p className="text-sm text-muted-foreground text-center">
                 Don't have an account?{" "}
                 <Link to="/signup" className="text-primary font-medium hover:underline transition-all hover:text-primary/80">
