@@ -200,7 +200,7 @@ const Index = () => {
               </div>
             ) : (
               <div className="mx-auto max-w-7xl">
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-5 lg:grid-cols-4">
                   {homepageProducts.map((product) => (
                     <ProductCard
                       key={product.id}

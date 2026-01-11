@@ -78,7 +78,7 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
       </Card>
 
       {safeImages.length > 1 ? (
-        <div className="space-y-1.5 sm:space-y-2 px-3 sm:px-0">
+        <div className="space-y-1 xs:space-y-1.5 sm:space-y-2 px-3 sm:px-0">
           <div className="hidden sm:flex gap-2 md:gap-3 overflow-x-auto pb-1 scrollbar-hide justify-center lg:justify-start">
             {safeImages.map((url, idx) => (
               <button
@@ -86,7 +86,7 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                 type="button"
                 onClick={() => setSelected(url)}
                 className={cn(
-                  "relative aspect-square w-16 md:w-20 flex-none overflow-hidden rounded-lg border bg-muted",
+                  "relative aspect-square w-14 md:w-16 lg:w-20 flex-none overflow-hidden rounded-md sm:rounded-lg border bg-muted",
                   "transition-all duration-200",
                   selected === url
                     ? "ring-2 ring-primary ring-offset-2 opacity-100"
@@ -111,7 +111,7 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
                 />
                 {broken.has(url) ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur">
-                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   </div>
                 ) : null}
               </button>
@@ -120,15 +120,15 @@ export default function ProductImageGallery({ images, alt, className, onImageCha
 
           {/* Mobile: horizontal thumbnail strip */}
           <div className="sm:hidden">
-            <div className="flex gap-2 overflow-x-auto scroll-smooth pb-1 scrollbar-hide">
+            <div className="flex gap-1.5 xs:gap-2 overflow-x-auto scroll-smooth pb-1 scrollbar-hide snap-x snap-mandatory">
               {safeImages.map((url, idx) => (
                 <button
                   key={`${url}-mobile-${idx}`}
                   type="button"
                   onClick={() => setSelected(url)}
                   className={cn(
-                    "flex-none w-16 h-16 xs:w-18 xs:h-18",
-                    "overflow-hidden rounded-lg border bg-muted",
+                    "flex-none w-12 h-12 xs:w-14 xs:h-14",
+                    "overflow-hidden rounded-md border bg-muted snap-start",
                     selected === url ? "ring-2 ring-primary ring-offset-1" : "opacity-70",
                   )}
                   aria-label={`Select image ${idx + 1}`}

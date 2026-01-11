@@ -789,24 +789,24 @@ const ProductDetail = () => {
             <section aria-label="Product details" className="space-y-3 sm:space-y-4 px-3 sm:px-0">
               <div ref={reviewsAnchorRef} />
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-                <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap overflow-x-auto scrollbar-hide">
-                  <TabsList className="w-full sm:w-auto h-9 sm:h-10 p-1">
-                    <TabsTrigger value="description" className="text-[10px] sm:text-sm px-2 sm:px-3">Description</TabsTrigger>
-                    <TabsTrigger value="specs" className="text-[10px] sm:text-sm px-2 sm:px-3">Specs</TabsTrigger>
-                    <TabsTrigger value="how" className="text-[10px] sm:text-sm px-2 sm:px-3">How to Use</TabsTrigger>
-                    <TabsTrigger value="reviews" className="text-[10px] sm:text-sm px-2 sm:px-3">Reviews</TabsTrigger>
+                <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
+                  <TabsList className="w-full xs:w-auto h-8 xs:h-9 sm:h-10 p-0.5 xs:p-1 grid grid-cols-4 xs:flex">
+                    <TabsTrigger value="description" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">Description</TabsTrigger>
+                    <TabsTrigger value="specs" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">Specs</TabsTrigger>
+                    <TabsTrigger value="how" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">How to Use</TabsTrigger>
+                    <TabsTrigger value="reviews" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">Reviews</TabsTrigger>
                   </TabsList>
                 </div>
 
                 <TabsContent value="description">
                   <Card>
-                    <CardContent className="p-5">
+                    <CardContent className="p-3 xs:p-4 sm:p-5">
                       {product.description ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <p className="whitespace-pre-line text-muted-foreground">{product.description}</p>
+                          <p className="whitespace-pre-line text-xs xs:text-sm text-muted-foreground">{product.description}</p>
                         </div>
                       ) : (
-                        <p className="text-muted-foreground">No description provided.</p>
+                        <p className="text-xs xs:text-sm text-muted-foreground">No description provided.</p>
                       )}
                     </CardContent>
                   </Card>
@@ -814,32 +814,32 @@ const ProductDetail = () => {
 
                 <TabsContent value="specs">
                   <Card>
-                    <CardContent className="p-5">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="rounded-lg border bg-background p-4">
-                          <p className="text-xs text-muted-foreground">Brand</p>
-                          <p className="mt-1 font-medium">{product.brand ?? "—"}</p>
+                    <CardContent className="p-3 xs:p-4 sm:p-5">
+                      <div className="grid gap-2.5 xs:gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2">
+                        <div className="rounded-lg border bg-background p-3 xs:p-4">
+                          <p className="text-[10px] xs:text-xs text-muted-foreground">Brand</p>
+                          <p className="mt-0.5 xs:mt-1 text-xs xs:text-sm font-medium">{product.brand ?? "—"}</p>
                         </div>
 
-                        <div className="rounded-lg border bg-background p-4">
-                          <p className="text-xs text-muted-foreground">Category</p>
-                          <p className="mt-1 font-medium">
+                        <div className="rounded-lg border bg-background p-3 xs:p-4">
+                          <p className="text-[10px] xs:text-xs text-muted-foreground">Category</p>
+                          <p className="mt-0.5 xs:mt-1 text-xs xs:text-sm font-medium">
                             {(product.categorySlug ?? "—").replace(/-/g, " ")}
                           </p>
                         </div>
 
-                        <div className="rounded-lg border bg-background p-4">
-                          <p className="text-xs text-muted-foreground">Tags</p>
+                        <div className="rounded-lg border bg-background p-3 xs:p-4 xs:col-span-2">
+                          <p className="text-[10px] xs:text-xs text-muted-foreground">Tags</p>
                           {product.tags?.length ? (
-                            <div className="mt-2 flex flex-wrap gap-2">
+                            <div className="mt-1.5 xs:mt-2 flex flex-wrap gap-1.5 xs:gap-2">
                               {product.tags.slice(0, 10).map((t) => (
-                                <Badge key={t} variant="secondary">
+                                <Badge key={t} variant="secondary" className="text-[10px] xs:text-xs">
                                   {t}
                                 </Badge>
                               ))}
                             </div>
                           ) : (
-                            <p className="mt-1 font-medium">—</p>
+                            <p className="mt-0.5 xs:mt-1 text-xs xs:text-sm font-medium">—</p>
                           )}
                         </div>
                       </div>
@@ -876,12 +876,12 @@ const ProductDetail = () => {
 
                 <TabsContent value="how">
                   <Card>
-                    <CardContent className="p-5">
-                      <div className="space-y-3">
-                        <p className="text-sm text-muted-foreground">
+                    <CardContent className="p-3 xs:p-4 sm:p-5">
+                      <div className="space-y-2 xs:space-y-3">
+                        <p className="text-xs xs:text-sm text-muted-foreground">
                           Quick tips to get the best experience from this product.
                         </p>
-                        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-2">
+                        <ul className="list-disc pl-4 xs:pl-5 text-xs xs:text-sm text-muted-foreground space-y-1.5 xs:space-y-2">
                           <li>Check the product specifications before ordering.</li>
                           <li>Store in a cool, dry place and avoid direct sunlight.</li>
                           <li>Keep the original packaging for easier returns and warranty support.</li>
@@ -894,10 +894,10 @@ const ProductDetail = () => {
 
                 <TabsContent value="reviews">
                   <Card>
-                    <CardContent className="p-3 sm:p-4 md:p-5">
-                      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr]">
-                        <div className="rounded-lg sm:rounded-xl border bg-background p-3 sm:p-4">
-                          <p className="text-sm font-semibold">Write a review</p>
+                    <CardContent className="p-3 xs:p-4 sm:p-5">
+                      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[240px_1fr] xl:grid-cols-[260px_1fr]">
+                        <div className="rounded-lg sm:rounded-xl border bg-background p-3 xs:p-4">
+                          <p className="text-xs xs:text-sm font-semibold">Write a review</p>
                           {!isAuthenticated ? (
                             <div className="mt-2">
                               <p className="text-sm text-muted-foreground">Log in to rate and review.</p>
@@ -1046,23 +1046,23 @@ const ProductDetail = () => {
             </section>
 
             {recentlyViewed.filter((p) => p.id !== product.id).length ? (
-              <section aria-label="Recently viewed" className="space-y-4 px-3 sm:px-0">
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold tracking-tight">Recently viewed</h2>
-                    <p className="text-sm text-muted-foreground">Pick up where you left off</p>
+              <section aria-label="Recently viewed" className="space-y-3 xs:space-y-4 px-3 sm:px-0">
+                <div className="flex items-end justify-between gap-2 xs:gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-sm xs:text-base sm:text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <p className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">Pick up where you left off</p>
                   </div>
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="outline" size="sm" className="h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm px-2 xs:px-3">
                     <Link to="/products">Browse all</Link>
                   </Button>
                 </div>
 
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0">
+                <div className="flex gap-2 xs:gap-2.5 sm:gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-hide">
                   {recentlyViewed
                     .filter((p) => p.id !== product.id)
                     .slice(0, 6)
                     .map((p) => (
-                      <div key={p.id} className="min-w-[260px] sm:min-w-[280px] max-w-[320px]">
+                      <div key={p.id} className="min-w-[180px] xs:min-w-[200px] sm:min-w-[240px] md:min-w-[260px] max-w-[280px] sm:max-w-[320px] snap-start">
                         <RecentlyViewedMiniCard
                           id={p.id}
                           name={p.name}

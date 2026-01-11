@@ -413,21 +413,27 @@ const Products = () => {
               </aside>
 
               {loading ? (
-                <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
-                  <h2 className="text-lg font-semibold">Loading products…</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">Fetching published products from the admin catalog.</p>
+                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border bg-background p-5 sm:p-8 md:p-10 text-center">
+                  <h2 className="text-base sm:text-lg font-semibold">Loading products…</h2>
+                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">Fetching published products from the admin catalog.</p>
+                  {/* Loading skeleton grid */}
+                  <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="aspect-[3/4] rounded-lg sm:rounded-xl bg-muted animate-pulse" />
+                    ))}
+                  </div>
                 </div>
               ) : loadError ? (
-                <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
-                  <h2 className="text-lg font-semibold">Couldn’t load products</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border bg-background p-5 sm:p-8 md:p-10 text-center">
+                  <h2 className="text-base sm:text-lg font-semibold">Couldn't load products</h2>
+                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{loadError}</p>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border bg-background p-10 text-center">
-                  <h2 className="text-lg font-semibold">
+                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border bg-background p-5 sm:p-8 md:p-10 text-center">
+                  <h2 className="text-base sm:text-lg font-semibold">
                     {products.length === 0 || !hasAnyPublishedProduct ? "Coming soon" : "No products found"}
                   </h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
+                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
                     {products.length === 0
                       ? "We’re setting things up. Check back soon for new arrivals."
                       : !hasAnyPublishedProduct
@@ -437,7 +443,7 @@ const Products = () => {
                 </div>
               ) : (
                 <div className="mx-auto w-full">
-                  <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4">
                     {filteredProducts.map((product) => (
                       <ProductCard
                         key={product.id}
