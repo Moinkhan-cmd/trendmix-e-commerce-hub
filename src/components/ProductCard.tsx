@@ -50,12 +50,10 @@ const ProductCard = ({
                 decoding="async"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center">
+              <div className="flex h-full w-full items-center justify-center bg-muted">
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl border bg-background/60">
-                    <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </div>
-                  <span className="text-[10px] sm:text-[11px]">Image unavailable</span>
+                  <ImageIcon className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground/50" />
+                  <span className="text-[10px] sm:text-[11px]">No image</span>
                 </div>
               </div>
             )}

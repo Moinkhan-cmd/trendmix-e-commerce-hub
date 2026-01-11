@@ -219,23 +219,25 @@ const Products = () => {
       <main className="flex-1">
         <div className="container px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
           <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 sm:mb-8">
-              <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight">{pageTitle}</h1>
-                <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">Showing {filteredProducts.length} product(s)</p>
+            <div className="flex flex-col gap-2.5 xs:gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between mb-5 sm:mb-6 md:mb-8">
+              <div className="min-w-0">
+                <h1 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight truncate">{pageTitle}</h1>
+                <p className="mt-0.5 xs:mt-1 sm:mt-1.5 text-[11px] xs:text-xs sm:text-sm text-muted-foreground">
+                  {loading ? "Loading..." : `Showing ${filteredProducts.length} product${filteredProducts.length !== 1 ? "s" : ""}`}
+                </p>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden h-8 sm:h-9 text-xs sm:text-sm"
+                  className="lg:hidden h-8 xs:h-9 text-[11px] xs:text-xs sm:text-sm px-2.5 xs:px-3"
                 >
-                  <SlidersHorizontal className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <SlidersHorizontal className="mr-1 xs:mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Filters
                 </Button>
                 <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-                  <SelectTrigger className="w-[140px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
+                  <SelectTrigger className="w-[120px] xs:w-[140px] sm:w-[180px] h-8 xs:h-9 text-[11px] xs:text-xs sm:text-sm">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,17 +252,17 @@ const Products = () => {
             </div>
 
             {recentlyViewed.length ? (
-              <section aria-label="Recently viewed" className="mb-6 sm:mb-8 md:mb-10">
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-semibold tracking-tight">Recently viewed</h2>
-                    <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">Quick access to products you opened</p>
+              <section aria-label="Recently viewed" className="mb-5 sm:mb-6 md:mb-8 lg:mb-10">
+                <div className="flex items-end justify-between gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-sm xs:text-base sm:text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <p className="mt-0.5 text-[10px] xs:text-xs sm:text-sm text-muted-foreground">Quick access to products you opened</p>
                   </div>
                 </div>
 
-                <div className="mt-3 sm:mt-4 flex gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
+                <div className="mt-2.5 sm:mt-3 md:mt-4 flex gap-2 xs:gap-2.5 sm:gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide snap-x snap-mandatory">
                   {recentlyViewed.slice(0, 6).map((p) => (
-                    <div key={p.id} className="min-w-[220px] sm:min-w-[260px] md:min-w-[280px] max-w-[280px] sm:max-w-[320px] flex-shrink-0">
+                    <div key={p.id} className="min-w-[180px] xs:min-w-[200px] sm:min-w-[240px] md:min-w-[260px] max-w-[260px] sm:max-w-[300px] flex-shrink-0 snap-start">
                       <RecentlyViewedMiniCard
                         id={p.id}
                         name={p.name}
@@ -274,8 +276,29 @@ const Products = () => {
               </section>
             ) : null}
 
-            <div className="grid lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr] gap-4 sm:gap-6 lg:gap-8">
-              <aside className={`space-y-3 sm:space-y-4 lg:space-y-5 ${showFilters ? "block" : "hidden lg:block"}`}>
+            <div className="grid lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr] gap-4 sm:gap-5 lg:gap-8">
+              {/* Mobile filter overlay backdrop */}
+              {showFilters && (
+                <div 
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+                  onClick={() => setShowFilters(false)}
+                  aria-hidden="true"
+                />
+              )}
+              <aside className={`
+                ${showFilters 
+                  ? "fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-background p-4 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 lg:relative lg:inset-auto lg:z-auto lg:max-h-none lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none lg:animate-none" 
+                  : "hidden lg:block"
+                }
+                space-y-3 sm:space-y-4 lg:space-y-5
+              `}>
+                {/* Mobile filter header */}
+                <div className="flex items-center justify-between lg:hidden mb-2">
+                  <h2 className="text-base font-semibold">Filters</h2>
+                  <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 px-2">
+                    ✕ Close
+                  </Button>
+                </div>
                 <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
                   <h3 className="text-sm font-semibold">Categories</h3>
                   <div className="mt-4 space-y-3">
@@ -377,8 +400,15 @@ const Products = () => {
                     })}
                   </div>
                 </div>
-                <Button variant="outline" className="w-full" onClick={clearFilters}>
+                <Button variant="outline" className="w-full h-9 sm:h-10 text-sm" onClick={clearFilters}>
                   Clear Filters
+                </Button>
+                {/* Mobile apply filters button */}
+                <Button 
+                  className="w-full lg:hidden h-10 text-sm" 
+                  onClick={() => setShowFilters(false)}
+                >
+                  Apply Filters ({filteredProducts.length} products)
                 </Button>
               </aside>
 

@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Heart, LayoutGrid, Search, ShoppingCart, User } from "lucide-react";
+import { Check, ChevronDown, Heart, LayoutGrid, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
@@ -46,6 +47,7 @@ const Navbar = () => {
   const { cartCount, wishlistCount } = useShop();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
 
   const location = useLocation();
@@ -97,6 +99,7 @@ const Navbar = () => {
   // Close mobile menu on route change
   useEffect(() => {
     setMobileCategoriesOpen(false);
+    setMobileSearchOpen(false);
   }, [location.pathname, location.search]);
 
   const activeCategoryLabel = useMemo(() => {
@@ -125,60 +128,69 @@ const Navbar = () => {
         isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border/50",
       )}
     >
-      <div className="container flex h-16 items-center gap-3">
-        <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="container flex h-14 sm:h-16 items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
+        {/* Logo */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <Link
             to="/"
-            className="group flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group flex items-center gap-1.5 sm:gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Go to home"
           >
             <span className="relative flex-shrink-0">
               <img
                 src={logoImg}
                 alt="TrendMix logo"
-                className="h-8 w-8 rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="eager"
                 decoding="async"
               />
               <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-border/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </span>
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide hidden xs:block">
               TrendMix
             </h1>
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-end gap-2">
-          <div className="relative hidden sm:block w-full max-w-[520px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search products"
-              className="h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
 
-          <div className="relative sm:hidden flex-1">
+        {/* Desktop Search - hidden on mobile */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="relative hidden md:block w-full max-w-[400px] lg:max-w-[520px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search"
-              className="h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Search products..."
+              className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
+        </div>
+
+        {/* Right side actions */}
+        <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2">
+          {/* Mobile Search Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50"
+            aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          >
+            {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          </Button>
 
           {/* Categories: Dropdown (desktop) + Sheet (mobile) */}
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-full border-border/50 bg-background/40 px-4 font-medium hover:bg-accent/40"
+                  className="h-9 lg:h-10 rounded-full border-border/50 bg-background/40 px-3 lg:px-4 font-medium hover:bg-accent/40"
                 >
-                  <span className="truncate max-w-[140px]">
+                  <span className="truncate max-w-[120px] lg:max-w-[140px]">
                     {activeCategoryLabel ?? "Categories"}
                   </span>
-                  <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="ml-1.5 lg:ml-2 h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[360px] p-2">
+              <DropdownMenuContent align="end" className="w-[320px] lg:w-[360px] p-2">
                 <DropdownMenuLabel className="px-2">Categories</DropdownMenuLabel>
 
                 {/* All Products (full width) */}
@@ -259,19 +271,20 @@ const Navbar = () => {
             </DropdownMenu>
           </div>
 
+          {/* Mobile Menu Sheet */}
           <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="outline"
                 size="icon"
-                className="md:hidden h-10 w-10 rounded-full border-border/50 bg-background/40 hover:bg-accent/40"
-                aria-label="Open categories"
+                className="lg:hidden h-9 w-9 sm:h-10 sm:w-10 rounded-full border-border/50 bg-background/40 hover:bg-accent/40"
+                aria-label="Open menu"
               >
-                <LayoutGrid className="h-5 w-5" />
+                <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="flex w-[320px] flex-col overflow-hidden sm:w-[380px]">
-              <SheetHeader>
+            <SheetContent side="right" className="flex w-[280px] xs:w-[320px] sm:w-[380px] flex-col overflow-hidden p-0">
+              <SheetHeader className="px-4 pt-4 pb-2 border-b">
                 <SheetTitle className="flex items-center gap-2">
                   <img src={logoImg} alt="TrendMix logo" className="h-8 w-8 rounded-full object-cover" />
                   <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -280,8 +293,55 @@ const Navbar = () => {
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="flex-1 overflow-y-auto overscroll-contain">
-                <nav className="mt-6 flex flex-col gap-1">
+              <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+                {/* Quick Links */}
+                <div className="mb-4 pb-4 border-b">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Links</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Link
+                      to="/cart"
+                      onClick={() => setMobileCategoriesOpen(false)}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 hover:bg-accent transition-colors"
+                    >
+                      <div className="relative">
+                        <ShoppingCart className="h-5 w-5" />
+                        {cartCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center">
+                            {cartCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-medium">Cart</span>
+                    </Link>
+                    <Link
+                      to="/wishlist"
+                      onClick={() => setMobileCategoriesOpen(false)}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 hover:bg-accent transition-colors"
+                    >
+                      <div className="relative">
+                        <Heart className="h-5 w-5" />
+                        {wishlistCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center">
+                            {wishlistCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-medium">Wishlist</span>
+                    </Link>
+                    <Link
+                      to="/account"
+                      onClick={() => setMobileCategoriesOpen(false)}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 hover:bg-accent transition-colors"
+                    >
+                      <User className="h-5 w-5" />
+                      <span className="text-xs font-medium">Account</span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Categories */}
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Categories</h3>
+                <nav className="flex flex-col gap-1">
                   {NAV_ITEMS.map((item) => {
                     const active = isNavItemActive(item);
                     const thumb = getCategoryThumb(item.category);
@@ -292,8 +352,8 @@ const Navbar = () => {
                         onClick={() => setMobileCategoriesOpen(false)}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex items-center justify-between rounded-lg px-3 py-3 text-base font-medium transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground",
+                          "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
                           active && "bg-accent text-accent-foreground",
                         )}
                       >
@@ -303,7 +363,7 @@ const Navbar = () => {
                               <img
                                 src={thumb}
                                 alt=""
-                                className="h-9 w-9 rounded-lg border border-border object-cover"
+                                className="h-8 w-8 rounded-lg border border-border object-cover"
                                 loading="eager"
                                 decoding="async"
                                 referrerPolicy="no-referrer"
@@ -313,35 +373,46 @@ const Navbar = () => {
                                 }}
                               />
                             ) : (
-                              <span className="h-9 w-9 rounded-lg border border-border bg-muted" />
+                              <span className="h-8 w-8 rounded-lg border border-border bg-muted" />
                             )
                           ) : (
-                            <span className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-muted">
-                              <LayoutGrid className="h-5 w-5 text-muted-foreground" />
+                            <span className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-muted">
+                              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                             </span>
                           )}
                           <span>{item.label}</span>
                         </span>
-                        {active ? <Check className="h-5 w-5 text-primary" /> : null}
+                        {active ? <Check className="h-4 w-4 text-primary" /> : null}
                       </Link>
                     );
                   })}
                 </nav>
               </div>
+
+              {/* Footer Links */}
+              <div className="px-4 py-3 border-t bg-muted/30">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <Link to="/about" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">About</Link>
+                  <Link to="/contact" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">Contact</Link>
+                  <Link to="/faq" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">FAQ</Link>
+                  <Link to="/shipping" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">Shipping</Link>
+                </div>
+              </div>
             </SheetContent>
           </Sheet>
 
+          {/* Desktop action buttons */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative flex-shrink-0 transition-colors hover:bg-accent/50"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50 hidden sm:inline-flex"
             aria-label="Cart"
             asChild
           >
             <Link to="/cart">
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
@@ -351,14 +422,14 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50 hidden sm:inline-flex"
             aria-label="Wishlist"
             asChild
           >
             <Link to="/wishlist">
               <Heart className="h-5 w-5" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 min-w-4 sm:h-5 sm:min-w-5 px-0.5 sm:px-1 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs flex items-center justify-center">
                   {wishlistCount}
                 </span>
               )}
@@ -368,7 +439,7 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="inline-flex flex-shrink-0 transition-colors hover:bg-accent/50"
+            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50 hidden sm:inline-flex"
             aria-label="Profile"
             asChild
           >
@@ -376,6 +447,25 @@ const Navbar = () => {
               <User className="h-5 w-5" />
             </Link>
           </Button>
+        </div>
+      </div>
+
+      {/* Mobile Search Bar - slides down when open */}
+      <div
+        className={cn(
+          "md:hidden overflow-hidden transition-all duration-300 ease-in-out border-t border-border/50",
+          mobileSearchOpen ? "max-h-16 opacity-100" : "max-h-0 opacity-0 border-t-0"
+        )}
+      >
+        <div className="container px-3 sm:px-4 py-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              className="h-10 w-full rounded-full border-border/50 bg-background/80 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+              autoFocus={mobileSearchOpen}
+            />
+          </div>
         </div>
       </div>
     </header>

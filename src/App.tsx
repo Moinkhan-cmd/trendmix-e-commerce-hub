@@ -45,6 +45,16 @@ import AppErrorBoundary from '@/components/AppErrorBoundary';
 
 const queryClient = new QueryClient();
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
 const ScrollToHash = () => {
   const location = useLocation();
 
@@ -87,6 +97,7 @@ const App = () => (
       <AuthProvider>
         <AdminAuthProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <ScrollToTop />
             <ScrollToHash />
             <AppErrorBoundary>
               <Routes>
