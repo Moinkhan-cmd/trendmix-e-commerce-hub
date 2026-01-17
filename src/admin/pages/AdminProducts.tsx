@@ -11,9 +11,10 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
+import { slugify } from "@/lib/slug";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Control } from "react-hook-form";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
@@ -151,6 +152,7 @@ export default function AdminProducts() {
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const [editing, setEditing] = useState<WithId<ProductDoc> | null>(null);
   const productForm = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -174,6 +176,53 @@ export default function AdminProducts() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const hiddenCategorySlugs = useMemo(() => new Set(["electronics"]), []);
+  const visibleCategories = useMemo(() => {
+    return categories.filter((c) => {
+      const slug = slugify(String(c.slug ?? c.name ?? "").trim());
+      return !hiddenCategorySlugs.has(slug);
+    });
+  }, [categories, hiddenCategorySlugs]);
+
+  const selectedCategoryId = useWatch({ control: productForm.control, name: "categoryId" });
+  const selectedCategory = useMemo(() => {
+    return categories.find((c) => c.id === selectedCategoryId) ?? null;
+  }, [categories, selectedCategoryId]);
+
+  const categoryOptionsForForm = useMemo(() => {
+    const opts = [...visibleCategories];
+    if (selectedCategory && !opts.some((c) => c.id === selectedCategory.id)) {
+      opts.unshift(selectedCategory);
+    }
+    return opts;
+  }, [visibleCategories, selectedCategory]);
+
+  const hasSocksCategory = useMemo(() => {
+    return categories.some((c) => slugify(String(c.slug ?? c.name ?? "").trim()) === "socks");
+  }, [categories]);
+
+  const createSocksCategory = async () => {
+    if (hasSocksCategory) {
+      toast.success("Socks category already exists");
+      return;
+    }
+    setCreatingCategory(true);
+    try {
+      await addDoc(collection(db, "categories"), {
+        name: "Socks",
+        slug: "socks",
+        imageUrl: "https://placehold.co/600x600/png?text=Socks",
+        createdAt: serverTimestamp() as any,
+        updatedAt: serverTimestamp() as any,
+      } satisfies CategoryDoc as any);
+      toast.success("Created Socks category");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create Socks category");
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
 
   useEffect(() => {
     const unsubProducts = onSnapshot(
@@ -231,6 +280,13 @@ export default function AdminProducts() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, filterCategory, filterStock]);
+
+  useEffect(() => {
+    if (filterCategory === "all") return;
+    if (!visibleCategories.some((c) => c.id === filterCategory)) {
+      setFilterCategory("all");
+    }
+  }, [filterCategory, visibleCategories]);
 
   const resetDialog = () => {
     setEditing(null);
@@ -545,7 +601,7 @@ export default function AdminProducts() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((c) => (
+                {visibleCategories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -744,12 +800,16 @@ export default function AdminProducts() {
                             <SelectValue placeholder="Select a category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.length > 0 ? (
-                              categories.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  {c.name}
-                                </SelectItem>
-                              ))
+                            {categoryOptionsForForm.length > 0 ? (
+                              categoryOptionsForForm.map((c) => {
+                                const slug = slugify(String(c.slug ?? c.name ?? "").trim());
+                                const label = hiddenCategorySlugs.has(slug) ? `${c.name} (deprecated)` : c.name;
+                                return (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {label}
+                                  </SelectItem>
+                                );
+                              })
                             ) : (
                               <SelectItem value="__no_categories__" disabled>
                                 No categories found
@@ -758,8 +818,22 @@ export default function AdminProducts() {
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                        {categories.length === 0 && (
+                        {categoryOptionsForForm.length === 0 && (
                           <p className="text-xs text-muted-foreground">Create a category first.</p>
+                        )}
+                        {!hasSocksCategory && (
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-muted-foreground">Missing “Socks”? Create it now.</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={createSocksCategory}
+                              disabled={creatingCategory}
+                            >
+                              {creatingCategory ? "Creating…" : "Create Socks"}
+                            </Button>
+                          </div>
                         )}
                       </FormItem>
                     )}
