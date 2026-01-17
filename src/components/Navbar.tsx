@@ -18,14 +18,26 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { CategoryDoc } from "@/lib/models";
+import type { CategoryDoc, ProductDoc } from "@/lib/models";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import { useShop } from "@/store/shop";
+import { formatCurrency } from "@/lib/orders";
+
+type WithId<T> = T & { id: string };
+
+function isPublished(value: unknown): boolean {
+  if (value === true) return true;
+  if (value === 1) return true;
+  if (typeof value === "string") return value.toLowerCase().trim() === "true";
+  return false;
+}
+
+type SearchProduct = WithId<Pick<ProductDoc, "name" | "price" | "imageUrls" | "description" | "brand" | "sku" | "tags" | "published">>;
 
 type NavItem = {
   label: string;
@@ -50,6 +62,9 @@ const Navbar = () => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
 
+  const [searchCatalog, setSearchCatalog] = useState<SearchProduct[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -63,12 +78,20 @@ const Navbar = () => {
   const activeQuery = locationSearchParams.get("q") ?? "";
 
   const [searchValue, setSearchValue] = useState(activeQuery);
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const debounceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSearchValue(activeQuery);
   }, [activeQuery]);
 
-  const runSearch = (nextValue: string) => {
+  const runSearch = (
+    nextValue: string,
+    opts?: {
+      closeMobile?: boolean;
+      replace?: boolean;
+    },
+  ) => {
     const q = nextValue.trim();
     const nextParams = new URLSearchParams();
 
@@ -76,9 +99,97 @@ const Navbar = () => {
     if (q) nextParams.set("q", q);
 
     const search = nextParams.toString();
-    navigate(search ? `/products?${search}` : "/products");
-    setMobileSearchOpen(false);
+    navigate(search ? `/products?${search}` : "/products", { replace: opts?.replace });
+    if (opts?.closeMobile !== false) setMobileSearchOpen(false);
   };
+
+  const scheduleLiveSearchIfOnProducts = (nextValue: string) => {
+    if (!isProductsPage) return;
+
+    if (debounceTimerRef.current != null) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    debounceTimerRef.current = window.setTimeout(() => {
+      runSearch(nextValue, { closeMobile: false, replace: true });
+    }, 250);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current != null) {
+        window.clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!(searchFocused || mobileSearchOpen)) return;
+    if (!searchValue.trim()) return;
+
+    const unsub = onSnapshot(
+      collection(db, "products"),
+      (snap) => {
+        const next = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as ProductDoc) }))
+          .filter((p) => isPublished((p as any).published))
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            price: Number((p as any).price ?? 0),
+            imageUrls: Array.isArray((p as any).imageUrls) ? (p as any).imageUrls : [],
+            description: String((p as any).description ?? ""),
+            brand: (p as any).brand ? String((p as any).brand) : undefined,
+            sku: (p as any).sku ? String((p as any).sku) : undefined,
+            tags: Array.isArray((p as any).tags) ? (p as any).tags : undefined,
+            published: (p as any).published,
+          }))
+          .slice(0, 500);
+
+        setSearchCatalog(next);
+      },
+      () => {
+        setSearchCatalog([]);
+      },
+    );
+
+    return () => unsub();
+  }, [mobileSearchOpen, searchFocused, searchValue]);
+
+  const searchSuggestions = useMemo(() => {
+    const q = searchValue.trim().toLowerCase();
+    if (!q) return [];
+
+    const terms = q.split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
+
+    const matches = searchCatalog.filter((p) => {
+      const haystack = [
+        p.name,
+        p.description,
+        p.brand,
+        p.sku,
+        ...(p.tags ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return terms.every((t) => haystack.includes(t));
+    });
+
+    // Prefer starts-with name matches first.
+    matches.sort((a, b) => {
+      const aStarts = a.name.toLowerCase().startsWith(terms[0]) ? 0 : 1;
+      const bStarts = b.name.toLowerCase().startsWith(terms[0]) ? 0 : 1;
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      return a.name.localeCompare(b.name);
+    });
+
+    return matches.slice(0, 6);
+  }, [searchCatalog, searchValue]);
 
   const isNavItemActive = (item: NavItem) => {
     if (!isProductsPage) return false;
@@ -180,24 +291,123 @@ const Navbar = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                runSearch(searchValue);
+                runSearch(searchValue, { closeMobile: false });
               }}
             >
               <Input
                 value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSearchValue(next);
+                  setSearchDropdownOpen(true);
+                  scheduleLiveSearchIfOnProducts(next);
+                }}
+                onFocus={() => {
+                  setSearchFocused(true);
+                  setSearchDropdownOpen(true);
+                }}
+                onBlur={() => {
+                  setSearchFocused(false);
+                  window.setTimeout(() => setSearchDropdownOpen(false), 150);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
                     e.preventDefault();
                     setSearchValue("");
-                    if (activeQuery) runSearch("");
+                    if (activeQuery) runSearch("", { closeMobile: false, replace: true });
                   }
                 }}
                 placeholder="Search products..."
-                className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-20 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Search products"
               />
+
+              {/* Clear button */}
+              {searchValue.trim() ? (
+                <button
+                  type="button"
+                  className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearchValue("");
+                    if (isProductsPage && activeQuery) runSearch("", { closeMobile: false, replace: true });
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+
+              {/* Submit button */}
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                aria-label="Search"
+              >
+                Search
+              </button>
             </form>
+
+            {/* Suggestions dropdown */}
+            {searchDropdownOpen && searchValue.trim() ? (
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 rounded-xl border bg-popover shadow-lg overflow-hidden">
+                <div className="max-h-[340px] overflow-y-auto">
+                  {searchSuggestions.length ? (
+                    <div className="py-1">
+                      {searchSuggestions.map((p) => {
+                        const img = p.imageUrls?.[0];
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setSearchDropdownOpen(false);
+                              setMobileSearchOpen(false);
+                              navigate(`/product/${p.id}`);
+                            }}
+                          >
+                            {img ? (
+                              <img
+                                src={img}
+                                alt=""
+                                className="h-10 w-10 rounded-md border border-border object-cover"
+                                loading="eager"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <span className="h-10 w-10 rounded-md border border-border bg-muted" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium truncate">{p.name}</div>
+                              <div className="text-xs text-muted-foreground">{formatCurrency(Number(p.price ?? 0))}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <div className="border-t" />
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => runSearch(searchValue, { closeMobile: false })}
+                      >
+                        <span className="text-sm font-medium">View all results</span>
+                        <span className="text-xs text-muted-foreground">Enter</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      No products found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -506,20 +716,116 @@ const Navbar = () => {
             >
               <Input
                 value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSearchValue(next);
+                  setSearchDropdownOpen(true);
+                  scheduleLiveSearchIfOnProducts(next);
+                }}
+                onFocus={() => {
+                  setSearchFocused(true);
+                  setSearchDropdownOpen(true);
+                }}
+                onBlur={() => {
+                  setSearchFocused(false);
+                  window.setTimeout(() => setSearchDropdownOpen(false), 150);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
                     e.preventDefault();
                     setSearchValue("");
-                    if (activeQuery) runSearch("");
+                    if (activeQuery) runSearch("", { replace: true });
                   }
                 }}
                 placeholder="Search products..."
-                className="h-10 w-full rounded-full border-border/50 bg-background/80 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-10 w-full rounded-full border-border/50 bg-background/80 pl-9 pr-20 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                 autoFocus={mobileSearchOpen}
                 aria-label="Search products"
               />
+
+              {searchValue.trim() ? (
+                <button
+                  type="button"
+                  className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearchValue("");
+                    if (isProductsPage && activeQuery) runSearch("", { replace: true, closeMobile: false });
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                aria-label="Search"
+              >
+                Go
+              </button>
             </form>
+
+            {searchDropdownOpen && mobileSearchOpen && searchValue.trim() ? (
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 rounded-xl border bg-popover shadow-lg overflow-hidden">
+                <div className="max-h-[340px] overflow-y-auto">
+                  {searchSuggestions.length ? (
+                    <div className="py-1">
+                      {searchSuggestions.map((p) => {
+                        const img = p.imageUrls?.[0];
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setSearchDropdownOpen(false);
+                              setMobileSearchOpen(false);
+                              navigate(`/product/${p.id}`);
+                            }}
+                          >
+                            {img ? (
+                              <img
+                                src={img}
+                                alt=""
+                                className="h-10 w-10 rounded-md border border-border object-cover"
+                                loading="eager"
+                                decoding="async"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <span className="h-10 w-10 rounded-md border border-border bg-muted" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium truncate">{p.name}</div>
+                              <div className="text-xs text-muted-foreground">{formatCurrency(Number(p.price ?? 0))}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <div className="border-t" />
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => runSearch(searchValue)}
+                      >
+                        <span className="text-sm font-medium">View all results</span>
+                        <span className="text-xs text-muted-foreground">Enter</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">
+                      No products found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
