@@ -229,6 +229,16 @@ export default function AdminCategories() {
     }
   };
 
+  const missingDefaultCount = useMemo(() => {
+    const defaults = ["clothing", "henna", "accessories", "socks", "jewelry", "cosmetic", "home", "bags"];
+    const existingSlugs = new Set(
+      categories
+        .map((c) => slugify(String(c.slug ?? c.name ?? "").trim()))
+        .filter(Boolean)
+    );
+    return defaults.filter((s) => !existingSlugs.has(slugify(s))).length;
+  }, [categories]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -239,9 +249,9 @@ export default function AdminCategories() {
           </p>
         </div>
         <div className="flex gap-2">
-          {categories.length === 0 && (
+          {missingDefaultCount > 0 && (
             <Button variant="outline" onClick={seedDefaultCategories} disabled={saving}>
-              Seed default categories
+              Add missing default categories
             </Button>
           )}
           <Button onClick={openCreate}>Add category</Button>

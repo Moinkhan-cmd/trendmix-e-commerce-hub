@@ -42,6 +42,8 @@ function getTimestampMs(value: unknown) {
 }
 
 const Products = () => {
+  const hiddenCategorySlugs = useMemo(() => new Set(["electronics"]), []);
+
   const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
   const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
   const [loading, setLoading] = useState(true);
@@ -96,8 +98,14 @@ const Products = () => {
 
   const activeCategory = useMemo(() => {
     if (!activeCategoryParamRaw) return null;
-    return getCategorySlug(activeCategoryParamRaw, activeCategoryParamRaw) || null;
-  }, [activeCategoryParamRaw]);
+    const slug = getCategorySlug(activeCategoryParamRaw, activeCategoryParamRaw) || null;
+    if (!slug) return null;
+    return hiddenCategorySlugs.has(slug) ? null : slug;
+  }, [activeCategoryParamRaw, hiddenCategorySlugs]);
+
+  const visibleCategories = useMemo(() => {
+    return categories.filter((category) => !hiddenCategorySlugs.has(getCategorySlug(category.name, category.slug)));
+  }, [categories, hiddenCategorySlugs]);
 
   const queryParam = (searchParams.get("q") ?? "").toLowerCase().trim();
 
@@ -142,7 +150,23 @@ const Products = () => {
     const next = products.filter((product) => {
       const publishedOk = isPublished(product.published);
       const categoryOk = activeCategory ? getProductCategorySlug(product) === activeCategory : true;
-      const queryOk = queryParam ? (product.name ?? "").toLowerCase().includes(queryParam) : true;
+      const queryOk = (() => {
+        if (!queryParam) return true;
+
+        const haystack = [
+          product.name,
+          product.description,
+          product.brand,
+          product.sku,
+          ...(product.tags ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        const terms = queryParam.split(/\s+/).filter(Boolean);
+        return terms.every((t) => haystack.includes(t));
+      })();
       const price = Number(product.price ?? 0);
       const priceOk = price >= minPrice && price <= maxPrice;
       const ratingOk = minRating != null ? true : true;
@@ -318,7 +342,7 @@ const Products = () => {
                           All
                         </label>
                       </div>
-                      {categories.map((category) => {
+                      {visibleCategories.map((category) => {
                         const slug = getCategorySlug(category.name, category.slug);
                         const checked = activeCategory === slug;
                         const id = `category-${slug}`;

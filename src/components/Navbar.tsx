@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -50,6 +50,8 @@ const Navbar = () => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
 
+  const navigate = useNavigate();
+
   const location = useLocation();
   const locationSearchParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -58,6 +60,25 @@ const Navbar = () => {
 
   const isProductsPage = location.pathname === "/products";
   const activeCategory = locationSearchParams.get("category");
+  const activeQuery = locationSearchParams.get("q") ?? "";
+
+  const [searchValue, setSearchValue] = useState(activeQuery);
+
+  useEffect(() => {
+    setSearchValue(activeQuery);
+  }, [activeQuery]);
+
+  const runSearch = (nextValue: string) => {
+    const q = nextValue.trim();
+    const nextParams = new URLSearchParams();
+
+    if (isProductsPage && activeCategory) nextParams.set("category", activeCategory);
+    if (q) nextParams.set("q", q);
+
+    const search = nextParams.toString();
+    navigate(search ? `/products?${search}` : "/products");
+    setMobileSearchOpen(false);
+  };
 
   const isNavItemActive = (item: NavItem) => {
     if (!isProductsPage) return false;
@@ -156,10 +177,27 @@ const Navbar = () => {
         <div className="flex-1 flex items-center justify-center">
           <div className="relative hidden md:block w-full max-w-[400px] lg:max-w-[520px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search products..."
-              className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-            />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                runSearch(searchValue);
+              }}
+            >
+              <Input
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setSearchValue("");
+                    if (activeQuery) runSearch("");
+                  }
+                }}
+                placeholder="Search products..."
+                className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Search products"
+              />
+            </form>
           </div>
         </div>
 
@@ -460,11 +498,28 @@ const Navbar = () => {
         <div className="container px-3 sm:px-4 py-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search products..."
-              className="h-10 w-full rounded-full border-border/50 bg-background/80 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-              autoFocus={mobileSearchOpen}
-            />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                runSearch(searchValue);
+              }}
+            >
+              <Input
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setSearchValue("");
+                    if (activeQuery) runSearch("");
+                  }
+                }}
+                placeholder="Search products..."
+                className="h-10 w-full rounded-full border-border/50 bg-background/80 pl-9 pr-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                autoFocus={mobileSearchOpen}
+                aria-label="Search products"
+              />
+            </form>
           </div>
         </div>
       </div>

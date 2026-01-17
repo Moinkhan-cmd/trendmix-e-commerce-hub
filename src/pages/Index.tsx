@@ -66,18 +66,18 @@ const Index = () => {
   }, [products]);
 
   const homepageCategories = useMemo(() => {
+    const hiddenCategorySlugs = new Set(["electronics"]);
     const icons = [Sparkles, Gem, Shirt, Package];
 
     const processedCategories = categories.map((c, idx) => {
       const slug = getCategorySlug(c.name, c.slug);
+      if (hiddenCategorySlugs.has(slug)) return null;
       let title = c.name;
 
       // Keep the display title tidy for legacy beauty category.
       if ((c.slug ?? "").toLowerCase() === "beauty") {
         title = "Cosmetic";
       }
-
-      console.log(`Category: ${title}, Slug: ${slug}`); // Debugging
 
       const mappedImage = getCategoryImage(slug);
       const image = mappedImage || c.imageUrl || getFallbackImage(idx);
@@ -105,7 +105,7 @@ const Index = () => {
         href: `/products?category=${encodeURIComponent(slug)}`,
         slug
       };
-    }).filter(c => c.href !== '/products?category=electronics');
+    }).filter((c): c is NonNullable<typeof c> => Boolean(c));
 
     // Force "Socks" if missing
     if (!processedCategories.find(c => c.slug === 'socks')) {
