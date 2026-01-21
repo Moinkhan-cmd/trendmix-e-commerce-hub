@@ -26,6 +26,7 @@ export type ProductDoc = {
   compareAtPrice?: number;
   sku?: string;
   brand?: string;
+  gender?: "male" | "female" | "unisex";
   tags?: string[];
   weightKg?: number;
   dimensionsCm?: {

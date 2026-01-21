@@ -53,6 +53,7 @@ const Products = () => {
 
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
   const [minRating, setMinRating] = useState<number | null>(null);
+  const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female" | "unisex">("all");
   const [sort, setSort] = useState<SortOption>("featured");
   const [showFilters, setShowFilters] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,6 +159,7 @@ const Products = () => {
           product.description,
           product.brand,
           product.sku,
+          (product as any).gender,
           ...(product.tags ?? []),
         ]
           .filter(Boolean)
@@ -170,8 +172,12 @@ const Products = () => {
       const price = Number(product.price ?? 0);
       const priceOk = price >= minPrice && price <= maxPrice;
       const ratingOk = minRating != null ? true : true;
+      const genderOk =
+        genderFilter === "all"
+          ? true
+          : String((product as any).gender ?? "").toLowerCase() === genderFilter;
 
-      return publishedOk && categoryOk && queryOk && priceOk && ratingOk;
+      return publishedOk && categoryOk && queryOk && priceOk && ratingOk && genderOk;
     });
 
     if (sort === "featured" || sort === "rating") return next;
@@ -194,7 +200,7 @@ const Products = () => {
           return 0;
       }
     });
-  }, [activeCategory, categories, minRating, priceRange, products, queryParam, sort]);
+  }, [activeCategory, categories, genderFilter, minRating, priceRange, products, queryParam, sort]);
 
   const pageTitle = useMemo(() => {
     if (!activeCategory) return "All Products";
@@ -228,6 +234,7 @@ const Products = () => {
   const clearFilters = () => {
     setPriceRange([0, priceSliderMax]);
     setMinRating(null);
+    setGenderFilter("all");
     setSort("featured");
     setCategoryParam(null);
   };
@@ -385,6 +392,23 @@ const Products = () => {
                         );
                       })}
                     </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+                  <h3 className="text-xs sm:text-sm font-semibold">Gender</h3>
+                  <div className="mt-3">
+                    <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v as typeof genderFilter)}>
+                      <SelectTrigger className="h-9 text-xs sm:text-sm">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="unisex">Unisex</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

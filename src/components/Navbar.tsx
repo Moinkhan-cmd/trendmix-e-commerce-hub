@@ -37,7 +37,7 @@ function isPublished(value: unknown): boolean {
   return false;
 }
 
-type SearchProduct = WithId<Pick<ProductDoc, "name" | "price" | "imageUrls" | "description" | "brand" | "sku" | "tags" | "published">>;
+type SearchProduct = WithId<Pick<ProductDoc, "name" | "price" | "imageUrls" | "description" | "brand" | "sku" | "tags" | "published" | "gender">>;
 
 type NavItem = {
   label: string;
@@ -144,6 +144,7 @@ const Navbar = () => {
             brand: (p as any).brand ? String((p as any).brand) : undefined,
             sku: (p as any).sku ? String((p as any).sku) : undefined,
             tags: Array.isArray((p as any).tags) ? (p as any).tags : undefined,
+            gender: (p as any).gender ? String((p as any).gender) : undefined,
             published: (p as any).published,
           }))
           .slice(0, 500);
@@ -171,6 +172,7 @@ const Navbar = () => {
         p.description,
         p.brand,
         p.sku,
+        p.gender,
         ...(p.tags ?? []),
       ]
         .filter(Boolean)

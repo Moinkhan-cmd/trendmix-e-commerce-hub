@@ -86,6 +86,7 @@ const productFormSchema = z
     compareAtPrice: optionalNumber,
     sku: z.string().trim().max(64, "SKU is too long").optional(),
     brand: z.string().trim().max(64, "Brand is too long").optional(),
+    gender: z.enum(["male", "female", "unisex"]).optional(),
     tagsText: z.string().optional().default(""),
     featured: z.boolean().default(false),
     categoryId: z.string().min(1, "Category is required"),
@@ -134,6 +135,7 @@ const defaultProductValues: ProductFormValues = {
   compareAtPrice: undefined,
   sku: "",
   brand: "",
+  gender: undefined,
   tagsText: "",
   featured: false,
   categoryId: "",
@@ -307,6 +309,7 @@ export default function AdminProducts() {
       compareAtPrice: typeof p.compareAtPrice === "number" ? p.compareAtPrice : undefined,
       sku: p.sku ?? "",
       brand: p.brand ?? "",
+      gender: typeof p.gender === "string" ? p.gender : undefined,
       tagsText: Array.isArray(p.tags) ? p.tags.join(", ") : "",
       weightKg: typeof p.weightKg === "number" ? p.weightKg : undefined,
       dimensionLengthCm: typeof p.dimensionsCm?.length === "number" ? p.dimensionsCm.length : undefined,
@@ -370,6 +373,8 @@ export default function AdminProducts() {
     if (values.compareAtPrice !== undefined) payload.compareAtPrice = values.compareAtPrice;
     if (values.sku?.trim()) payload.sku = values.sku.trim();
     if (values.brand?.trim()) payload.brand = values.brand.trim();
+    if (values.gender) payload.gender = values.gender;
+    else if (editing) payload.gender = deleteField();
     if (tags.length) payload.tags = tags;
     if (values.weightKg !== undefined) payload.weightKg = values.weightKg;
     if (
@@ -868,6 +873,33 @@ export default function AdminProducts() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={productForm.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender (optional)</FormLabel>
+                      <Select
+                        value={field.value ?? "unspecified"}
+                        onValueChange={(value) => field.onChange(value === "unspecified" ? undefined : value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="unspecified">Not specified</SelectItem>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="unisex">Unisex</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={productForm.control}
