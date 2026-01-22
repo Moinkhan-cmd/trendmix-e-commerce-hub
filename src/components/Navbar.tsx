@@ -295,13 +295,13 @@ const Navbar = () => {
               <img
                 src={logoImg}
                 alt="TrendMix logo"
-                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
                 loading="eager"
                 decoding="async"
               />
-              <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-border/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary/0 transition-all duration-300 group-hover:ring-primary/30 group-hover:scale-110" />
             </span>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide hidden sm:block">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide group-hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.3)] hidden sm:block">
               TrendMix
             </h1>
           </Link>
@@ -341,7 +341,7 @@ const Navbar = () => {
                   }
                 }}
                 placeholder="Search products..."
-                className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-20 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-9 lg:h-10 w-full rounded-full border-border/50 bg-background/60 pl-9 pr-20 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-ring focus-visible:shadow-[0_0_16px_hsl(var(--primary)/0.2)]"
                 aria-label="Search products"
               />
 
@@ -349,7 +349,7 @@ const Navbar = () => {
               {searchValue.trim() ? (
                 <button
                   type="button"
-                  className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                  className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent/40 hover:rotate-90 transition-all duration-300"
                   aria-label="Clear search"
                   onClick={() => {
                     setSearchValue("");
@@ -360,10 +360,9 @@ const Navbar = () => {
                 </button>
               ) : null}
 
-              {/* Submit button */}
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium transition-all duration-300 hover:scale-105 hover:shadow-[0_0_12px_hsl(var(--primary)/0.4)] active:scale-95"
                 aria-label="Search"
               >
                 Search
@@ -382,7 +381,7 @@ const Navbar = () => {
                           <button
                             key={p.id}
                             type="button"
-                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left transition-all duration-200 hover:bg-accent/50 hover:pl-4 group/item"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => {
                               setSearchDropdownOpen(false);
@@ -394,7 +393,7 @@ const Navbar = () => {
                               <img
                                 src={img}
                                 alt=""
-                                className="h-10 w-10 rounded-md border border-border object-cover"
+                                className="h-10 w-10 rounded-md border border-border object-cover transition-transform duration-200 group-hover/item:scale-105"
                                 loading="eager"
                                 decoding="async"
                                 referrerPolicy="no-referrer"
@@ -436,11 +435,10 @@ const Navbar = () => {
 
         {/* Right side actions */}
         <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2">
-          {/* Mobile Search Toggle */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50"
+            className="md:hidden h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-105 active:scale-95"
             aria-label={mobileSearchOpen ? "Close search" : "Open search"}
             onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
           >
@@ -453,7 +451,7 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="h-9 lg:h-10 rounded-full border-border/50 bg-background/40 px-3 lg:px-4 font-medium hover:bg-accent/40"
+                  className="h-9 lg:h-10 rounded-full border-border/50 bg-background/40 px-3 lg:px-4 font-medium transition-all duration-300 hover:bg-accent/40 hover:scale-[1.02] hover:shadow-[0_0_12px_hsl(var(--primary)/0.15)] active:scale-[0.98]"
                 >
                   <span className="truncate max-w-[120px] lg:max-w-[140px]">
                     {activeCategoryLabel ?? "Categories"}
@@ -548,7 +546,7 @@ const Navbar = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="lg:hidden h-9 w-9 sm:h-10 sm:w-10 rounded-full border-border/50 bg-background/40 hover:bg-accent/40"
+                className="lg:hidden h-9 w-9 sm:h-10 sm:w-10 rounded-full border-border/50 bg-background/40 transition-all duration-300 hover:bg-accent/40 hover:scale-105 hover:shadow-[0_0_12px_hsl(var(--primary)/0.15)] active:scale-95"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
@@ -572,7 +570,7 @@ const Navbar = () => {
                     <Link
                       to="/cart"
                       onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 hover:bg-accent transition-colors"
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
                     >
                       <div className="relative">
                         <ShoppingCart className="h-5 w-5" />
@@ -587,7 +585,7 @@ const Navbar = () => {
                     <Link
                       to="/wishlist"
                       onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 hover:bg-accent transition-colors"
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
                     >
                       <div className="relative">
                         <Heart className="h-5 w-5" />
@@ -602,7 +600,7 @@ const Navbar = () => {
                     <Link
                       to="/account"
                       onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 hover:bg-accent transition-colors"
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
                     >
                       <User className="h-5 w-5" />
                       <span className="text-xs font-medium">Account</span>
@@ -663,25 +661,24 @@ const Navbar = () => {
               {/* Footer Links */}
               <div className="px-4 py-3 border-t bg-muted/30">
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <Link to="/about" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">About</Link>
-                  <Link to="/contact" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">Contact</Link>
-                  <Link to="/faq" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">FAQ</Link>
-                  <Link to="/shipping" onClick={() => setMobileCategoriesOpen(false)} className="hover:text-foreground transition-colors">Shipping</Link>
+                  <Link to="/about" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">About</Link>
+                  <Link to="/contact" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">Contact</Link>
+                  <Link to="/faq" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">FAQ</Link>
+                  <Link to="/shipping" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">Shipping</Link>
                 </div>
               </div>
             </SheetContent>
           </Sheet>
 
-          {/* Desktop action buttons */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50 hidden sm:inline-flex"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-110 hover:text-primary active:scale-95 hidden sm:inline-flex group"
             aria-label="Cart"
             asChild
           >
             <Link to="/cart">
-              <ShoppingCart className="h-5 w-5" />
+              <ShoppingCart className="h-5 w-5 transition-transform duration-300 group-hover:rotate-[-8deg]" />
               {cartCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs flex items-center justify-center">
                   {cartCount}
@@ -693,12 +690,12 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50 hidden sm:inline-flex"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-110 hover:text-primary active:scale-95 hidden sm:inline-flex group"
             aria-label="Wishlist"
             asChild
           >
             <Link to="/wishlist">
-              <Heart className="h-5 w-5" />
+              <Heart className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
               {wishlistCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 min-w-4 sm:h-5 sm:min-w-5 px-0.5 sm:px-1 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs flex items-center justify-center">
                   {wishlistCount}
@@ -710,12 +707,12 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-colors hover:bg-accent/50 hidden sm:inline-flex"
+            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-110 hover:text-primary active:scale-95 hidden sm:inline-flex group"
             aria-label="Profile"
             asChild
           >
             <Link to="/account">
-              <User className="h-5 w-5" />
+              <User className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
             </Link>
           </Button>
         </div>
