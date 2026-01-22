@@ -58,6 +58,8 @@ const NAV_ITEMS: NavItem[] = [
 const Navbar = () => {
   const { cartCount, wishlistCount } = useShop();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const lastScrollY = useRef(0);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
@@ -200,7 +202,24 @@ const Navbar = () => {
   };
 
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 8);
+    const onScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Determine if scrolled past threshold for styling
+      setIsScrolled(currentScrollY > 8);
+      
+      // Hide/show based on scroll direction
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        // Scrolling down & past threshold - hide
+        setIsHidden(true);
+      } else {
+        // Scrolling up - show
+        setIsHidden(false);
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+    
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -260,6 +279,7 @@ const Navbar = () => {
       className={cn(
         "sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300",
         isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border/50",
+        isHidden ? "-translate-y-full" : "translate-y-0"
       )}
     >
       <div className="container flex h-14 sm:h-16 items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
