@@ -144,8 +144,8 @@ const Navbar = () => {
             brand: (p as any).brand ? String((p as any).brand) : undefined,
             sku: (p as any).sku ? String((p as any).sku) : undefined,
             tags: Array.isArray((p as any).tags) ? (p as any).tags : undefined,
-            gender: (p as any).gender ? String((p as any).gender) : undefined,
-            published: (p as any).published,
+            gender: (p as any).gender as "male" | "female" | "unisex" | undefined,
+            published: Boolean((p as any).published),
           }))
           .slice(0, 500);
 
