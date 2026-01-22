@@ -278,8 +278,9 @@ const Navbar = () => {
     <header
       className={cn(
         "sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300",
-        isScrolled ? "bg-background/80 border-border/70 shadow-sm" : "bg-background/60 border-border/50",
-        isHidden ? "-translate-y-full" : "translate-y-0"
+        isScrolled ? "bg-background/80 border-border/70" : "bg-background/60 border-border/50",
+        isHidden ? "-translate-y-full shadow-none" : "translate-y-0",
+        !isHidden && isScrolled && "shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.15)] dark:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.25)]"
       )}
     >
       <div className="container flex h-14 sm:h-16 items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
