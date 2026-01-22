@@ -18,6 +18,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductImageGallery from "@/components/ProductImageGallery";
 import RecentlyViewedMiniCard from "@/components/RecentlyViewedMiniCard";
+import StickyAddToCartBar from "@/components/StickyAddToCartBar";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ const ProductDetail = () => {
 
   const [activeTab, setActiveTab] = useState<"description" | "specs" | "how" | "reviews">("description");
   const reviewsAnchorRef = useRef<HTMLDivElement | null>(null);
+  const buyButtonsRef = useRef<HTMLDivElement | null>(null);
 
   const [newRating, setNewRating] = useState<number>(5);
   const [newComment, setNewComment] = useState<string>("");
@@ -668,7 +670,7 @@ const ProductDetail = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+                      <div ref={buyButtonsRef} className="grid grid-cols-2 sm:grid-cols-1 gap-2">
                         <Button
                           size="lg"
                           className={cn(
@@ -1117,6 +1119,19 @@ const ProductDetail = () => {
           </div>
         )}
         </div>
+
+        {/* Sticky Add to Cart Bar */}
+        {product && (
+          <StickyAddToCartBar
+            productName={product.name}
+            price={price}
+            imageUrl={selectedImage ?? imageUrl}
+            inStock={inStock}
+            triggerRef={buyButtonsRef}
+            onAddToCart={addCurrentToCart}
+            onBuyNow={buyNow}
+          />
+        )}
       </main>
 
       <Footer />
