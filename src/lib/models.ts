@@ -97,7 +97,7 @@ export type OrderDoc = {
   emailSent?: boolean;
   customerEmailSent?: boolean;
   timeline?: OrderTimelineEvent[];
-  payment?: PaymentInfo;
+  payment?: Omit<PaymentInfo, 'status'> & { status: "pending" | "completed" | "failed" };
   trackingNumber?: string;
   shippingCarrier?: string;
   estimatedDelivery?: Timestamp;
