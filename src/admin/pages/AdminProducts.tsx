@@ -10,7 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { CategoryDoc, ProductDoc } from "@/lib/models";
+import type { CategoryDoc, ProductBadge, ProductDoc } from "@/lib/models";
 import { slugify } from "@/lib/slug";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Control } from "react-hook-form";
@@ -91,6 +91,7 @@ const productFormSchema = z
     brand: z.string().trim().max(64, "Brand is too long").optional(),
     gender: z.enum(["male", "female", "unisex"]).optional(),
     tagsText: z.string().optional().default(""),
+    badgesText: z.string().optional().default(""),
     featured: z.boolean().default(false),
     categoryId: z.string().min(1, "Category is required"),
     description: z.string().max(4000, "Description is too long").optional().default(""),
@@ -147,6 +148,7 @@ const defaultProductValues: ProductFormValues = {
   brand: "",
   gender: undefined,
   tagsText: "",
+  badgesText: "",
   weightKg: undefined,
   dimensionLengthCm: undefined,
   dimensionWidthCm: undefined,
@@ -331,6 +333,7 @@ export default function AdminProducts() {
       brand: p.brand ?? "",
       gender: typeof p.gender === "string" ? p.gender : undefined,
       tagsText: Array.isArray(p.tags) ? p.tags.join(", ") : "",
+      badgesText: Array.isArray(p.badges) ? p.badges.join(", ") : "",
       weightKg: typeof p.weightKg === "number" ? p.weightKg : undefined,
       dimensionLengthCm: typeof p.dimensionsCm?.length === "number" ? p.dimensionsCm.length : undefined,
       dimensionWidthCm: typeof p.dimensionsCm?.width === "number" ? p.dimensionsCm.width : undefined,
@@ -355,6 +358,46 @@ export default function AdminProducts() {
     return Array.from(new Set(raw));
   };
 
+  const parseBadges = (badgesText: string | undefined): ProductBadge[] => {
+    const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+    const raw = (badgesText ?? "")
+      .split(",")
+      .map((t) => normalize(t))
+      .filter(Boolean);
+
+    const mapToCanonical = (value: string): ProductBadge | null => {
+      const compact = value.replace(/[\s_-]+/g, "");
+      switch (compact) {
+        case "bestseller":
+        case "bestsellers":
+        case "bestselling":
+          return "bestseller";
+        case "trending":
+        case "trend":
+          return "trending";
+        case "new":
+        case "newarrival":
+        case "newarrivals":
+          return "new";
+        case "hot":
+          return "hot";
+        case "limited":
+        case "limitededition":
+          return "limited";
+        case "exclusive":
+          return "exclusive";
+        case "sale":
+        case "onsale":
+          return "sale";
+        default:
+          return null;
+      }
+    };
+
+    const canonical = raw.map(mapToCanonical).filter((b): b is ProductBadge => Boolean(b));
+    return Array.from(new Set(canonical));
+  };
+
   const onSubmit = productForm.handleSubmit(async (values) => {
     const cat = categoryById.get(values.categoryId);
     if (!cat) {
@@ -364,6 +407,7 @@ export default function AdminProducts() {
 
     const urls = values.imageUrls.map((u) => (u.value ?? "").trim()).filter(Boolean);
     const tags = parseTags(values.tagsText);
+    const badges = parseBadges(values.badgesText);
     const cleanedSpecs = (values.specifications ?? [])
       .map((s) => {
         const title = (s.title ?? "").trim();
@@ -396,6 +440,8 @@ export default function AdminProducts() {
     if (values.gender) payload.gender = values.gender;
     else if (editing) payload.gender = deleteField();
     if (tags.length) payload.tags = tags;
+    if (badges.length) payload.badges = badges;
+    else if (editing) payload.badges = deleteField();
     if (values.weightKg !== undefined) payload.weightKg = values.weightKg;
     if (
       values.dimensionLengthCm !== undefined ||
@@ -947,6 +993,23 @@ export default function AdminProducts() {
                       <FormControl>
                         <Input placeholder="summer, sale, cotton" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={productForm.control}
+                  name="badgesText"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Badges (comma separated) (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="bestseller, trending, new" {...field} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Allowed: bestseller, trending, new, hot, limited, exclusive, sale
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

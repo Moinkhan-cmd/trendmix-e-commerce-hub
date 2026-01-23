@@ -137,7 +137,9 @@ const Index = () => {
                       id={product.id}
                       name={product.name}
                       price={Number(product.price ?? 0)}
+                      originalPrice={typeof product.compareAtPrice === "number" ? product.compareAtPrice : undefined}
                       image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
+                      badges={Array.isArray(product.badges) ? product.badges : undefined}
                       rating={0}
                       reviews={0}
                     />

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, ImageIcon, ShoppingCart, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useShop } from "@/store/shop";
+import type { ProductBadge } from "@/lib/models";
 
 interface ProductCardProps {
   id: string;
@@ -12,7 +13,10 @@ interface ProductCardProps {
   image?: string;
   rating?: number;
   reviews?: number;
+  /** Backward compatible single badge label */
   badge?: string;
+  /** New multi-badge support (e.g. ["bestseller", "trending"]) */
+  badges?: ProductBadge[];
 }
 
 const ProductCard = ({
@@ -24,10 +28,54 @@ const ProductCard = ({
   rating = 0,
   reviews = 0,
   badge,
+  badges,
 }: ProductCardProps) => {
   const { addToCart, toggleWishlist, isWishlisted } = useShop();
   const discount = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const wished = isWishlisted(id);
+
+  const badgeLabel = (b: string): string => {
+    const key = String(b ?? "").trim().toLowerCase();
+    const map: Record<string, string> = {
+      bestseller: "Bestseller",
+      trending: "Trending",
+      new: "New",
+      hot: "Hot",
+      limited: "Limited",
+      exclusive: "Exclusive",
+      sale: "Sale",
+    };
+    return map[key] ?? (key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
+  };
+
+  const badgeClass = (b: string): string => {
+    const key = String(b ?? "").trim().toLowerCase();
+    switch (key) {
+      case "bestseller":
+        return "bg-purple-600 text-white hover:bg-purple-600";
+      case "trending":
+        return "bg-blue-600 text-white hover:bg-blue-600";
+      case "new":
+        return "bg-emerald-600 text-white hover:bg-emerald-600";
+      case "hot":
+        return "bg-rose-600 text-white hover:bg-rose-600";
+      case "limited":
+        return "bg-amber-600 text-white hover:bg-amber-600";
+      case "exclusive":
+        return "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100";
+      case "sale":
+        return "bg-primary text-primary-foreground hover:bg-primary";
+      default:
+        return "bg-primary text-primary-foreground hover:bg-primary";
+    }
+  };
+
+  const normalizedBadges = Array.from(
+    new Set([
+      ...(Array.isArray(badges) ? badges : []),
+      ...(badge ? [badge] : []),
+    ].map((b) => String(b).trim()).filter(Boolean)),
+  ).slice(0, 2);
 
   const priceText = `₹${Number(price ?? 0).toLocaleString("en-IN")}`;
   const originalPriceText = originalPrice
@@ -60,10 +108,20 @@ const ProductCard = ({
           </div>
         </Link>
 
-        {badge ? (
-          <Badge className="absolute top-1.5 left-1.5 xs:top-2 xs:left-2 sm:top-3 sm:left-3 text-[9px] xs:text-[10px] sm:text-xs px-1.5 xs:px-2 bg-primary text-primary-foreground">
-            {badge}
-          </Badge>
+        {normalizedBadges.length ? (
+          <div className="absolute top-1.5 left-1.5 xs:top-2 xs:left-2 sm:top-3 sm:left-3 flex flex-col gap-1">
+            {normalizedBadges.map((b) => (
+              <Badge
+                key={b}
+                className={
+                  "text-[9px] xs:text-[10px] sm:text-xs px-1.5 xs:px-2 " +
+                  badgeClass(b)
+                }
+              >
+                {badgeLabel(b)}
+              </Badge>
+            ))}
+          </div>
         ) : null}
 
         {discount > 0 ? (

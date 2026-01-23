@@ -20,6 +20,15 @@ export type ProductSpecificationSection = {
   items: ProductSpecificationItem[];
 };
 
+export type ProductBadge =
+  | "bestseller"
+  | "trending"
+  | "new"
+  | "hot"
+  | "limited"
+  | "exclusive"
+  | "sale";
+
 export type ProductDoc = {
   name: string;
   price: number;
@@ -28,6 +37,8 @@ export type ProductDoc = {
   brand?: string;
   gender?: "male" | "female" | "unisex";
   tags?: string[];
+  /** Small marketing labels shown on product cards/detail (e.g. trending, bestseller). */
+  badges?: ProductBadge[];
   weightKg?: number;
   dimensionsCm?: {
     length?: number;

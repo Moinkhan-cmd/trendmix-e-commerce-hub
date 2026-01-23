@@ -43,11 +43,47 @@ import {
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import type { ProductDoc } from "@/lib/models";
+import type { ProductBadge, ProductDoc } from "@/lib/models";
 import { useAuth } from "@/auth/AuthProvider";
 import { useShop } from "@/store/shop";
 import { cn } from "@/lib/utils";
 import { addRecentlyViewed, getRecentlyViewed, type RecentlyViewedItem } from "@/lib/recently-viewed";
+
+function productBadgeLabel(badge: ProductBadge | string): string {
+  const key = String(badge ?? "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    bestseller: "Bestseller",
+    trending: "Trending",
+    new: "New",
+    hot: "Hot",
+    limited: "Limited",
+    exclusive: "Exclusive",
+    sale: "Sale",
+  };
+  return map[key] ?? (key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
+}
+
+function productBadgeClass(badge: ProductBadge | string): string {
+  const key = String(badge ?? "").trim().toLowerCase();
+  switch (key) {
+    case "bestseller":
+      return "bg-purple-600 text-white hover:bg-purple-600";
+    case "trending":
+      return "bg-blue-600 text-white hover:bg-blue-600";
+    case "new":
+      return "bg-emerald-600 text-white hover:bg-emerald-600";
+    case "hot":
+      return "bg-rose-600 text-white hover:bg-rose-600";
+    case "limited":
+      return "bg-amber-600 text-white hover:bg-amber-600";
+    case "exclusive":
+      return "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100";
+    case "sale":
+      return "bg-primary text-primary-foreground hover:bg-primary";
+    default:
+      return "bg-secondary text-secondary-foreground hover:bg-secondary";
+  }
+}
 
 type ProductWithId = ProductDoc & { id: string };
 
@@ -555,6 +591,19 @@ const ProductDetail = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    {product?.badges?.length ? (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {Array.from(new Set(product.badges)).slice(0, 3).map((b) => (
+                          <Badge
+                            key={b}
+                            className={cn("rounded-full text-[10px] sm:text-xs px-1.5 sm:px-2", productBadgeClass(b))}
+                          >
+                            {productBadgeLabel(b)}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+
                     <button
                       type="button"
                       onClick={openReviews}
