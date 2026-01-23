@@ -84,6 +84,69 @@ const Navbar = () => {
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
 
+  // Typing animation for search placeholder
+  const placeholderTexts = useMemo(() => [
+    "Search for cosmetics...",
+    "Find jewelry...",
+    "Discover socks...",
+    "Browse accessories...",
+    "Explore henna...",
+    "Search products...",
+  ], []);
+  
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [displayedPlaceholder, setDisplayedPlaceholder] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    if (searchFocused || searchValue) return; // Pause animation when focused or has value
+    
+    const currentText = placeholderTexts[placeholderIndex];
+    let charIndex = isTyping ? displayedPlaceholder.length : currentText.length;
+    
+    const typeSpeed = 80;
+    const deleteSpeed = 40;
+    const pauseBeforeDelete = 2000;
+    const pauseBeforeType = 300;
+
+    if (isTyping) {
+      if (charIndex < currentText.length) {
+        const timer = setTimeout(() => {
+          setDisplayedPlaceholder(currentText.slice(0, charIndex + 1));
+        }, typeSpeed);
+        return () => clearTimeout(timer);
+      } else {
+        const timer = setTimeout(() => {
+          setIsTyping(false);
+        }, pauseBeforeDelete);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      if (charIndex > 0) {
+        const timer = setTimeout(() => {
+          setDisplayedPlaceholder(currentText.slice(0, charIndex - 1));
+        }, deleteSpeed);
+        return () => clearTimeout(timer);
+      } else {
+        const timer = setTimeout(() => {
+          setPlaceholderIndex((prev) => (prev + 1) % placeholderTexts.length);
+          setIsTyping(true);
+        }, pauseBeforeType);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [displayedPlaceholder, isTyping, placeholderIndex, placeholderTexts, searchFocused, searchValue]);
+
+  // Reset animation when focus/value changes
+  useEffect(() => {
+    if (!searchFocused && !searchValue) {
+      setDisplayedPlaceholder("");
+      setIsTyping(true);
+    }
+  }, [searchFocused, searchValue]);
+
+  const animatedPlaceholder = searchFocused || searchValue ? "Search products..." : displayedPlaceholder || "Search...";
+
   useEffect(() => {
     setSearchValue(activeQuery);
   }, [activeQuery]);
@@ -358,7 +421,7 @@ const Navbar = () => {
                     if (activeQuery) runSearch("", { closeMobile: false, replace: true });
                   }
                 }}
-                placeholder="Search products..."
+                placeholder={animatedPlaceholder}
                 className={cn(
                   "relative h-10 lg:h-11 w-full rounded-full border-2 bg-background/80 pl-10 pr-24 text-sm transition-all duration-300",
                   "border-border/40 hover:border-border/60 hover:bg-background/90",
@@ -824,7 +887,7 @@ const Navbar = () => {
                     if (activeQuery) runSearch("", { replace: true });
                   }
                 }}
-                placeholder="Search products..."
+                placeholder={animatedPlaceholder}
                 className={cn(
                   "relative h-11 w-full rounded-full border-2 bg-background/90 pl-10 pr-24 text-sm transition-all duration-300",
                   "border-border/40 hover:border-border/60",
