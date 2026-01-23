@@ -40,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { parseSpecificationsFromText } from "@/lib/specificationPaste";
 import {
   Select,
   SelectContent,
@@ -70,8 +71,8 @@ const optionalNumber = z.preprocess((v) => {
 }, z.number().min(0, "Must be ≥ 0").optional());
 
 const specItemSchema = z.object({
-  label: z.string().trim().min(1, "Label is required").max(80, "Label is too long"),
-  value: z.string().trim().min(1, "Value is required").max(200, "Value is too long"),
+  label: z.string().trim().min(1, "Label is required").max(120, "Label is too long"),
+  value: z.string().trim().min(1, "Value is required").max(2000, "Value is too long"),
 });
 
 const specSectionSchema = z.object({
@@ -81,7 +82,9 @@ const specSectionSchema = z.object({
 
 const productFormSchema = z
   .object({
-    name: z.string().trim().min(1, "Name is required").max(120, "Name is too long"),
+    // Allow long product names (admin may paste longer titles). Firestore also has document size limits,
+    // so we keep a very generous max rather than "unlimited".
+    name: z.string().trim().min(1, "Name is required").max(2000, "Name is too long"),
     price: z.coerce.number().min(0, "Price must be ≥ 0"),
     compareAtPrice: optionalNumber,
     sku: z.string().trim().max(64, "SKU is too long").optional(),
@@ -92,6 +95,10 @@ const productFormSchema = z
     categoryId: z.string().min(1, "Category is required"),
     description: z.string().max(4000, "Description is too long").optional().default(""),
     stock: z.coerce.number().int("Stock must be an integer").min(0, "Stock must be ≥ 0"),
+    weightKg: optionalNumber,
+    dimensionLengthCm: optionalNumber,
+    dimensionWidthCm: optionalNumber,
+    dimensionHeightCm: optionalNumber,
     published: z.boolean().default(true),
     imageUrls: z
       .array(z.string())
@@ -137,6 +144,10 @@ const defaultProductValues: ProductFormValues = {
   brand: "",
   gender: undefined,
   tagsText: "",
+  weightKg: undefined,
+  dimensionLengthCm: undefined,
+  dimensionWidthCm: undefined,
+  dimensionHeightCm: undefined,
   featured: false,
   categoryId: "",
   description: "",
@@ -156,6 +167,7 @@ export default function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [editing, setEditing] = useState<WithId<ProductDoc> | null>(null);
+  const [specPasteText, setSpecPasteText] = useState("");
   const productForm = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: defaultProductValues,
@@ -294,6 +306,7 @@ export default function AdminProducts() {
     setEditing(null);
     productForm.reset(defaultProductValues);
     setImagePreviewErrors({});
+    setSpecPasteText("");
   };
 
   const openCreate = () => {
@@ -460,6 +473,23 @@ export default function AdminProducts() {
         { label: "Model Name", value: "" },
       ],
     });
+  };
+
+  const applyPastedSpecs = (mode: "append" | "replace") => {
+    const parsed = parseSpecificationsFromText(specPasteText);
+    if (!parsed.length) {
+      toast.error("No valid specification lines found. Add one per line, e.g. 'Net Quantity1.0 Count'.");
+      return;
+    }
+
+    const section = { title: "General", items: parsed };
+    if (mode === "replace") {
+      specSectionsArray.replace([section]);
+    } else {
+      specSectionsArray.append(section);
+    }
+
+    toast.success(mode === "replace" ? "Specifications replaced" : "Specifications added");
   };
 
   const removeImageUrlField = (idx: number) => {
@@ -946,6 +976,29 @@ export default function AdminProducts() {
                         Add section
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border p-3 space-y-2">
+                    <Label>Quick paste (auto-splits into label/value)</Label>
+                    <Textarea
+                      rows={5}
+                      placeholder={
+                        "Paste one per line, e.g.\nManufacturer207, Ground Floor...\nPackerSalty E-Commerce Pvt. Ltd...\nNet Quantity1.0 Count"
+                      }
+                      value={specPasteText}
+                      onChange={(e) => setSpecPasteText(e.target.value)}
+                    />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button type="button" variant="outline" size="sm" onClick={() => applyPastedSpecs("append")}>
+                        Add from paste
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applyPastedSpecs("replace")}>
+                        Replace with paste
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Tip: Works with formats like “Key: Value”, “Key25 g”, or “KeyValue” (camel-case).
+                    </p>
                   </div>
 
                   {specSectionsArray.fields.length === 0 ? (

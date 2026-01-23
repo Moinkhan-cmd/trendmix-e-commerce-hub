@@ -40,7 +40,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  to="/products?category=beauty"
+                  to="/products?category=cosmetic"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Cosmetics

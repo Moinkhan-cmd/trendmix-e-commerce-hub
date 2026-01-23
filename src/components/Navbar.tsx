@@ -25,6 +25,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
+import { buildUiCategoriesFromDocs } from "@/lib/ui-categories";
 import { useShop } from "@/store/shop";
 import { formatCurrency } from "@/lib/orders";
 
@@ -42,18 +43,8 @@ type SearchProduct = WithId<Pick<ProductDoc, "name" | "price" | "imageUrls" | "d
 type NavItem = {
   label: string;
   to: string;
-  category?: "cosmetic" | "jewelry" | "socks" | "accessories" | "henna";
+  category?: string;
 };
-
-const NAV_ITEMS: NavItem[] = [
-  { label: "All Products", to: "/products" },
-  // Category slug is "cosmetic" in Firestore (AdminCategories seed + typical setup).
-  { label: "Cosmetics", to: "/products?category=cosmetic", category: "cosmetic" },
-  { label: "Jewelry", to: "/products?category=jewelry", category: "jewelry" },
-  { label: "Socks", to: "/products?category=socks", category: "socks" },
-  { label: "Accessories", to: "/products?category=accessories", category: "accessories" },
-  { label: "Henna", to: "/products?category=henna", category: "henna" },
-];
 
 const Navbar = () => {
   const { cartCount, wishlistCount } = useShop();
@@ -61,6 +52,7 @@ const Navbar = () => {
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
 
   const [searchCatalog, setSearchCatalog] = useState<SearchProduct[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -74,7 +66,8 @@ const Navbar = () => {
   );
 
   const isProductsPage = location.pathname === "/products";
-  const activeCategory = locationSearchParams.get("category");
+  const activeCategoryRaw = locationSearchParams.get("category");
+  const activeCategory = activeCategoryRaw ? getCategorySlug(activeCategoryRaw, activeCategoryRaw) : null;
   const activeQuery = locationSearchParams.get("q") ?? "";
 
   const [searchValue, setSearchValue] = useState(activeQuery);
@@ -206,23 +199,27 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Optional: use category images from Firestore when present.
+  // Use categories + category images from Firestore when present.
   // Falls back to local images for the default categories.
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "categories"),
       (snap) => {
         const next: Record<string, string> = {};
-        snap.docs.forEach((d) => {
-          const data = d.data() as CategoryDoc;
-          const slug = String(data.slug ?? "").toLowerCase().trim();
+        const nextDocs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as CategoryDoc) }));
+
+        nextDocs.forEach((data) => {
+          const canonical = getCategorySlug(String(data.name ?? ""), String(data.slug ?? ""));
           const imageUrl = String(data.imageUrl ?? "").trim();
-          if (slug && imageUrl) next[slug] = imageUrl;
+          if (canonical && imageUrl) next[canonical] = imageUrl;
         });
+
+        setCategories(nextDocs);
         setCategoryImagesBySlug(next);
       },
       () => {
         // Keep fallbacks only on error.
+        setCategories([]);
         setCategoryImagesBySlug({});
       },
     );
@@ -236,11 +233,21 @@ const Navbar = () => {
     setMobileSearchOpen(false);
   }, [location.pathname, location.search]);
 
+  const navItems: NavItem[] = useMemo(() => {
+    const uiCategories = buildUiCategoriesFromDocs(categories).map((c) => ({
+      label: c.title,
+      to: c.href,
+      category: c.slug,
+    }));
+
+    return [{ label: "All Products", to: "/products" }, ...uiCategories];
+  }, [categories]);
+
   const activeCategoryLabel = useMemo(() => {
     if (!isProductsPage) return null;
     if (!activeCategory) return "All Products";
-    return NAV_ITEMS.find((i) => i.category === activeCategory)?.label ?? null;
-  }, [activeCategory, isProductsPage]);
+    return navItems.find((i) => i.category === activeCategory)?.label ?? null;
+  }, [activeCategory, isProductsPage, navItems]);
 
   const getCategoryThumb = (slug: string | undefined) => {
     if (!slug) return undefined;
@@ -445,7 +452,7 @@ const Navbar = () => {
 
                 {/* All Products (full width) */}
                 {(() => {
-                  const item = NAV_ITEMS[0];
+                  const item = navItems[0];
                   const active = isNavItemActive(item);
                   return (
                     <DropdownMenuItem asChild>
@@ -475,7 +482,7 @@ const Navbar = () => {
 
                 {/* Category grid (2 columns) */}
                 <div className="grid grid-cols-2 gap-1 p-1">
-                  {NAV_ITEMS.slice(1).map((item) => {
+                  {navItems.slice(1).map((item) => {
                     const active = isNavItemActive(item);
                     const thumb = getCategoryThumb(item.category);
                     return (
@@ -592,7 +599,7 @@ const Navbar = () => {
                 {/* Categories */}
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Categories</h3>
                 <nav className="flex flex-col gap-1">
-                  {NAV_ITEMS.map((item) => {
+                  {navItems.map((item) => {
                     const active = isNavItemActive(item);
                     const thumb = getCategoryThumb(item.category);
                     return (

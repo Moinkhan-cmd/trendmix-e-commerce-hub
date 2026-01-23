@@ -5,10 +5,9 @@ import Hero from "@/components/Hero";
 import CategoryCard from "@/components/CategoryCard";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import { Gem, Shirt, Package, Hand, Sparkles } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { getCategoryImage, getCategorySlug, getFallbackImage } from "@/lib/category-images";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
+import { buildUiCategoriesFromDocs } from "@/lib/ui-categories";
 
 type WithId<T> = T & { id: string };
 
@@ -66,76 +65,7 @@ const Index = () => {
   }, [products]);
 
   const homepageCategories = useMemo(() => {
-    const hiddenCategorySlugs = new Set(["electronics"]);
-    const icons = [Sparkles, Gem, Shirt, Package];
-
-    const processedCategories = categories.map((c, idx) => {
-      const slug = getCategorySlug(c.name, c.slug);
-      if (hiddenCategorySlugs.has(slug)) return null;
-      let title = c.name;
-
-      // Keep the display title tidy for legacy beauty category.
-      if ((c.slug ?? "").toLowerCase() === "beauty") {
-        title = "Cosmetic";
-      }
-
-      const mappedImage = getCategoryImage(slug);
-      const image = mappedImage || c.imageUrl || getFallbackImage(idx);
-      
-      // Select icon based on slug
-      let IconToUse = icons[idx % icons.length];
-      if (slug === 'henna' || slug === 'mehndi' || slug === 'mehandi') {
-        IconToUse = Hand;
-      } else if (slug === 'cosmetic') {
-        IconToUse = Sparkles;
-      } else if (slug === 'jewelry') {
-        IconToUse = Gem;
-      } else if (slug === 'socks' || slug === 'clothing') {
-        IconToUse = Shirt;
-      } else if (slug === 'accessories') {
-        IconToUse = Package;
-      }
-
-      const icon = IconToUse;
-      return {
-        title: title,
-        description: "Browse products",
-        image,
-        icon,
-        href: `/products?category=${encodeURIComponent(slug)}`,
-        slug
-      };
-    }).filter((c): c is NonNullable<typeof c> => Boolean(c));
-
-    // Force "Socks" if missing
-    if (!processedCategories.find(c => c.slug === 'socks')) {
-      const slug = 'socks';
-      const image = getCategoryImage(slug) || getFallbackImage(processedCategories.length);
-      processedCategories.push({
-        title: "Socks",
-        description: "Browse products",
-        image,
-        icon: Shirt,
-        href: `/products?category=${encodeURIComponent(slug)}`,
-        slug
-      });
-    }
-
-    // Force "Cosmetic" if missing (e.g. if DB had no "beauty" and no "cosmetic")
-    if (!processedCategories.find(c => c.slug === 'cosmetic')) {
-      const slug = 'cosmetic';
-      const image = getCategoryImage(slug) || getFallbackImage(processedCategories.length);
-      processedCategories.push({
-        title: "Cosmetic",
-        description: "Browse products",
-        image,
-        icon: Sparkles,
-        href: `/products?category=${encodeURIComponent(slug)}`,
-        slug
-      });
-    }
-
-    return processedCategories;
+    return buildUiCategoriesFromDocs(categories);
   }, [categories]);
 
   return (

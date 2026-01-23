@@ -205,7 +205,15 @@ const Products = () => {
   const pageTitle = useMemo(() => {
     if (!activeCategory) return "All Products";
     const cat = categories.find((c) => getCategorySlug(c.name, c.slug) === activeCategory);
-    if (cat?.name) return cat.name;
+    if (cat) {
+      // Handle legacy "Beauty" category - display as "Cosmetics"
+      const nameLower = String(cat.name ?? "").toLowerCase().trim();
+      const slugLower = String(cat.slug ?? "").toLowerCase().trim();
+      if (nameLower === "beauty" || slugLower === "beauty" || activeCategory === "cosmetic") {
+        return "Cosmetics";
+      }
+      return cat.name;
+    }
     // If the category isn't present in the categories collection yet,
     // keep the UI consistent with the URL instead of falling back to "All Products".
     return activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1);
@@ -386,7 +394,15 @@ const Products = () => {
                                   </div>
                                 );
                               })()}
-                              {category.name}
+                              {(() => {
+                                // Handle legacy "Beauty" category - display as "Cosmetics"
+                                const nameLower = String(category.name ?? "").toLowerCase().trim();
+                                const slugLower = String(category.slug ?? "").toLowerCase().trim();
+                                if (nameLower === "beauty" || slugLower === "beauty") {
+                                  return "Cosmetics";
+                                }
+                                return category.name;
+                              })()}
                             </label>
                           </div>
                         );
