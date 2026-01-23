@@ -267,7 +267,10 @@ export default function Checkout() {
           subtotal,
           shipping,
           total,
-          payment: paymentResponse.paymentInfo,
+          payment: {
+            ...paymentResponse.paymentInfo,
+            status: paymentResponse.paymentInfo.status as "pending" | "completed" | "failed",
+          },
         });
 
         setPaymentModalStatus("success");

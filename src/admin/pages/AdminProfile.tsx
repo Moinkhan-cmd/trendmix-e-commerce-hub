@@ -42,24 +42,24 @@ function isValidUrl(url: string) {
   }
 }
 
-const schema: z.ZodType<FormValues> = z
+const schema = z
   .object({
     email: z.string().trim().email("Enter a valid email"),
     location: z.string().trim().min(2, "Location is required"),
-    instagramId: z.string().trim().optional().default(""),
-    xId: z.string().trim().optional().default(""),
+    instagramId: z.string().trim().default(""),
+    xId: z.string().trim().default(""),
     socialLinks: z.array(z.object({
-      label: z.string().trim().optional().default(""),
+      label: z.string().trim().default(""),
       url: z.string().trim().default(""),
-      platform: z.string().trim().optional().default(""),
-    })),
+      platform: z.string().trim().default(""),
+    })).default([]),
     bioHtml: z.string().default(""),
     featured: z.object({
       enabled: z.boolean().default(false),
       visible: z.boolean().default(true),
       title: z.string().trim().default(""),
       tagline: z.string().trim().default(""),
-    }),
+    }).default({ enabled: false, visible: true, title: "", tagline: "" }),
   })
   .superRefine((v, ctx) => {
     if (v.featured.enabled && !v.featured.title.trim()) {

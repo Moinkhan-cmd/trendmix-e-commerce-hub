@@ -101,15 +101,15 @@ const productFormSchema = z
     dimensionHeightCm: optionalNumber,
     published: z.boolean().default(true),
     imageUrls: z
-      .array(z.string())
+      .array(z.object({ value: z.string() }))
       .min(1)
-      .refine((arr) => arr.some((u) => u.trim().length > 0), {
+      .refine((arr) => arr.some((u) => u.value.trim().length > 0), {
         message: "At least 1 Image URL is required",
       })
       .refine(
         (arr) =>
           arr
-            .map((u) => u.trim())
+            .map((u) => u.value.trim())
             .filter(Boolean)
             .every((u) => {
               try {
@@ -123,7 +123,10 @@ const productFormSchema = z
             }),
         { message: "All Image URLs must be valid URLs" },
       ),
-
+    weightKg: optionalNumber,
+    dimensionLengthCm: optionalNumber,
+    dimensionWidthCm: optionalNumber,
+    dimensionHeightCm: optionalNumber,
     specifications: z.array(specSectionSchema).optional().default([]),
   })
   .refine(
@@ -153,7 +156,11 @@ const defaultProductValues: ProductFormValues = {
   description: "",
   stock: 10,
   published: true,
-  imageUrls: [""],
+  imageUrls: [{ value: "" }],
+  weightKg: undefined,
+  dimensionLengthCm: undefined,
+  dimensionWidthCm: undefined,
+  dimensionHeightCm: undefined,
   specifications: [],
 };
 
@@ -333,7 +340,7 @@ export default function AdminProducts() {
       description: p.description ?? "",
       stock: Number(p.stock ?? 0),
       published: Boolean(p.published),
-      imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [""],
+      imageUrls: Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls.map((url: string) => ({ value: url })) : [{ value: "" }],
       specifications: Array.isArray(p.specifications) ? p.specifications : [],
     });
     setImagePreviewErrors({});
@@ -355,7 +362,7 @@ export default function AdminProducts() {
       return;
     }
 
-    const urls = values.imageUrls.map((u) => u.trim()).filter(Boolean);
+    const urls = values.imageUrls.map((u) => (u.value ?? "").trim()).filter(Boolean);
     const tags = parseTags(values.tagsText);
     const cleanedSpecs = (values.specifications ?? [])
       .map((s) => {
@@ -451,7 +458,7 @@ export default function AdminProducts() {
   };
 
   const addImageUrlField = () => {
-    imageUrlsArray.append("");
+    imageUrlsArray.append({ value: "" });
   };
 
   const addSpecSection = () => {
@@ -1123,7 +1130,7 @@ export default function AdminProducts() {
                       <FormField
                         key={f.id}
                         control={productForm.control}
-                        name={`imageUrls.${idx}`}
+                        name={`imageUrls.${idx}.value`}
                         render={({ field }) => (
                           <FormItem>
                             <div className="flex gap-2">
@@ -1131,8 +1138,9 @@ export default function AdminProducts() {
                                 <Input
                                   placeholder="https://..."
                                   {...field}
+                                  value={field.value ?? ""}
                                   onChange={(e) => {
-                                    field.onChange(e);
+                                    field.onChange(e.target.value);
                                     setImagePreviewErrors((prev) => {
                                       if (!(idx in prev)) return prev;
                                       const next = { ...prev };
