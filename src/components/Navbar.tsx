@@ -771,13 +771,30 @@ const Navbar = () => {
       {/* Mobile Search Bar - slides down when open */}
       <div
         className={cn(
-          "md:hidden overflow-hidden transition-all duration-300 ease-in-out border-t border-border/50",
-          mobileSearchOpen ? "max-h-16 opacity-100" : "max-h-0 opacity-0 border-t-0"
+          "md:hidden overflow-hidden transition-all duration-300 ease-in-out",
+          mobileSearchOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
         )}
       >
-        <div className="container px-3 sm:px-4 py-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Decorative gradient line */}
+        <div className={cn(
+          "h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent transition-opacity duration-300",
+          mobileSearchOpen ? "opacity-100" : "opacity-0"
+        )} />
+        
+        <div className="container px-3 sm:px-4 py-3">
+          <div className="relative group/mobile-search">
+            {/* Animated glow background */}
+            <div className={cn(
+              "absolute -inset-1 rounded-full bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 opacity-0 blur-md transition-all duration-500",
+              searchFocused && "opacity-100 animate-pulse"
+            )} />
+            
+            {/* Search icon with animation */}
+            <Search className={cn(
+              "absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-all duration-300 z-10",
+              searchFocused && "text-primary scale-110"
+            )} />
+            
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -808,46 +825,66 @@ const Navbar = () => {
                   }
                 }}
                 placeholder="Search products..."
-                className="h-10 w-full rounded-full border-border/50 bg-background/80 pl-9 pr-20 transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "relative h-11 w-full rounded-full border-2 bg-background/90 pl-10 pr-24 text-sm transition-all duration-300",
+                  "border-border/40 hover:border-border/60",
+                  "focus-visible:ring-0 focus-visible:border-primary/50 focus-visible:bg-background focus-visible:shadow-[0_0_20px_hsl(var(--primary)/0.15),inset_0_1px_2px_hsl(var(--primary)/0.05)]",
+                  "placeholder:text-muted-foreground/60"
+                )}
                 autoFocus={mobileSearchOpen}
                 aria-label="Search products"
               />
 
-              {searchValue.trim() ? (
+              {/* Clear button with animation */}
+              <div className={cn(
+                "absolute right-14 top-1/2 -translate-y-1/2 transition-all duration-300",
+                searchValue.trim() ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+              )}>
                 <button
                   type="button"
-                  className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                  className="h-7 w-7 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-300 hover:rotate-90 hover:scale-110 active:scale-90"
                   aria-label="Clear search"
                   onClick={() => {
                     setSearchValue("");
                     if (isProductsPage && activeQuery) runSearch("", { replace: true, closeMobile: false });
                   }}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
-              ) : null}
+              </div>
 
+              {/* Search button with gradient */}
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                className={cn(
+                  "absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full text-xs font-semibold transition-all duration-300",
+                  "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground",
+                  "hover:shadow-[0_4px_16px_hsl(var(--primary)/0.4)] active:scale-95",
+                  searchFocused && "from-primary via-primary/95 to-secondary/80"
+                )}
                 aria-label="Search"
               >
                 Go
               </button>
             </form>
 
+            {/* Enhanced mobile suggestions dropdown */}
             {searchDropdownOpen && mobileSearchOpen && searchValue.trim() ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 rounded-xl border bg-popover shadow-lg overflow-hidden">
-                <div className="max-h-[340px] overflow-y-auto">
+              <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-50 rounded-2xl border-2 border-border/50 bg-popover/95 backdrop-blur-xl shadow-[0_8px_32px_hsl(var(--foreground)/0.1)] overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                {/* Decorative top gradient line */}
+                <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+                
+                <div className="max-h-[280px] overflow-y-auto">
                   {searchSuggestions.length ? (
-                    <div className="py-1">
-                      {searchSuggestions.map((p) => {
+                    <div className="py-2">
+                      {searchSuggestions.map((p, index) => {
                         const img = p.imageUrls?.[0];
                         return (
                           <button
                             key={p.id}
                             type="button"
-                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all duration-200 hover:bg-accent/60 active:bg-accent group/item"
+                            style={{ animationDelay: `${index * 30}ms` }}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => {
                               setSearchDropdownOpen(false);
@@ -856,41 +893,49 @@ const Navbar = () => {
                             }}
                           >
                             {img ? (
-                              <img
-                                src={img}
-                                alt=""
-                                className="h-10 w-10 rounded-md border border-border object-cover"
-                                loading="eager"
-                                decoding="async"
-                                referrerPolicy="no-referrer"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
+                              <div className="relative h-11 w-11 rounded-lg overflow-hidden border border-border/50 bg-muted flex-shrink-0">
+                                <img
+                                  src={img}
+                                  alt=""
+                                  className="h-full w-full object-cover transition-transform duration-300 group-hover/item:scale-110"
+                                  loading="eager"
+                                  decoding="async"
+                                  referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-primary/0 transition-colors duration-300 group-hover/item:bg-primary/10" />
+                              </div>
                             ) : (
-                              <span className="h-10 w-10 rounded-md border border-border bg-muted" />
+                              <span className="h-11 w-11 rounded-lg border border-border/50 bg-muted flex-shrink-0" />
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="text-sm font-medium truncate">{p.name}</div>
-                              <div className="text-xs text-muted-foreground">{formatCurrency(Number(p.price ?? 0))}</div>
+                              <div className="text-sm font-medium truncate transition-colors duration-200 group-hover/item:text-primary">{p.name}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5 font-medium">{formatCurrency(Number(p.price ?? 0))}</div>
                             </div>
+                            <ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground/50 transition-all duration-200 group-hover/item:text-primary group-hover/item:translate-x-0.5" />
                           </button>
                         );
                       })}
-                      <div className="border-t" />
+                      
+                      <div className="mx-4 my-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                      
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-accent/50 transition-colors"
+                        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent/50 active:bg-accent transition-all duration-200 group/all"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => runSearch(searchValue)}
                       >
-                        <span className="text-sm font-medium">View all results</span>
-                        <span className="text-xs text-muted-foreground">Enter</span>
+                        <span className="text-sm font-semibold text-primary">View all results</span>
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">Go</span>
                       </button>
                     </div>
                   ) : (
-                    <div className="px-3 py-3 text-sm text-muted-foreground">
-                      No products found.
+                    <div className="px-4 py-6 text-center">
+                      <Search className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No products found</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
                     </div>
                   )}
                 </div>
