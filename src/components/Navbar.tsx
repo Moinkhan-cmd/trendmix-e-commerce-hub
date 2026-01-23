@@ -62,6 +62,7 @@ const Navbar = () => {
   const lastScrollY = useRef(0);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [desktopCategoryDropdownOpen, setDesktopCategoryDropdownOpen] = useState(false);
   const [categoryImagesBySlug, setCategoryImagesBySlug] = useState<Record<string, string>>({});
 
   const [searchCatalog, setSearchCatalog] = useState<SearchProduct[]>([]);
@@ -201,6 +202,9 @@ const Navbar = () => {
     return activeCategory === item.category;
   };
 
+  // Check if any interactive element is open (prevent navbar hide)
+  const isInteractiveOpen = searchFocused || searchDropdownOpen || mobileSearchOpen || mobileCategoriesOpen || desktopCategoryDropdownOpen;
+
   useEffect(() => {
     const onScroll = () => {
       const currentScrollY = window.scrollY;
@@ -208,12 +212,12 @@ const Navbar = () => {
       // Determine if scrolled past threshold for styling
       setIsScrolled(currentScrollY > 8);
       
-      // Hide/show based on scroll direction
-      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+      // Hide/show based on scroll direction (but not when interactive elements are open)
+      if (!isInteractiveOpen && currentScrollY > lastScrollY.current && currentScrollY > 100) {
         // Scrolling down & past threshold - hide
         setIsHidden(true);
       } else {
-        // Scrolling up - show
+        // Scrolling up or interactive open - show
         setIsHidden(false);
       }
       
@@ -223,7 +227,7 @@ const Navbar = () => {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isInteractiveOpen]);
 
   // Optional: use category images from Firestore when present.
   // Falls back to local images for the default categories.
@@ -447,7 +451,7 @@ const Navbar = () => {
 
           {/* Categories: Dropdown (desktop) + Sheet (mobile) */}
           <div className="hidden lg:block">
-            <DropdownMenu>
+            <DropdownMenu open={desktopCategoryDropdownOpen} onOpenChange={setDesktopCategoryDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
