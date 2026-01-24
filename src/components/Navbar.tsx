@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Heart, LayoutGrid, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { Check, ChevronDown, Heart, LayoutGrid, Menu, Mic, MicOff, Search, ShoppingCart, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +18,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -28,6 +28,7 @@ import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import { buildUiCategoriesFromDocs } from "@/lib/ui-categories";
 import { useShop } from "@/store/shop";
 import { formatCurrency } from "@/lib/orders";
+import { useVoiceSearch } from "@/hooks/use-voice-search";
 
 type WithId<T> = T & { id: string };
 
@@ -76,6 +77,14 @@ const Navbar = () => {
   const [searchValue, setSearchValue] = useState(activeQuery);
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
+
+  // Voice search hook
+  const handleVoiceResult = useCallback((transcript: string) => {
+    setSearchValue(transcript);
+    setSearchDropdownOpen(true);
+  }, []);
+  
+  const { isListening, isSupported: voiceSupported, toggleListening } = useVoiceSearch(handleVoiceResult);
 
   // Typing animation for search placeholder
   const placeholderTexts = useMemo(() => [
@@ -442,9 +451,36 @@ const Navbar = () => {
                 aria-label="Search products"
               />
 
+              {/* Voice search button */}
+              {voiceSupported && (
+                <div className={cn(
+                  "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
+                  searchValue.trim() ? "right-[88px]" : "right-[72px]"
+                )}>
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={cn(
+                      "h-7 w-7 rounded-full grid place-items-center transition-all duration-300",
+                      isListening 
+                        ? "bg-destructive/10 text-destructive animate-pulse" 
+                        : "text-muted-foreground hover:text-primary hover:bg-accent/50 hover:scale-110 active:scale-90"
+                    )}
+                    aria-label={isListening ? "Stop voice search" : "Start voice search"}
+                  >
+                    {isListening ? (
+                      <MicOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Mic className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              )}
+
               {/* Clear button with enhanced animation */}
               <div className={cn(
-                "absolute right-14 top-1/2 -translate-y-1/2 transition-all duration-300",
+                "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
+                voiceSupported ? "right-[60px]" : "right-14",
                 searchValue.trim() ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
               )}>
                 <button
@@ -464,7 +500,7 @@ const Navbar = () => {
               <button
                 type="submit"
                 className={cn(
-                  "absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full text-xs font-semibold transition-all duration-300",
+                  "absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full text-xs font-semibold transition-all duration-300",
                   "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground",
                   "hover:shadow-[0_4px_16px_hsl(var(--primary)/0.4)] hover:scale-[1.02] hover:-translate-y-[51%]",
                   "active:scale-95 active:shadow-none",
@@ -472,7 +508,7 @@ const Navbar = () => {
                 )}
                 aria-label="Search"
               >
-                Search
+                <Search className="h-3.5 w-3.5" />
               </button>
             </form>
 
@@ -909,9 +945,36 @@ const Navbar = () => {
                 aria-label="Search products"
               />
 
+              {/* Voice search button */}
+              {voiceSupported && (
+                <div className={cn(
+                  "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
+                  searchValue.trim() ? "right-[88px]" : "right-[72px]"
+                )}>
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={cn(
+                      "h-7 w-7 rounded-full grid place-items-center transition-all duration-300",
+                      isListening 
+                        ? "bg-destructive/10 text-destructive animate-pulse" 
+                        : "text-muted-foreground hover:text-primary hover:bg-accent/50 hover:scale-110 active:scale-90"
+                    )}
+                    aria-label={isListening ? "Stop voice search" : "Start voice search"}
+                  >
+                    {isListening ? (
+                      <MicOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Mic className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              )}
+
               {/* Clear button with animation */}
               <div className={cn(
-                "absolute right-14 top-1/2 -translate-y-1/2 transition-all duration-300",
+                "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
+                voiceSupported ? "right-[60px]" : "right-14",
                 searchValue.trim() ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
               )}>
                 <button
@@ -931,14 +994,14 @@ const Navbar = () => {
               <button
                 type="submit"
                 className={cn(
-                  "absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full text-xs font-semibold transition-all duration-300",
+                  "absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-3 rounded-full text-xs font-semibold transition-all duration-300",
                   "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground",
                   "hover:shadow-[0_4px_16px_hsl(var(--primary)/0.4)] active:scale-95",
                   searchFocused && "from-primary via-primary/95 to-secondary/80"
                 )}
                 aria-label="Search"
               >
-                Go
+                <Search className="h-3.5 w-3.5" />
               </button>
             </form>
 
