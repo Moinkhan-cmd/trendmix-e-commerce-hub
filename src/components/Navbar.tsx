@@ -138,7 +138,9 @@ const Navbar = () => {
     }
   }, [searchFocused, searchValue]);
 
-  const animatedPlaceholder = searchFocused || searchValue ? "Search products..." : displayedPlaceholder || "Search...";
+  // Add blinking cursor effect to the animated placeholder
+  const showCursor = !searchFocused && !searchValue;
+  const animatedPlaceholder = searchFocused || searchValue ? "Search products..." : (displayedPlaceholder || "Search");
 
   useEffect(() => {
     setSearchValue(activeQuery);
@@ -428,13 +430,14 @@ const Navbar = () => {
                     if (activeQuery) runSearch("", { closeMobile: false, replace: true });
                   }
                 }}
-                placeholder={animatedPlaceholder}
+                placeholder={animatedPlaceholder + (showCursor ? "|" : "")}
                 className={cn(
                   "relative h-10 lg:h-11 w-full rounded-full border-2 bg-background/80 pl-10 pr-24 text-sm transition-all duration-300",
                   "border-border/40 hover:border-border/60 hover:bg-background/90",
                   "focus-visible:ring-0 focus-visible:border-primary/50 focus-visible:bg-background focus-visible:shadow-[0_0_20px_hsl(var(--primary)/0.15),inset_0_1px_2px_hsl(var(--primary)/0.05)]",
                   "placeholder:text-muted-foreground/60 placeholder:transition-all placeholder:duration-300",
-                  searchFocused && "placeholder:translate-x-1 placeholder:opacity-60"
+                  searchFocused && "placeholder:translate-x-1 placeholder:opacity-60",
+                  showCursor && "placeholder:animate-[blink-cursor_1s_step-end_infinite]"
                 )}
                 aria-label="Search products"
               />
@@ -894,12 +897,13 @@ const Navbar = () => {
                     if (activeQuery) runSearch("", { replace: true });
                   }
                 }}
-                placeholder={animatedPlaceholder}
+                placeholder={animatedPlaceholder + (showCursor ? "|" : "")}
                 className={cn(
                   "relative h-11 w-full rounded-full border-2 bg-background/90 pl-10 pr-24 text-sm transition-all duration-300",
                   "border-border/40 hover:border-border/60",
                   "focus-visible:ring-0 focus-visible:border-primary/50 focus-visible:bg-background focus-visible:shadow-[0_0_20px_hsl(var(--primary)/0.15),inset_0_1px_2px_hsl(var(--primary)/0.05)]",
-                  "placeholder:text-muted-foreground/60"
+                  "placeholder:text-muted-foreground/60",
+                  showCursor && "placeholder:animate-blink-cursor"
                 )}
                 autoFocus={mobileSearchOpen}
                 aria-label="Search products"

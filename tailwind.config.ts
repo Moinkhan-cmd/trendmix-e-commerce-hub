@@ -103,11 +103,16 @@ export default {
           "42%": { transform: "scale(1.25)" },
           "70%": { transform: "scale(1)" },
         },
+        "blink-cursor": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         heartbeat: "heartbeat 1.4s ease-in-out infinite",
+        "blink-cursor": "blink-cursor 1s step-end infinite",
       },
     },
   },
