@@ -124,10 +124,6 @@ const productFormSchema = z
             }),
         { message: "All Image URLs must be valid URLs" },
       ),
-    weightKg: optionalNumber,
-    dimensionLengthCm: optionalNumber,
-    dimensionWidthCm: optionalNumber,
-    dimensionHeightCm: optionalNumber,
     specifications: z.array(specSectionSchema).optional().default([]),
   })
   .refine(
@@ -159,10 +155,6 @@ const defaultProductValues: ProductFormValues = {
   stock: 10,
   published: true,
   imageUrls: [{ value: "" }],
-  weightKg: undefined,
-  dimensionLengthCm: undefined,
-  dimensionWidthCm: undefined,
-  dimensionHeightCm: undefined,
   specifications: [],
 };
 
