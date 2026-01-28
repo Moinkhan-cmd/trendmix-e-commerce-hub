@@ -355,33 +355,51 @@ const Navbar = () => {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300",
-        isScrolled ? "bg-background/80 border-border/70" : "bg-background/60 border-border/50",
+        "sticky top-0 z-50 w-full backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 transition-all duration-500 ease-out",
+        isScrolled 
+          ? "bg-background/85 border-b border-border/40" 
+          : "bg-background/40 border-b border-transparent",
         isHidden ? "-translate-y-full shadow-none" : "translate-y-0",
-        !isHidden && isScrolled && "shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.15)] dark:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.25)]"
+        !isHidden && isScrolled && "shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.12),0_4px_16px_-4px_hsl(var(--foreground)/0.05)] dark:shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.2),0_4px_16px_-4px_hsl(var(--primary)/0.1)]"
       )}
     >
-      <div className="container flex h-14 sm:h-16 items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
+      {/* Animated gradient accent line at top */}
+      <div className={cn(
+        "absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent transition-opacity duration-500",
+        isScrolled ? "opacity-100" : "opacity-0"
+      )} />
+      
+      {/* Subtle gradient overlay for depth */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background/10 pointer-events-none" />
+      
+      <div className="container relative flex h-14 sm:h-16 items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
         {/* Logo */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <Link
             to="/"
-            className="group flex items-center gap-1.5 sm:gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group flex items-center gap-1.5 sm:gap-2 rounded-xl px-2 py-1.5 -mx-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 hover:bg-accent/10"
             aria-label="Go to home"
           >
             <span className="relative flex-shrink-0">
               <img
                 src={logoImg}
                 alt="TrendMix logo"
-                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
+                className="h-7 w-7 sm:h-9 sm:w-9 rounded-xl object-cover transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
                 loading="eager"
                 decoding="async"
               />
-              <span className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary/0 transition-all duration-300 group-hover:ring-primary/30 group-hover:scale-110" />
+              <span className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-primary/0 transition-all duration-500 group-hover:ring-primary/40 group-hover:scale-110 group-hover:rotate-3" />
+              {/* Subtle glow behind logo */}
+              <span className="pointer-events-none absolute -inset-1 rounded-xl bg-primary/0 blur-md transition-all duration-500 group-hover:bg-primary/20" />
             </span>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300 group-hover:tracking-wide group-hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.3)] hidden sm:block">
-              TrendMix
-            </h1>
+            <div className="hidden sm:flex flex-col">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary via-primary/90 to-secondary bg-clip-text text-transparent transition-all duration-500 group-hover:tracking-wide">
+                TrendMix
+              </h1>
+              <span className="text-[10px] font-medium text-muted-foreground/70 -mt-0.5 tracking-widest uppercase transition-colors duration-300 group-hover:text-primary/60">
+                Style Redefined
+              </span>
+            </div>
           </Link>
         </div>
 
@@ -798,14 +816,14 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-110 hover:text-primary active:scale-95 hidden sm:inline-flex group"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
             aria-label="Cart"
             asChild
           >
             <Link to="/cart">
-              <ShoppingCart className="h-5 w-5 transition-transform duration-300 group-hover:rotate-[-8deg]" />
+              <ShoppingCart className="h-5 w-5 transition-all duration-300 group-hover:rotate-[-8deg] group-hover:text-primary" />
               {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[10px] sm:text-xs font-semibold flex items-center justify-center shadow-lg shadow-primary/30 animate-in zoom-in duration-200">
                   {cartCount}
                 </span>
               )}
@@ -815,14 +833,14 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-110 hover:text-primary active:scale-95 hidden sm:inline-flex group"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
             aria-label="Wishlist"
             asChild
           >
             <Link to="/wishlist">
-              <Heart className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+              <Heart className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary group-hover:fill-primary/20" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 min-w-4 sm:h-5 sm:min-w-5 px-0.5 sm:px-1 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 min-w-4 sm:h-5 sm:min-w-5 px-0.5 sm:px-1 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[10px] sm:text-xs font-semibold flex items-center justify-center shadow-lg shadow-primary/30 animate-in zoom-in duration-200">
                   {wishlistCount}
                 </span>
               )}
@@ -832,12 +850,12 @@ const Navbar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 transition-all duration-300 hover:bg-accent/50 hover:scale-110 hover:text-primary active:scale-95 hidden sm:inline-flex group"
+            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
             aria-label="Profile"
             asChild
           >
             <Link to="/account">
-              <User className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+              <User className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary" />
             </Link>
           </Button>
         </div>
