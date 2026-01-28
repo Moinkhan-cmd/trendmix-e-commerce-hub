@@ -259,6 +259,41 @@
   }
   .ripple-3d:active::after { transform: scale(0, 0); opacity: 0.3; transition: 0s; }
 
+  /* Navbar shimmer effect */
+  .navbar-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .navbar-shimmer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--primary) / 0.03),
+      hsl(var(--primary) / 0.08),
+      hsl(var(--primary) / 0.03),
+      transparent
+    );
+    transform: skewX(-20deg);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .navbar-shimmer:hover::before {
+    opacity: 1;
+    animation: navbarShimmer 1.5s ease-in-out infinite;
+  }
+  @keyframes navbarShimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+  }
+
   .magnetic { transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); }
 
   /* Keep Sparkles icon non-responsive when it's sized as w-6/h-6.

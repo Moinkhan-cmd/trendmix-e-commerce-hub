@@ -355,7 +355,7 @@ const Navbar = () => {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 transition-all duration-500 ease-out",
+        "sticky top-0 z-50 w-full backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 transition-all duration-500 ease-out navbar-shimmer",
         isScrolled 
           ? "bg-background/85 border-b border-border/40" 
           : "bg-background/40 border-b border-transparent",
