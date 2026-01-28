@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Heart, LayoutGrid, Menu, Mic, MicOff, Search, ShoppingCart, User, X } from "lucide-react";
+import { Check, ChevronDown, Heart, LayoutGrid, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +28,7 @@ import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import { buildUiCategoriesFromDocs } from "@/lib/ui-categories";
 import { useShop } from "@/store/shop";
 import { formatCurrency } from "@/lib/orders";
-import { useVoiceSearch } from "@/hooks/use-voice-search";
+
 
 type WithId<T> = T & { id: string };
 
@@ -78,13 +78,6 @@ const Navbar = () => {
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
 
-  // Voice search hook
-  const handleVoiceResult = useCallback((transcript: string) => {
-    setSearchValue(transcript);
-    setSearchDropdownOpen(true);
-  }, []);
-  
-  const { isListening, isSupported: voiceSupported, toggleListening } = useVoiceSearch(handleVoiceResult);
 
   // Typing animation for search placeholder
   const placeholderTexts = useMemo(() => [
@@ -451,36 +444,9 @@ const Navbar = () => {
                 aria-label="Search products"
               />
 
-              {/* Voice search button */}
-              {voiceSupported && (
-                <div className={cn(
-                  "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
-                  searchValue.trim() ? "right-[88px]" : "right-[72px]"
-                )}>
-                  <button
-                    type="button"
-                    onClick={toggleListening}
-                    className={cn(
-                      "h-7 w-7 rounded-full grid place-items-center transition-all duration-300",
-                      isListening 
-                        ? "bg-destructive/10 text-destructive animate-pulse" 
-                        : "text-muted-foreground hover:text-primary hover:bg-accent/50 hover:scale-110 active:scale-90"
-                    )}
-                    aria-label={isListening ? "Stop voice search" : "Start voice search"}
-                  >
-                    {isListening ? (
-                      <MicOff className="h-3.5 w-3.5" />
-                    ) : (
-                      <Mic className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-              )}
-
               {/* Clear button with enhanced animation */}
               <div className={cn(
-                "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
-                voiceSupported ? "right-[60px]" : "right-14",
+                "absolute right-14 top-1/2 -translate-y-1/2 transition-all duration-300",
                 searchValue.trim() ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
               )}>
                 <button
@@ -945,36 +911,9 @@ const Navbar = () => {
                 aria-label="Search products"
               />
 
-              {/* Voice search button */}
-              {voiceSupported && (
-                <div className={cn(
-                  "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
-                  searchValue.trim() ? "right-[88px]" : "right-[72px]"
-                )}>
-                  <button
-                    type="button"
-                    onClick={toggleListening}
-                    className={cn(
-                      "h-7 w-7 rounded-full grid place-items-center transition-all duration-300",
-                      isListening 
-                        ? "bg-destructive/10 text-destructive animate-pulse" 
-                        : "text-muted-foreground hover:text-primary hover:bg-accent/50 hover:scale-110 active:scale-90"
-                    )}
-                    aria-label={isListening ? "Stop voice search" : "Start voice search"}
-                  >
-                    {isListening ? (
-                      <MicOff className="h-3.5 w-3.5" />
-                    ) : (
-                      <Mic className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-              )}
-
               {/* Clear button with animation */}
               <div className={cn(
-                "absolute top-1/2 -translate-y-1/2 transition-all duration-300",
-                voiceSupported ? "right-[60px]" : "right-14",
+                "absolute right-14 top-1/2 -translate-y-1/2 transition-all duration-300",
                 searchValue.trim() ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
               )}>
                 <button
