@@ -52,21 +52,21 @@ const ProductCard = ({
     const key = String(b ?? "").trim().toLowerCase();
     switch (key) {
       case "bestseller":
-        return "bg-purple-600 text-white hover:bg-purple-600";
+        return "bg-gradient-to-r from-purple-600 to-purple-500 text-white hover:from-purple-500 hover:to-purple-600 shadow-sm";
       case "trending":
-        return "bg-blue-600 text-white hover:bg-blue-600";
+        return "bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-600 shadow-sm";
       case "new":
-        return "bg-emerald-600 text-white hover:bg-emerald-600";
+        return "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-500 hover:to-emerald-600 shadow-sm";
       case "hot":
-        return "bg-rose-600 text-white hover:bg-rose-600";
+        return "bg-gradient-to-r from-rose-600 to-rose-500 text-white hover:from-rose-500 hover:to-rose-600 shadow-sm";
       case "limited":
-        return "bg-amber-600 text-white hover:bg-amber-600";
+        return "bg-gradient-to-r from-amber-600 to-amber-500 text-white hover:from-amber-500 hover:to-amber-600 shadow-sm";
       case "exclusive":
-        return "bg-slate-900 text-white hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100";
+        return "bg-gradient-to-r from-slate-800 to-slate-700 text-white hover:from-slate-700 hover:to-slate-800 dark:from-slate-200 dark:to-slate-100 dark:text-slate-900 shadow-sm";
       case "sale":
-        return "bg-primary text-primary-foreground hover:bg-primary";
+        return "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm";
       default:
-        return "bg-primary text-primary-foreground hover:bg-primary";
+        return "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-sm";
     }
   };
 
@@ -84,8 +84,11 @@ const ProductCard = ({
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-lg xs:rounded-xl sm:rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative flex flex-col overflow-hidden rounded-xl xs:rounded-2xl border border-border/50 bg-card shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20"
     >
+      {/* Subtle gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+      
       <div className="relative">
         <Link to={`/product/${id}`} aria-label={`View ${name}`}>
           <div className="aspect-square overflow-hidden bg-muted">
@@ -93,15 +96,15 @@ const ProductCard = ({
               <img
                 src={image}
                 alt={name}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                className="h-full w-full object-cover transition-all duration-700 group-hover:scale-110"
                 loading="lazy"
                 decoding="async"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-muted">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/80">
                 <div className="flex flex-col items-center gap-1.5 xs:gap-2 text-muted-foreground">
-                  <ImageIcon className="h-6 w-6 xs:h-8 xs:w-8 sm:h-10 sm:w-10 text-muted-foreground/50" />
-                  <span className="text-[9px] xs:text-[10px] sm:text-[11px]">No image</span>
+                  <ImageIcon className="h-6 w-6 xs:h-8 xs:w-8 sm:h-10 sm:w-10 text-muted-foreground/40" />
+                  <span className="text-[9px] xs:text-[10px] sm:text-[11px] text-muted-foreground/60">No image</span>
                 </div>
               </div>
             )}
@@ -114,7 +117,7 @@ const ProductCard = ({
               <Badge
                 key={b}
                 className={
-                  "text-[9px] xs:text-[10px] sm:text-xs px-1.5 xs:px-2 " +
+                  "text-[9px] xs:text-[10px] sm:text-xs px-1.5 xs:px-2 py-0.5 " +
                   badgeClass(b)
                 }
               >
@@ -125,7 +128,7 @@ const ProductCard = ({
         ) : null}
 
         {discount > 0 ? (
-          <Badge className="absolute top-1.5 right-1.5 xs:top-2 xs:right-2 sm:top-3 sm:right-3 text-[9px] xs:text-[10px] sm:text-xs px-1.5 xs:px-2 bg-destructive text-destructive-foreground">
+          <Badge className="absolute top-1.5 right-1.5 xs:top-2 xs:right-2 sm:top-3 sm:right-3 text-[9px] xs:text-[10px] sm:text-xs px-1.5 xs:px-2 py-0.5 bg-gradient-to-r from-destructive to-destructive/80 text-destructive-foreground shadow-sm">
             -{discount}%
           </Badge>
         ) : null}
@@ -133,7 +136,7 @@ const ProductCard = ({
         <Button
           size="icon"
           variant="ghost"
-          className="absolute right-1.5 top-8 xs:right-2 xs:top-10 sm:right-3 sm:top-12 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all duration-200 bg-background/70 backdrop-blur hover:bg-background h-7 w-7 xs:h-8 xs:w-8 sm:h-10 sm:w-10"
+          className="absolute right-1.5 top-8 xs:right-2 xs:top-10 sm:right-3 sm:top-12 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/80 backdrop-blur-sm hover:bg-background hover:scale-110 h-7 w-7 xs:h-8 xs:w-8 sm:h-10 sm:w-10 rounded-full shadow-md border border-border/50"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -141,42 +144,42 @@ const ProductCard = ({
           }}
           aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart className={wished ? "h-3.5 w-3.5 xs:h-4 xs:w-4 fill-primary text-primary" : "h-3.5 w-3.5 xs:h-4 xs:w-4"} />
+          <Heart className={wished ? "h-3.5 w-3.5 xs:h-4 xs:w-4 fill-primary text-primary animate-heartbeat" : "h-3.5 w-3.5 xs:h-4 xs:w-4 transition-colors"} />
         </Button>
       </div>
 
-      <div className="flex flex-1 flex-col p-2 xs:p-2.5 sm:p-4">
+      <div className="relative flex flex-1 flex-col p-2.5 xs:p-3 sm:p-4">
         <Link to={`/product/${id}`} className="group/title">
-          <h3 className="min-h-[2rem] xs:min-h-[2.25rem] sm:min-h-[2.75rem] text-[11px] xs:text-xs sm:text-sm font-medium leading-snug line-clamp-2 transition-colors group-hover/title:text-primary">
+          <h3 className="min-h-[2rem] xs:min-h-[2.25rem] sm:min-h-[2.75rem] text-[11px] xs:text-xs sm:text-sm font-medium leading-snug line-clamp-2 transition-colors duration-300 group-hover/title:text-primary">
             {name}
           </h3>
         </Link>
 
-        <div className="mt-1 xs:mt-1.5 sm:mt-2 flex items-center gap-0.5">
+        <div className="mt-1.5 xs:mt-2 sm:mt-2.5 flex items-center gap-0.5">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
               key={i}
               className={
                 i < Math.floor(rating)
-                  ? "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 fill-primary text-primary"
-                  : "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-muted-foreground/30"
+                  ? "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 fill-amber-400 text-amber-400"
+                  : "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-muted-foreground/20"
               }
             />
           ))}
-          <span className="ml-0.5 text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground">({reviews})</span>
+          <span className="ml-1 text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground">({reviews})</span>
         </div>
 
-        <div className="mt-1.5 xs:mt-2 sm:mt-3 flex items-end justify-between gap-1 xs:gap-2 sm:gap-3">
-          <div className="flex flex-wrap items-baseline gap-0.5 xs:gap-1 sm:gap-2">
-            <span className="text-xs xs:text-sm sm:text-base font-semibold">{priceText}</span>
+        <div className="mt-2 xs:mt-2.5 sm:mt-3 flex items-end justify-between gap-1 xs:gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-baseline gap-1 xs:gap-1.5 sm:gap-2">
+            <span className="text-sm xs:text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{priceText}</span>
             {originalPriceText ? (
-              <span className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground line-through">{originalPriceText}</span>
+              <span className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground/60 line-through">{originalPriceText}</span>
             ) : null}
           </div>
         </div>
 
         <Button
-          className="mt-2 xs:mt-2.5 sm:mt-4 w-full h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm"
+          className="mt-2.5 xs:mt-3 sm:mt-4 w-full h-8 xs:h-9 sm:h-10 text-[10px] xs:text-xs sm:text-sm font-medium rounded-lg bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
           size="sm"
           onClick={() => addToCart({ id, name, price, image }, 1)}
         >
