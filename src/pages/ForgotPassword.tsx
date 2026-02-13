@@ -9,7 +9,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FloatingElement } from "@/components/Card3D";
 import { useAuth } from "@/auth/AuthProvider";
-import { getRecaptchaToken, verifyRecaptchaAssessment } from "@/lib/recaptcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,13 +31,10 @@ function getReadableResetError(message: string): string {
   if (normalized.includes("network")) {
     return "Network error. Please check your connection and try again.";
   }
-  if (normalized.includes("security") || normalized.includes("captcha")) {
-    return "Security verification failed. Please refresh and try again.";
-  }
   if (normalized.includes("too many")) {
     return "Too many attempts. Please wait and try again.";
   }
-  if (normalized.includes("invalid-email")) {
+  if (normalized.includes("invalid-email") || normalized.includes("invalid email")) {
     return "Please enter a valid email address.";
   }
 
@@ -101,8 +97,6 @@ export default function ForgotPassword() {
     setSuccessMessage(null);
 
     try {
-      const token = await getRecaptchaToken("forgot_password");
-      await verifyRecaptchaAssessment(token, "forgot_password");
       await resetPassword(data.email);
 
       setSuccessMessage(SUCCESS_MESSAGE);

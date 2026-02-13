@@ -270,7 +270,7 @@ export default function Login() {
                         to="/forgot-password"
                         className="text-sm text-primary hover:underline transition-colors hover:text-primary/80"
                       >
-                        Forgot password?
+                        Forgot Password?
                       </Link>
                     </div>
                     <div className="relative group">
