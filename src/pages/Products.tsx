@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { SlidersHorizontal, ImageIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
@@ -27,6 +28,7 @@ type SortOption = "featured" | "price-low" | "price-high" | "newest" | "rating";
 
 const DEFAULT_PRICE_MAX = 2000;
 const DEFAULT_PRICE_RANGE: [number, number] = [0, DEFAULT_PRICE_MAX];
+const priceCurrency = new Intl.NumberFormat("en-IN");
 
 function isPublished(value: unknown): boolean {
   // Be tolerant of legacy/incorrectly-typed data coming from Firestore.
@@ -52,6 +54,8 @@ const Products = () => {
   const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([]);
 
   const [priceRange, setPriceRange] = useState<[number, number]>(DEFAULT_PRICE_RANGE);
+  const [priceInputMin, setPriceInputMin] = useState<string>(String(DEFAULT_PRICE_RANGE[0]));
+  const [priceInputMax, setPriceInputMax] = useState<string>(String(DEFAULT_PRICE_RANGE[1]));
   const [minRating, setMinRating] = useState<number | null>(null);
   const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female" | "unisex">("all");
   const [sort, setSort] = useState<SortOption>("featured");
@@ -118,6 +122,14 @@ const Products = () => {
     return Math.max(DEFAULT_PRICE_MAX, maxInCatalog);
   }, [products]);
 
+  const priceStep = useMemo(() => {
+    if (priceSliderMax <= 2000) return 50;
+    if (priceSliderMax <= 10000) return 100;
+    return 500;
+  }, [priceSliderMax]);
+
+  const isDefaultPriceRange = priceRange[0] === 0 && priceRange[1] === priceSliderMax;
+
   // If the catalog contains products above the default max, expand the default range
   // so newly added products are visible without needing user interaction.
   useEffect(() => {
@@ -126,6 +138,11 @@ const Products = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceSliderMax]);
+
+  useEffect(() => {
+    setPriceInputMin(String(priceRange[0]));
+    setPriceInputMax(String(priceRange[1]));
+  }, [priceRange]);
 
   const filteredProducts = useMemo(() => {
     const [minPrice, maxPrice] = priceRange;
@@ -237,6 +254,36 @@ const Products = () => {
 
   const toggleMinRating = (rating: number) => {
     setMinRating((prev) => (prev === rating ? null : rating));
+  };
+
+  const clampPrice = (value: number) => {
+    if (!Number.isFinite(value)) return 0;
+    return Math.min(priceSliderMax, Math.max(0, Math.round(value)));
+  };
+
+  const updatePriceFromSlider = (value: number[]) => {
+    if (!Array.isArray(value) || value.length < 2) return;
+    const min = clampPrice(value[0]);
+    const max = clampPrice(value[1]);
+    setPriceRange([Math.min(min, max), Math.max(min, max)]);
+  };
+
+  const commitMinPriceInput = () => {
+    const parsed = Number(priceInputMin);
+    const nextMin = clampPrice(Number.isFinite(parsed) ? parsed : 0);
+    setPriceRange(([, currentMax]) => {
+      if (nextMin > currentMax) return [nextMin, nextMin];
+      return [nextMin, currentMax];
+    });
+  };
+
+  const commitMaxPriceInput = () => {
+    const parsed = Number(priceInputMax);
+    const nextMax = clampPrice(Number.isFinite(parsed) ? parsed : priceSliderMax);
+    setPriceRange(([currentMin]) => {
+      if (nextMax < currentMin) return [nextMax, nextMax];
+      return [currentMin, nextMax];
+    });
   };
 
   const clearFilters = () => {
@@ -429,17 +476,79 @@ const Products = () => {
                 </div>
 
                 <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
-                  <h3 className="text-xs sm:text-sm font-semibold">Price Range</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs sm:text-sm font-semibold">Price Range</h3>
+                    {!isDefaultPriceRange ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[10px] xs:text-xs"
+                        onClick={() => setPriceRange([0, priceSliderMax])}
+                      >
+                        Reset
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label htmlFor="price-min" className="text-[10px] xs:text-xs text-muted-foreground">
+                        Min
+                      </label>
+                      <Input
+                        id="price-min"
+                        type="number"
+                        min={0}
+                        max={priceRange[1]}
+                        step={priceStep}
+                        inputMode="numeric"
+                        value={priceInputMin}
+                        onChange={(e) => setPriceInputMin(e.target.value)}
+                        onBlur={commitMinPriceInput}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            (e.currentTarget as HTMLInputElement).blur();
+                          }
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="price-max" className="text-[10px] xs:text-xs text-muted-foreground">
+                        Max
+                      </label>
+                      <Input
+                        id="price-max"
+                        type="number"
+                        min={priceRange[0]}
+                        max={priceSliderMax}
+                        step={priceStep}
+                        inputMode="numeric"
+                        value={priceInputMax}
+                        onChange={(e) => setPriceInputMax(e.target.value)}
+                        onBlur={commitMaxPriceInput}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            (e.currentTarget as HTMLInputElement).blur();
+                          }
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
                   <Slider
                     value={priceRange}
-                    onValueChange={(value) => setPriceRange(value as [number, number])}
+                    onValueChange={updatePriceFromSlider}
                     max={priceSliderMax}
-                    step={50}
+                    step={priceStep}
                     className="mt-3 sm:mt-4 mb-3 sm:mb-4"
                   />
-                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                    <span>₹{priceRange[0]}</span>
-                    <span>₹{priceRange[1]}</span>
+
+                  <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2 text-[11px] xs:text-xs sm:text-sm">
+                    <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[0])}</span>
+                    <span className="font-medium text-foreground">to</span>
+                    <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[1])}</span>
                   </div>
                 </div>
 

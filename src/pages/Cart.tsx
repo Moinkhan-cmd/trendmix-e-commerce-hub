@@ -6,14 +6,30 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useShop } from '@/store/shop';
 import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useAuth } from '@/auth/AuthProvider';
+import CheckoutAuthModal from '@/components/CheckoutAuthModal';
+import { enableGuestCheckout } from '@/lib/checkout-session';
 
 const Cart = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { cartItems, cartCount, subtotal, setQty, removeFromCart, clearCart } = useShop();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   
   // Calculate shipping: free if subtotal >= 500, else Rs.50
   const shipping = subtotal >= 500 ? 0 : 50;
   const total = subtotal + shipping;
+
+  const handleProceedToCheckout = () => {
+    if (isAuthenticated) {
+      navigate('/checkout');
+      return;
+    }
+
+    setAuthModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -129,11 +145,9 @@ const Cart = () => {
                   <span>Total</span>
                   <span>Rs.{total}</span>
                 </div>
-                <Button className="w-full" size="lg" asChild>
-                  <Link to="/checkout">
-                    Proceed to Checkout
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                <Button className="w-full" size="lg" onClick={handleProceedToCheckout}>
+                  Proceed to Checkout
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
                   <Link to="/products">Continue Shopping</Link>
@@ -143,6 +157,17 @@ const Cart = () => {
           </div>
         )}
       </main>
+
+      <CheckoutAuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        onSuccess={() => navigate('/checkout')}
+        onContinueGuest={() => {
+          enableGuestCheckout();
+          setAuthModalOpen(false);
+          navigate('/checkout');
+        }}
+      />
 
       <Footer />
     </div>

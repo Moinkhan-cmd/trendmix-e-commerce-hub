@@ -33,16 +33,34 @@ export interface RazorpayVerifyResponse {
   success: boolean;
   message: string;
   paymentId: string;
+  orderId?: string;
+  orderNumber?: string;
 }
 
 export interface RazorpayCheckoutOptions {
-  amount: number; // in paise (₹1 = 100 paise)
-  currency?: string;
-  receipt?: string;
+  recaptchaToken: string;
+  guestCheckout?: boolean;
+  guestEmail?: string;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
-  orderDetails?: Record<string, unknown>;
+  orderDetails: {
+    items: Array<{
+      productId: string;
+      qty: number;
+    }>;
+    couponCode?: string;
+    customer: {
+      name: string;
+      email: string;
+      phone: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      notes?: string;
+    };
+  };
 }
 
 // Razorpay Checkout window type
@@ -74,6 +92,8 @@ const FUNCTIONS_BASE_URL = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
 
 const CREATE_ORDER_URL = `${FUNCTIONS_BASE_URL}/createRazorpayOrder`;
 const VERIFY_PAYMENT_URL = `${FUNCTIONS_BASE_URL}/verifyRazorpayPayment`;
+const CREATE_GUEST_ORDER_URL = `${FUNCTIONS_BASE_URL}/createGuestRazorpayOrder`;
+const VERIFY_GUEST_PAYMENT_URL = `${FUNCTIONS_BASE_URL}/verifyGuestRazorpayPayment`;
 
 // ─── Helpers ────────────────────────────────────────────────
 async function getAuthToken(): Promise<string> {
@@ -82,6 +102,11 @@ async function getAuthToken(): Promise<string> {
     throw new Error("User is not authenticated. Please log in to continue.");
   }
   return user.getIdToken();
+}
+
+async function maybeGetAuthToken(guestCheckout?: boolean): Promise<string | null> {
+  if (guestCheckout) return null;
+  return getAuthToken();
 }
 
 function ensureRazorpayLoaded(): void {
@@ -94,20 +119,21 @@ function ensureRazorpayLoaded(): void {
 
 // ─── Step 1: Create Razorpay Order via Cloud Function ───────
 async function createRazorpayOrder(
-  amount: number,
-  currency = "INR",
-  receipt?: string,
-  notes?: Record<string, string>
+  recaptchaToken: string,
+  orderDetails: RazorpayCheckoutOptions["orderDetails"],
+  guestCheckout?: boolean,
+  guestEmail?: string
 ): Promise<RazorpayOrderResponse> {
-  const token = await getAuthToken();
+  const token = await maybeGetAuthToken(guestCheckout);
+  const endpoint = guestCheckout ? CREATE_GUEST_ORDER_URL : CREATE_ORDER_URL;
 
-  const response = await fetch(CREATE_ORDER_URL, {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ amount, currency, receipt, notes }),
+    body: JSON.stringify({ recaptchaToken, orderDetails, guestEmail }),
   });
 
   if (!response.ok) {
@@ -121,21 +147,21 @@ async function createRazorpayOrder(
 // ─── Step 2: Verify Payment via Cloud Function ──────────────
 async function verifyRazorpayPayment(
   paymentResult: RazorpayPaymentResult,
-  amount: number,
-  orderDetails?: Record<string, unknown>
+  guestCheckout?: boolean,
+  guestEmail?: string
 ): Promise<RazorpayVerifyResponse> {
-  const token = await getAuthToken();
+  const token = await maybeGetAuthToken(guestCheckout);
+  const endpoint = guestCheckout ? VERIFY_GUEST_PAYMENT_URL : VERIFY_PAYMENT_URL;
 
-  const response = await fetch(VERIFY_PAYMENT_URL, {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({
       ...paymentResult,
-      amount,
-      orderDetails,
+      guestEmail,
     }),
   });
 
@@ -164,15 +190,17 @@ export async function initiateRazorpayPayment(
   success: boolean;
   paymentId?: string;
   orderId?: string;
+  orderNumber?: string;
   message: string;
 }> {
   ensureRazorpayLoaded();
 
   // Step 1: Create order on server
   const orderResponse = await createRazorpayOrder(
-    options.amount,
-    options.currency || "INR",
-    options.receipt
+    options.recaptchaToken,
+    options.orderDetails,
+    options.guestCheckout,
+    options.guestEmail
   );
 
   // Step 2: Open Razorpay Checkout
@@ -197,14 +225,15 @@ export async function initiateRazorpayPayment(
           // Step 3: Verify payment signature on server
           const verification = await verifyRazorpayPayment(
             response,
-            options.amount,
-            options.orderDetails
+            options.guestCheckout,
+            options.guestEmail
           );
 
           resolve({
             success: true,
             paymentId: response.razorpay_payment_id,
-            orderId: response.razorpay_order_id,
+            orderId: verification.orderId || response.razorpay_order_id,
+            orderNumber: verification.orderNumber,
             message: verification.message,
           });
         } catch (verifyError) {

@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/auth/AuthProvider";
 import { FloatingElement } from "@/components/Card3D";
+import { getRecaptchaToken, verifyRecaptchaAssessment } from "@/lib/recaptcha";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -21,6 +22,24 @@ const loginSchema = z.object({
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(message));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
 
 export default function Login() {
   const RESEND_COOLDOWN_SECONDS = 30;
@@ -46,6 +65,7 @@ export default function Login() {
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [localVerificationRequired, setLocalVerificationRequired] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [securityError, setSecurityError] = useState<string | null>(null);
 
   const setCooldown = (seconds: number) => {
     const nextSeconds = Math.max(0, Math.ceil(seconds));
@@ -126,13 +146,30 @@ export default function Login() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setResendMessage(null);
+    setSecurityError(null);
     clearError();
 
     try {
+      const recaptchaToken = await withTimeout(
+        getRecaptchaToken("login"),
+        10000,
+        "Security verification timed out. Please refresh and try again."
+      );
+      await withTimeout(
+        verifyRecaptchaAssessment(recaptchaToken, "login"),
+        10000,
+        "Security verification timed out. Please refresh and try again."
+      );
+
       await signIn(data.email, data.password);
       navigate(from, { replace: true });
-    } catch {
-      // Error is handled by AuthProvider
+    } catch (err) {
+      const message = (err as { message?: string })?.message || "";
+      if (message.toLowerCase().includes("security") || message.toLowerCase().includes("captcha")) {
+        setSecurityError(message);
+      } else {
+        setSecurityError(message || "Login failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -242,6 +279,13 @@ export default function Login() {
                     <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {securityError && (
+                    <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{securityError}</AlertDescription>
                     </Alert>
                   )}
 
