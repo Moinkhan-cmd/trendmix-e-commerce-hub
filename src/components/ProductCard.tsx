@@ -171,7 +171,7 @@ const ProductCard = ({
 
         <div className="mt-2 xs:mt-2.5 sm:mt-3 flex items-end justify-between gap-1 xs:gap-2 sm:gap-3">
           <div className="flex flex-wrap items-baseline gap-1 xs:gap-1.5 sm:gap-2">
-            <span className="text-sm xs:text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{priceText}</span>
+            <span className="text-sm xs:text-base sm:text-lg font-bold text-foreground">{priceText}</span>
             {originalPriceText ? (
               <span className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground/60 line-through">{originalPriceText}</span>
             ) : null}

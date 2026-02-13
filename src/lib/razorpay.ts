@@ -164,6 +164,7 @@ export async function initiateRazorpayPayment(
   success: boolean;
   paymentId?: string;
   orderId?: string;
+  verificationPending?: boolean;
   message: string;
 }> {
   ensureRazorpayLoaded();
@@ -177,6 +178,27 @@ export async function initiateRazorpayPayment(
 
   // Step 2: Open Razorpay Checkout
   return new Promise((resolve, reject) => {
+    let isSettled = false;
+    let isPaymentInProgress = false;
+
+    const settleResolve = (value: {
+      success: boolean;
+      paymentId?: string;
+      orderId?: string;
+      verificationPending?: boolean;
+      message: string;
+    }) => {
+      if (isSettled) return;
+      isSettled = true;
+      resolve(value);
+    };
+
+    const settleReject = (error: unknown) => {
+      if (isSettled) return;
+      isSettled = true;
+      reject(error);
+    };
+
     const razorpayOptions: Record<string, unknown> = {
       key: orderResponse.key, // Public Key ID from server
       amount: orderResponse.order.amount,
@@ -193,6 +215,7 @@ export async function initiateRazorpayPayment(
         color: "#6366f1", // Indigo – matches a common Tailwind primary
       },
       handler: async (response: RazorpayPaymentResult) => {
+        isPaymentInProgress = true;
         try {
           // Step 3: Verify payment signature on server
           const verification = await verifyRazorpayPayment(
@@ -201,19 +224,30 @@ export async function initiateRazorpayPayment(
             options.orderDetails
           );
 
-          resolve({
+          settleResolve({
             success: true,
             paymentId: response.razorpay_payment_id,
             orderId: response.razorpay_order_id,
             message: verification.message,
           });
         } catch (verifyError) {
-          reject(verifyError);
+          if (verifyError instanceof Error && /failed to fetch/i.test(verifyError.message)) {
+            settleResolve({
+              success: true,
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
+              verificationPending: true,
+              message: "Payment received. Verification is pending due to a temporary network issue.",
+            });
+            return;
+          }
+          settleReject(verifyError);
         }
       },
       modal: {
         ondismiss: () => {
-          resolve({
+          if (isPaymentInProgress) return;
+          settleResolve({
             success: false,
             message: "Payment cancelled by user",
           });
@@ -232,7 +266,7 @@ export async function initiateRazorpayPayment(
           reason?: string;
         };
       };
-      resolve({
+      settleResolve({
         success: false,
         message: resp?.error?.description || "Payment failed. Please try again.",
       });

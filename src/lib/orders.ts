@@ -528,9 +528,9 @@ export function validateCouponCode(code: string, subtotal: number): { valid: boo
     return { valid: false, discount: 0, error: "Invalid coupon code" };
   }
   
-  // Apply 10% discount for valid coupon
-  // Use precise rounding for currency: multiply by 10, round, then divide by 100
-  const discount = Math.round(subtotal * 10) / 100;
+  // Apply flat ₹150 discount for valid coupon.
+  // Clamp to subtotal so discount never exceeds payable item amount.
+  const discount = Math.min(150, subtotal);
   
   return { valid: true, discount };
 }

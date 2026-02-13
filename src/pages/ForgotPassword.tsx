@@ -21,7 +21,8 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
-const SUCCESS_MESSAGE = "If an account exists, a password reset link has been sent.";
+const SUCCESS_MESSAGE =
+  "If an account exists, a password reset link has been sent. Please check your inbox and spam/junk folder.";
 const REQUEST_COOLDOWN_SECONDS = 30;
 const COOLDOWN_STORAGE_KEY = "trendmix_password_reset_cooldown_until";
 

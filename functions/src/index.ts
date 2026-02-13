@@ -3,15 +3,37 @@ import * as admin from "firebase-admin";
 import Razorpay from "razorpay";
 import * as crypto from "crypto";
 import cors from "cors";
+import sgMail from "@sendgrid/mail";
+import { defineSecret, defineString } from "firebase-functions/params";
 
 // ─── Firebase Admin Init ────────────────────────────────────
 admin.initializeApp();
 const db = admin.firestore();
 
+const SENDGRID_KEY = defineSecret("SENDGRID_KEY");
+const SENDGRID_FROM_EMAIL = defineString("SENDGRID_FROM_EMAIL", { default: "" });
+const SENDGRID_FROM_NAME = defineString("SENDGRID_FROM_NAME", { default: "TrendMix" });
+const SENDGRID_ADMIN_EMAIL = defineString("SENDGRID_ADMIN_EMAIL", { default: "" });
+
 // ─── CORS (allow your frontend origins) ─────────────────────
 const corsHandler = cors({
   origin: true, // In production, restrict to your domain(s)
 });
+
+function normalizeText(value: unknown, maxLength = 200): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function normalizeEmail(value: unknown): string {
+  return normalizeText(value, 254).toLowerCase();
+}
+
+function formatInr(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "₹0.00";
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 // ─── Razorpay Instance ──────────────────────────────────────
 // Credentials are loaded from functions/.env (see .env.example)
@@ -198,7 +220,7 @@ export const verifyRazorpayPayment = functions.https.onRequest((req, res) => {
       }
 
       // ── Verify Signature ──────────────────────────────────
-      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim().replace(/^"|"$/g, "");
       if (!keySecret) {
         throw new Error("RAZORPAY_KEY_SECRET is not configured");
       }
@@ -264,3 +286,107 @@ export const verifyRazorpayPayment = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+export const onOrderCreatedSendEmailNotifications = functions
+  .runWith({ secrets: [SENDGRID_KEY] })
+  .firestore
+  .document("orders/{orderId}")
+  .onCreate(async (snapshot, context) => {
+    const orderId = String(context.params.orderId ?? snapshot.id);
+    const orderData = snapshot.data() as Record<string, unknown>;
+
+    if (orderData.emailSent === true) {
+      return null;
+    }
+
+    const settingsSnap = await db.collection("settings").doc("notifications").get();
+    const settingsData = settingsSnap.exists ? (settingsSnap.data() as Record<string, unknown>) : {};
+
+    if (settingsData.notifyOnNewOrder === false) {
+      return null;
+    }
+
+    const apiKey = normalizeText(SENDGRID_KEY.value(), 5000);
+    const fromEmail = normalizeEmail(SENDGRID_FROM_EMAIL.value());
+    const fromName = normalizeText(SENDGRID_FROM_NAME.value(), 120) || "TrendMix";
+    const adminEmail = normalizeEmail(settingsData.adminEmail || SENDGRID_ADMIN_EMAIL.value());
+
+    if (!apiKey || !fromEmail || !adminEmail) {
+      console.error("SendGrid configuration missing for order notifications", { orderId });
+      return null;
+    }
+
+    const payment = (orderData.payment ?? {}) as Record<string, unknown>;
+    const customer = (orderData.customer ?? {}) as Record<string, unknown>;
+    const items = Array.isArray(orderData.items) ? orderData.items : [];
+
+    const paymentMethod = normalizeText(payment.method, 40) || "N/A";
+    const paymentStatus = normalizeText(payment.status, 40) || "N/A";
+    const paymentId = normalizeText(payment.transactionId, 120) || "N/A";
+
+    const orderNumber = normalizeText(orderData.orderNumber, 80) || orderId;
+    const customerName = normalizeText(customer.name, 120) || "Customer";
+    const customerEmail = normalizeEmail(customer.email) || "N/A";
+    const customerPhone = normalizeText(customer.phone, 30) || "N/A";
+    const address = [
+      normalizeText(customer.address, 250),
+      normalizeText(customer.city, 80),
+      normalizeText(customer.state, 80),
+      normalizeText(customer.pincode, 20),
+    ]
+      .filter(Boolean)
+      .join(", ") || "N/A";
+
+    const itemsText = items
+      .map((entry) => {
+        const item = (typeof entry === "object" && entry !== null ? entry : {}) as Record<string, unknown>;
+        const itemName = normalizeText(item.name, 160) || "Item";
+        const qty = Number(item.qty ?? 1);
+        const price = Number(item.price ?? 0);
+        const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+        return `${itemName} x${safeQty} (${formatInr(price)})`;
+      })
+      .join(" | ") || "N/A";
+
+    sgMail.setApiKey(apiKey);
+
+    try {
+      await sgMail.send({
+        to: adminEmail,
+        from: {
+          email: fromEmail,
+          name: fromName,
+        },
+        subject: `New order placed: ${orderNumber}`,
+        text: [
+          "New order placed",
+          `Order ID: ${orderId}`,
+          `Order Number: ${orderNumber}`,
+          `Customer Name: ${customerName}`,
+          `Customer Email: ${customerEmail}`,
+          `Phone: ${customerPhone}`,
+          `Products: ${itemsText}`,
+          `Total: ${formatInr(orderData.total)}`,
+          `Payment Method: ${paymentMethod}`,
+          `Payment Status: ${paymentStatus}`,
+          `Payment ID: ${paymentId}`,
+          `Delivery Address: ${address}`,
+        ].join("\n"),
+      });
+
+      await snapshot.ref.set(
+        {
+          emailSent: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Failed to send admin order notification", {
+        orderId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+
+    return null;
+  });
