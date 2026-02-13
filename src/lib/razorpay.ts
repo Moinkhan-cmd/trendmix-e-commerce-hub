@@ -190,6 +190,7 @@ export async function initiateRazorpayPayment(
   success: boolean;
   paymentId?: string;
   orderId?: string;
+  orderNumber?: string;
   verificationPending?: boolean;
   message: string;
 }> {
@@ -212,6 +213,7 @@ export async function initiateRazorpayPayment(
       success: boolean;
       paymentId?: string;
       orderId?: string;
+      orderNumber?: string;
       verificationPending?: boolean;
       message: string;
     }) => {

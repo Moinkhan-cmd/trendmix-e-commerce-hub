@@ -340,9 +340,6 @@ export default function Checkout() {
               state: formData.state,
               pincode: formData.pincode,
             },
-            subtotal,
-            shipping,
-            total,
           },
         });
 

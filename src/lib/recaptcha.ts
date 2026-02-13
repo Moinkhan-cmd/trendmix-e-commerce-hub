@@ -3,9 +3,9 @@ const FUNCTIONS_BASE_URL =
   import.meta.env.VITE_FIREBASE_FUNCTIONS_URL ||
   "https://us-central1-trendmix-admin.cloudfunctions.net";
 const RECAPTCHA_ALLOW_NETWORK_BYPASS =
-  import.meta.env.DEV || import.meta.env.VITE_RECAPTCHA_ALLOW_NETWORK_BYPASS === "true";
+  import.meta.env.VITE_RECAPTCHA_ALLOW_NETWORK_BYPASS === "true";
 const RECAPTCHA_ALLOW_LOCALHOST_BYPASS =
-  import.meta.env.DEV || import.meta.env.VITE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS === "true";
+  import.meta.env.VITE_RECAPTCHA_ALLOW_LOCALHOST_BYPASS === "true";
 
 const VERIFY_RECAPTCHA_URL = `${FUNCTIONS_BASE_URL}/verifyRecaptchaAssessment`;
 
