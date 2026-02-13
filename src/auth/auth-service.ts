@@ -38,6 +38,21 @@ const getVerificationActionCodeSettings = (): ActionCodeSettings | undefined => 
   };
 };
 
+const getPasswordResetActionCodeSettings = (): ActionCodeSettings | undefined => {
+  if (typeof window === "undefined") return undefined;
+
+  const isLocalhost =
+    window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const origin = isLocalhost
+    ? window.location.origin
+    : window.location.origin.replace(/^http:/, "https:");
+
+  return {
+    url: `${origin}/login?passwordReset=sent`,
+    handleCodeInApp: false,
+  };
+};
+
 export class EmailNotVerifiedError extends Error {
   code = "auth/email-not-verified";
   user: User;
@@ -114,10 +129,14 @@ export function getAuthErrorMessage(error: unknown): string {
     "auth/invalid-credential": "Invalid email or password. Please check your credentials.",
     "auth/too-many-requests": "Too many failed attempts. Please wait a few minutes and try again.",
     "auth/network-request-failed": "Network error. Please check your internet connection.",
+    "auth/missing-email": "Please enter a valid email address.",
     "auth/popup-closed-by-user": "Sign in was cancelled. Please try again.",
     "auth/requires-recent-login": "Please sign out and sign back in to perform this action.",
     "auth/no-pending-verification-user": "Please try logging in again before resending verification email.",
     "auth/already-verified": "Your email is already verified. Please log in.",
+    "auth/invalid-continue-uri": "Password reset link configuration is invalid. Please contact support.",
+    "auth/unauthorized-continue-uri": "Password reset domain is not authorized. Please contact support.",
+    "auth/missing-continue-uri": "Password reset link configuration is missing. Please contact support.",
   };
 
   if (maybeMessage === "No user signed in") {
@@ -247,7 +266,18 @@ export async function logOut(): Promise<void> {
 
 // Send password reset email
 export async function resetPassword(email: string): Promise<void> {
-  await sendPasswordResetEmail(auth, email);
+  try {
+    await sendPasswordResetEmail(auth, email.trim().toLowerCase(), getPasswordResetActionCodeSettings());
+  } catch (error) {
+    const code = ((error as AuthError)?.code || "").toLowerCase();
+
+    // Do not leak whether an account exists for this email.
+    if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 // Change password (requires recent auth)
