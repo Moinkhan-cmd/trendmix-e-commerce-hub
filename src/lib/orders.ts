@@ -27,7 +27,7 @@ function normalizeEmail(email: string): string {
 }
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "").slice(-10);
+  return phone.replace(/\D/g, "").slice(-13);
 }
 
 function isFirestoreIndexError(err: unknown): boolean {
@@ -497,6 +497,23 @@ export function formatOrderDate(timestamp: Timestamp | Date | null | undefined):
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function validateCouponCode(code: string, subtotal: number): { valid: boolean; discount: number; error?: string } {
+  const validCoupon = "1W3$$moin.trendmix";
+  
+  if (!code || code.trim() === "") {
+    return { valid: false, discount: 0, error: "Please enter a coupon code" };
+  }
+  
+  if (code !== validCoupon) {
+    return { valid: false, discount: 0, error: "Invalid coupon code" };
+  }
+  
+  // Apply 10% discount for valid coupon
+  const discount = Math.round(subtotal * 0.1);
+  
+  return { valid: true, discount };
 }
 
 export function exportOrdersToCSV(orders: Array<OrderDoc & { id: string }>): string {

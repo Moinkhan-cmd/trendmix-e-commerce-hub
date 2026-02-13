@@ -42,7 +42,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 
 import { useShop } from "@/store/shop";
-import { createOrder, formatCurrency, validateOrderItems } from "@/lib/orders";
+import { createOrder, formatCurrency, validateOrderItems, validateCouponCode } from "@/lib/orders";
 import {
   processPayment,
   validateCardNumber,
@@ -60,7 +60,7 @@ const checkoutSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z
     .string()
-    .regex(/^\d{10}$/, "Please enter a valid 10-digit phone number"),
+    .regex(/^\d{10,13}$/, "Please enter a valid phone number (10-13 digits)"),
   address: z.string().min(10, "Please enter your complete address"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
@@ -110,6 +110,11 @@ export default function Checkout() {
     errorMessage?: string;
     orderNumber?: string;
   }>({});
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [couponApplied, setCouponApplied] = useState(false);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -143,7 +148,34 @@ export default function Checkout() {
 
   const subtotal = cartSubtotal;
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-  const total = subtotal + shipping;
+  const total = subtotal + shipping - discount;
+
+  // Handle coupon code application
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      toast.error("Please enter a coupon code");
+      return;
+    }
+
+    const validation = validateCouponCode(couponCode.trim(), subtotal);
+    
+    if (validation.valid) {
+      setDiscount(validation.discount);
+      setCouponApplied(true);
+      toast.success(`Coupon applied! You saved ${formatCurrency(validation.discount)}`);
+    } else {
+      setDiscount(0);
+      setCouponApplied(false);
+      toast.error(validation.error || "Invalid coupon code");
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setDiscount(0);
+    setCouponApplied(false);
+    toast.success("Coupon removed");
+  };
 
   // Validate payment details based on selected method
   const validatePaymentDetails = (): boolean => {
@@ -288,6 +320,8 @@ export default function Checkout() {
             subtotal,
             shipping,
             total,
+            couponCode: couponApplied ? couponCode : undefined,
+            discount: couponApplied ? discount : undefined,
             payment: {
               method: "online",
               status: "completed",
@@ -363,6 +397,8 @@ export default function Checkout() {
           subtotal,
           shipping,
           total,
+          couponCode: couponApplied ? couponCode : undefined,
+          discount: couponApplied ? discount : undefined,
           payment: {
             ...paymentResponse.paymentInfo,
             status: paymentResponse.paymentInfo.status as "pending" | "completed" | "failed",
@@ -820,6 +856,45 @@ export default function Checkout() {
 
                 <Separator />
 
+                {/* Coupon Section */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Have a coupon code?</label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      disabled={couponApplied}
+                      className="flex-1"
+                    />
+                    {!couponApplied ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleApplyCoupon}
+                        disabled={!couponCode.trim()}
+                      >
+                        Apply
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleRemoveCoupon}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  {couponApplied && (
+                    <p className="text-xs text-green-600">
+                      ✓ Coupon applied successfully
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+
                 {/* Totals */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -836,6 +911,12 @@ export default function Checkout() {
                       )}
                     </span>
                   </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Discount</span>
+                      <span className="text-green-600">-{formatCurrency(discount)}</span>
+                    </div>
+                  )}
                   {subtotal < SHIPPING_THRESHOLD && (
                     <p className="text-xs text-muted-foreground">
                       Add {formatCurrency(SHIPPING_THRESHOLD - subtotal)} more for free shipping
