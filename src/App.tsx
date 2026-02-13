@@ -132,11 +132,7 @@ const App = () => (
                 />
                 <Route
                   path="/checkout"
-                  element={(
-                    <RequireAuth requireVerified>
-                      <Checkout />
-                    </RequireAuth>
-                  )}
+                  element={<Checkout />}
                 />
 
                 {/* Admin routes */}

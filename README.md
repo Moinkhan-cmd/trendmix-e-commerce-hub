@@ -84,6 +84,36 @@ VITE_FIREBASE_MESSAGING_SENDER_ID="..."
 
 Then restart the dev server.
 
+## 4.1) Security Environment Variables (Required)
+
+Frontend (`.env.local`):
+
+```env
+VITE_FIREBASE_API_KEY="..."
+VITE_FIREBASE_AUTH_DOMAIN="..."
+VITE_FIREBASE_PROJECT_ID="..."
+VITE_FIREBASE_APP_ID="..."
+VITE_FIREBASE_STORAGE_BUCKET="..."
+VITE_FIREBASE_MESSAGING_SENDER_ID="..."
+VITE_RECAPTCHA_SITE_KEY="YOUR_RECAPTCHA_V3_SITE_KEY"
+VITE_FIREBASE_FUNCTIONS_URL="https://us-central1-<project-id>.cloudfunctions.net"
+```
+
+Functions (`functions/.env`):
+
+```env
+RAZORPAY_KEY_ID="YOUR_RAZORPAY_KEY_ID"
+RAZORPAY_KEY_SECRET="YOUR_RAZORPAY_KEY_SECRET"
+RECAPTCHA_SECRET_KEY="YOUR_RECAPTCHA_V3_SECRET"
+RECAPTCHA_MIN_SCORE="0.5"
+ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+```
+
+Security notes:
+- Never commit `.env`, `.env.local`, or `functions/.env`.
+- Rotate Razorpay keys and reCAPTCHA secret immediately if previously exposed.
+- Firebase Web config is public by design; keep only non-secret identifiers there.
+
 ## 5) Create your first admin user (IMPORTANT)
 
 Admin access is controlled by Firestore:
@@ -238,6 +268,72 @@ npm run dev
 Admin routes:
 - `/admin/login` for admin login
 - `/admin` for the dashboard
+
+## Production Security Upgrade Summary
+
+Implemented hardening includes:
+- Google reCAPTCHA v3 on signup, login, and checkout initiation.
+- Backend reCAPTCHA verification with score enforcement (`>= 0.5`) and action validation.
+- Email-verified enforcement for checkout/payment/order placement.
+- Razorpay signature verification on backend before order marked paid.
+- Server-side canonical order calculation from Firestore product data (amount tamper protection).
+- Owner-only order data access with admin override.
+- Admin-only product/category/settings writes.
+- Secret handling moved fully to environment files.
+- Login brute-force mitigation (Firebase + client lockout + backend request throttling).
+- Input sanitization for auth profile updates and checkout/order payloads.
+
+## Updated Security-Critical Folder Structure
+
+```text
+src/
+  lib/
+    recaptcha.ts                # reCAPTCHA token generation + backend assessment call
+    razorpay.ts                 # secure create/verify payment flow with backend
+    orders.ts                   # owner-scoped order reads/writes
+    firebase.ts                 # env-only Firebase config (no hardcoded fallback)
+  pages/
+    Login.tsx                   # reCAPTCHA + verification-aware login UX
+    SignUp.tsx                  # reCAPTCHA-protected registration
+    Checkout.tsx                # verified-user gate + secure Razorpay flow
+    OrderTracking.tsx           # authenticated tracking access
+  auth/
+    auth-service.ts             # brute-force mitigation + sanitization
+
+functions/
+  src/
+    index.ts                    # verifyRecaptchaAssessment, createRazorpayOrder, verifyRazorpayPayment
+  .env.example                  # secure backend env template
+
+firestore.rules                 # production-safe least-privilege rules
+```
+
+## Step-by-Step Secure Deployment
+
+1. Create reCAPTCHA v3 keys (Google reCAPTCHA admin console).
+2. Set frontend and functions env vars from the templates.
+3. Deploy functions:
+   - `cd functions`
+   - `npm install`
+   - `npm run build`
+   - `firebase deploy --only functions`
+4. Deploy Firestore rules:
+   - `firebase deploy --only firestore:rules`
+5. Redeploy frontend after setting `VITE_FIREBASE_FUNCTIONS_URL` and `VITE_RECAPTCHA_SITE_KEY`.
+6. Test security flows:
+   - Signup requires reCAPTCHA.
+   - Login requires reCAPTCHA and blocks repeated failures.
+   - Unverified users are blocked from checkout/order placement.
+   - Razorpay success is accepted only after backend signature verification.
+
+## Security Best Practices
+
+- Keep all secrets in backend environment variables only.
+- Restrict CORS with explicit production domains in `ALLOWED_ORIGINS`.
+- Prefer backend-generated totals from trusted product prices.
+- Treat all client payloads as untrusted; validate/sanitize server-side.
+- Use Firebase custom claims or strict admin registry for privileged operations.
+- Monitor `security_rate_limits` and payment logs for abuse patterns.
 
 ## Troubleshooting
 

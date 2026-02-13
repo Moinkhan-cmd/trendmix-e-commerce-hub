@@ -25,6 +25,7 @@ import Footer from "@/components/Footer";
 import CheckoutSteps from "@/components/CheckoutSteps";
 import PaymentMethodSelector from "@/components/PaymentMethodSelector";
 import PaymentProcessingModal from "@/components/PaymentProcessingModal";
+import CheckoutAuthModal from "@/components/CheckoutAuthModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,13 +55,16 @@ import {
   type UpiDetails,
 } from "@/lib/payment";
 import { initiateRazorpayPayment } from "@/lib/razorpay";
+import { getRecaptchaToken } from "@/lib/recaptcha";
+import { disableGuestCheckout, enableGuestCheckout, isGuestCheckoutEnabled } from "@/lib/checkout-session";
+import { validateCheckoutCoupon } from "@/lib/coupon";
 
 const checkoutSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
   phone: z
     .string()
-    .regex(/^\d{10}$/, "Please enter a valid 10-digit phone number"),
+    .regex(/^\d{10,13}$/, "Please enter a valid phone number (10 to 13 digits)"),
   address: z.string().min(10, "Please enter your complete address"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
@@ -79,7 +83,14 @@ type PaymentModalStatus = "processing" | "success" | "failed";
 export default function Checkout() {
   const navigate = useNavigate();
   const { cartItems, cartCount, subtotal: cartSubtotal, clearCart } = useShop();
-  const { isAuthenticated, loading: authLoading, profile } = useAuth();
+  const {
+    isAuthenticated,
+    isEmailVerified,
+    loading: authLoading,
+    profile,
+    resendVerificationEmail,
+    refreshVerificationStatus,
+  } = useAuth();
   
   // Multi-step state
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("address");
@@ -110,6 +121,13 @@ export default function Checkout() {
     errorMessage?: string;
     orderNumber?: string;
   }>({});
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [guestCheckout, setGuestCheckout] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponApplying, setCouponApplying] = useState(false);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -141,9 +159,71 @@ export default function Checkout() {
     }
   }, [profile, form]);
 
+  useEffect(() => {
+    if (authLoading) return;
+    setGuestCheckout(isGuestCheckoutEnabled());
+  }, [authLoading]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (isAuthenticated) {
+      setAuthModalOpen(false);
+      disableGuestCheckout();
+      setGuestCheckout(false);
+      return;
+    }
+
+    if (!guestCheckout && cartItems.length > 0) {
+      setAuthModalOpen(true);
+    }
+  }, [authLoading, isAuthenticated, guestCheckout, cartItems.length]);
+
   const subtotal = cartSubtotal;
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-  const total = subtotal + shipping;
+  const grossTotal = subtotal + shipping;
+  const discount = appliedCouponCode ? Math.min(couponDiscount, grossTotal) : 0;
+  const total = Math.max(0, grossTotal - discount);
+  const isPaymentBlocked = (isAuthenticated && !isEmailVerified) || (!isAuthenticated && !guestCheckout);
+
+  const clearCoupon = () => {
+    setCouponCode("");
+    setAppliedCouponCode("");
+    setCouponDiscount(0);
+  };
+
+  const applyCoupon = async () => {
+    const trimmed = couponCode.trim();
+    if (!trimmed) {
+      toast.error("Enter a coupon code first.");
+      return;
+    }
+
+    setCouponApplying(true);
+    try {
+      const result = await validateCheckoutCoupon(trimmed);
+      if (!result.valid) {
+        setAppliedCouponCode("");
+        setCouponDiscount(0);
+        toast.error(result.message || "Invalid coupon code.");
+        return;
+      }
+
+      setAppliedCouponCode(trimmed);
+      setCouponDiscount(result.discount);
+      toast.success(`Coupon applied! ${formatCurrency(result.discount)} discount added.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to validate coupon right now.");
+    } finally {
+      setCouponApplying(false);
+    }
+  };
+
+  useEffect(() => {
+    if (guestCheckout && paymentMethod !== "razorpay") {
+      setPaymentMethod("razorpay");
+    }
+  }, [guestCheckout, paymentMethod]);
 
   // Validate payment details based on selected method
   const validatePaymentDetails = (): boolean => {
@@ -219,6 +299,21 @@ export default function Checkout() {
 
   // Handle payment submission
   const handlePaymentSubmit = async () => {
+    if (!isAuthenticated && !guestCheckout) {
+      setAuthModalOpen(true);
+      return;
+    }
+
+    if (isAuthenticated && !isEmailVerified) {
+      toast.error("Verify your email before placing an order.");
+      return;
+    }
+
+    if (guestCheckout && paymentMethod !== "razorpay") {
+      toast.error("Guest checkout currently supports secure Razorpay payment only.");
+      return;
+    }
+
     // Razorpay doesn't need local validation — its own checkout handles that
     if (paymentMethod !== "razorpay") {
       if (!validatePaymentDetails()) {
@@ -231,50 +326,22 @@ export default function Checkout() {
     if (paymentMethod === "razorpay") {
       setLoading(true);
       try {
+        const recaptchaToken = await getRecaptchaToken("checkout");
         const formData = form.getValues();
-        const amountInPaise = Math.round(total * 100);
 
         const result = await initiateRazorpayPayment({
-          amount: amountInPaise,
-          currency: "INR",
-          receipt: `order_${Date.now()}`,
+          recaptchaToken,
           customerName: formData.name,
           customerEmail: formData.email,
           customerPhone: formData.phone,
+          guestCheckout,
+          guestEmail: guestCheckout ? formData.email : undefined,
           orderDetails: {
             items: cartItems.map((item) => ({
               productId: item.product.id,
-              name: item.product.name,
               qty: item.qty,
-              price: item.product.price,
             })),
-            customer: {
-              name: formData.name,
-              email: formData.email.toLowerCase(),
-              phone: formData.phone,
-              address: formData.address,
-              city: formData.city,
-              state: formData.state,
-              pincode: formData.pincode,
-            },
-            subtotal,
-            shipping,
-            total,
-          },
-        });
-
-        if (result.success) {
-          // Create the order in our orders collection too
-          const orderItems = cartItems.map((item) => ({
-            productId: item.product.id,
-            name: item.product.name,
-            qty: item.qty,
-            price: item.product.price,
-            imageUrl: item.product.image || "",
-          }));
-
-          const orderResult = await createOrder({
-            items: orderItems,
+            couponCode: appliedCouponCode || undefined,
             customer: {
               name: formData.name,
               email: formData.email.toLowerCase(),
@@ -285,24 +352,26 @@ export default function Checkout() {
               pincode: formData.pincode,
               notes: formData.notes,
             },
-            subtotal,
-            shipping,
-            total,
-            payment: {
-              method: "online",
-              status: "completed",
-              transactionId: result.paymentId,
-            },
-          });
+          },
+        });
 
+        if (result.success && result.orderNumber) {
+          if (guestCheckout) {
+            disableGuestCheckout();
+            setGuestCheckout(false);
+          }
           clearCart();
-          navigate(`/order-confirmation/${orderResult.orderNumber}`, {
+          navigate(`/order-confirmation/${result.orderNumber}`, {
             state: {
-              orderNumber: orderResult.orderNumber,
+              orderNumber: result.orderNumber,
               transactionId: result.paymentId,
               paymentMethod: "razorpay",
+              guestCheckout,
+              guestEmail: guestCheckout ? formData.email : undefined,
             },
           });
+        } else if (result.success && !result.orderNumber) {
+          toast.error("Payment succeeded but order confirmation is missing. Please contact support.");
         } else {
           toast.error(result.message || "Payment was not completed.");
         }
@@ -363,9 +432,10 @@ export default function Checkout() {
           subtotal,
           shipping,
           total,
+          discount,
           payment: {
             ...paymentResponse.paymentInfo,
-            status: paymentResponse.paymentInfo.status as "pending" | "completed" | "failed",
+            status: "pending",
           },
         });
 
@@ -399,6 +469,23 @@ export default function Checkout() {
     setPaymentResult({});
   };
 
+  const handleResendVerification = async () => {
+    setResendingVerification(true);
+    try {
+      await resendVerificationEmail();
+      await refreshVerificationStatus();
+      toast.success("Verification email sent. Please check your inbox.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to send verification email right now."
+      );
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
   // Handle continue after successful payment
   const handleContinueToConfirmation = () => {
     setPaymentModalOpen(false);
@@ -407,6 +494,8 @@ export default function Checkout() {
         orderNumber: paymentResult.orderNumber,
         transactionId: paymentResult.transactionId,
         paymentMethod,
+        guestCheckout,
+        guestEmail: guestCheckout ? form.getValues("email") : undefined,
       },
     });
   };
@@ -421,46 +510,6 @@ export default function Checkout() {
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
             <p className="text-muted-foreground">Loading...</p>
           </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Login required view
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center px-4 py-12">
-          <Card className="w-full max-w-md text-center">
-            <CardHeader className="space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                <User className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <CardTitle className="text-2xl">Login Required</CardTitle>
-              <CardDescription>
-                Please log in or create an account to complete your purchase.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button asChild className="flex-1">
-                  <Link to="/login" state={{ from: { pathname: "/checkout" } }}>Log In</Link>
-                </Button>
-                <Button variant="outline" asChild className="flex-1">
-                  <Link to="/signup">Create Account</Link>
-                </Button>
-              </div>
-              <Separator />
-              <Button variant="ghost" asChild className="w-full">
-                <Link to="/cart">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Cart
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
         </main>
         <Footer />
       </div>
@@ -526,6 +575,41 @@ export default function Checkout() {
           </p>
         </div>
 
+        {!isAuthenticated && guestCheckout && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="py-4 text-sm">
+              You are checking out as a guest. Add an account later from your confirmation page.
+            </CardContent>
+          </Card>
+        )}
+
+        {isAuthenticated && !isEmailVerified && (
+          <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
+            <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="font-medium">Email verification required before payment</p>
+                <p className="text-sm text-muted-foreground">
+                  Verify your account to place this order securely.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleResendVerification}
+                disabled={resendingVerification}
+              >
+                {resendingVerification ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Resend verification"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
           {/* Main Content */}
           <div className="space-y-6">
@@ -586,9 +670,21 @@ export default function Checkout() {
                             <FormControl>
                               <div className="relative">
                                 <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input className="pl-10" type="tel" placeholder="9876543210" {...field} />
+                                <Input
+                                  className="pl-10"
+                                  type="tel"
+                                  inputMode="numeric"
+                                  maxLength={13}
+                                  placeholder="9876543210"
+                                  {...field}
+                                  onChange={(event) => {
+                                    const digits = event.target.value.replace(/\D/g, "").slice(0, 13);
+                                    field.onChange(digits);
+                                  }}
+                                />
                               </div>
                             </FormControl>
+                            <FormDescription>Use 10 to 13 digits.</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -730,7 +826,7 @@ export default function Checkout() {
                     <PaymentMethodSelector
                       selectedMethod={paymentMethod}
                       onMethodChange={setPaymentMethod}
-                      disabled={loading}
+                      disabled={loading || guestCheckout}
                     />
                   </CardContent>
                 </Card>
@@ -769,7 +865,7 @@ export default function Checkout() {
                     size="lg"
                     className="w-full"
                     onClick={handlePaymentSubmit}
-                    disabled={loading}
+                    disabled={loading || isPaymentBlocked}
                   >
                     {loading ? (
                       <>
@@ -820,6 +916,40 @@ export default function Checkout() {
 
                 <Separator />
 
+                {/* Coupon */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Coupon</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setCouponCode(value);
+                        if (appliedCouponCode && value.trim() !== appliedCouponCode) {
+                          setAppliedCouponCode("");
+                          setCouponDiscount(0);
+                        }
+                      }}
+                      placeholder="Enter coupon code"
+                      className="h-9"
+                    />
+                    {appliedCouponCode ? (
+                      <Button type="button" variant="outline" className="h-9" onClick={clearCoupon}>
+                        Remove
+                      </Button>
+                    ) : (
+                      <Button type="button" className="h-9" onClick={applyCoupon} disabled={couponApplying}>
+                        {couponApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      </Button>
+                    )}
+                  </div>
+                  {appliedCouponCode ? (
+                    <p className="text-xs text-green-600">Coupon applied: -{formatCurrency(discount)}</p>
+                  ) : null}
+                </div>
+
+                <Separator />
+
                 {/* Totals */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -836,6 +966,12 @@ export default function Checkout() {
                       )}
                     </span>
                   </div>
+                  {discount > 0 ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Coupon Discount</span>
+                      <span className="text-green-600">-{formatCurrency(discount)}</span>
+                    </div>
+                  ) : null}
                   {subtotal < SHIPPING_THRESHOLD && (
                     <p className="text-xs text-muted-foreground">
                       Add {formatCurrency(SHIPPING_THRESHOLD - subtotal)} more for free shipping
@@ -875,7 +1011,7 @@ export default function Checkout() {
                       size="lg"
                       className="w-full"
                       onClick={handlePaymentSubmit}
-                      disabled={loading}
+                      disabled={loading || isPaymentBlocked}
                     >
                       {loading ? (
                         <>
@@ -911,6 +1047,20 @@ export default function Checkout() {
         </div>
 
       </main>
+
+      <CheckoutAuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        onSuccess={() => {
+          setAuthModalOpen(false);
+        }}
+        onContinueGuest={() => {
+          enableGuestCheckout();
+          setGuestCheckout(true);
+          setAuthModalOpen(false);
+        }}
+      />
+
       <Footer />
 
       {/* Payment Processing Modal */}

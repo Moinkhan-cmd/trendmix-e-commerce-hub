@@ -154,13 +154,8 @@ export type PersonalProfileDoc = {
 
 export type NotificationSettingsDoc = {
   adminEmail: string;
-  emailjsServiceId?: string;
-  emailjsTemplateId?: string;
-  emailjsPublicKey?: string;
   notifyOnNewOrder: boolean;
-  notifyOnStatusChange?: boolean;
-  customerOrderConfirmationTemplateId?: string;
-  customerStatusUpdateTemplateId?: string;
+  sendCustomerConfirmation?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };

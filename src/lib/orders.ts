@@ -15,6 +15,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { auth } from "./firebase";
 import type { OrderDoc, OrderItem, CustomerInfo, OrderStatus, OrderTimelineEvent } from "./models";
 
 type FirestoreLikeError = {
@@ -28,6 +29,26 @@ function normalizeEmail(email: string): string {
 
 function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "").slice(-10);
+}
+
+function sanitizeText(value: string, maxLength = 180): string {
+  return value.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function getCurrentUserContext(requireVerified = false): { uid: string; email: string } {
+  const user = auth.currentUser;
+  if (!user || !user.uid || !user.email) {
+    throw new Error("You must be logged in to perform this action.");
+  }
+
+  if (requireVerified && !user.emailVerified) {
+    throw new Error("Please verify your email before placing an order.");
+  }
+
+  return {
+    uid: user.uid,
+    email: normalizeEmail(user.email),
+  };
 }
 
 function isFirestoreIndexError(err: unknown): boolean {
@@ -114,12 +135,19 @@ function createInitialTimeline(): OrderTimelineEvent[] {
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<{ id: string; orderNumber: string }> {
+  const currentUser = getCurrentUserContext(true);
   const orderNumber = generateOrderNumber();
 
   const customer: CustomerInfo = {
     ...input.customer,
-    email: normalizeEmail(input.customer.email),
+    name: sanitizeText(input.customer.name, 90),
+    email: currentUser.email,
     phone: normalizePhone(input.customer.phone),
+    address: sanitizeText(input.customer.address, 220),
+    city: sanitizeText(input.customer.city, 90),
+    state: sanitizeText(input.customer.state, 90),
+    pincode: sanitizeText(input.customer.pincode, 12).replace(/\D/g, "").slice(0, 6),
+    notes: input.customer.notes ? sanitizeText(input.customer.notes, 300) : undefined,
   };
 
   const orderData = stripUndefinedDeep({
@@ -132,7 +160,7 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     discount: input.discount,
     couponCode: input.couponCode,
     orderNumber,
-    userId: input.userId ?? "guest",
+    userId: currentUser.uid,
     emailSent: false,
     customerEmailSent: false,
     timeline: createInitialTimeline(),
@@ -156,11 +184,6 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
   } catch (error) {
     console.warn("Order placed, but failed to update stock (non-fatal):", error);
   }
-
-  Promise.all([
-    sendOrderNotificationEmail(docRef.id, orderData),
-    sendCustomerConfirmationEmail(docRef.id, orderData),
-  ]).catch(console.error);
 
   return { id: docRef.id, orderNumber };
 }
@@ -233,8 +256,6 @@ export async function updateOrderStatus(
   if (status === "Cancelled" && previousStatus !== "Cancelled") {
     await restoreProductStock(order.items);
   }
-  
-  sendStatusUpdateEmail(orderId, { ...order, status }).catch(console.error);
 }
 
 export async function updateOrder(orderId: string, updates: UpdateOrderInput): Promise<void> {
@@ -263,7 +284,12 @@ export async function getOrderById(orderId: string): Promise<(OrderDoc & { id: s
 }
 
 export async function getOrderByNumber(orderNumber: string): Promise<(OrderDoc & { id: string }) | null> {
-  const q = query(collection(db, "orders"), where("orderNumber", "==", orderNumber));
+  const { uid } = getCurrentUserContext();
+  const q = query(
+    collection(db, "orders"),
+    where("userId", "==", uid),
+    where("orderNumber", "==", orderNumber)
+  );
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const docSnap = snap.docs[0];
@@ -271,11 +297,17 @@ export async function getOrderByNumber(orderNumber: string): Promise<(OrderDoc &
 }
 
 export async function getOrdersByEmail(email: string): Promise<Array<OrderDoc & { id: string }>> {
+  const { uid, email: currentEmail } = getCurrentUserContext();
   const normalizedEmail = normalizeEmail(email);
+
+  if (normalizedEmail !== currentEmail) {
+    return [];
+  }
 
   try {
     const q = query(
       collection(db, "orders"),
+      where("userId", "==", uid),
       where("customer.email", "==", normalizedEmail),
       orderBy("createdAt", "desc")
     );
@@ -285,7 +317,11 @@ export async function getOrdersByEmail(email: string): Promise<Array<OrderDoc & 
     // If the project doesn't have the composite index for (customer.email, createdAt),
     // fall back to a simpler query and sort client-side.
     if (isFirestoreIndexError(err)) {
-      const q = query(collection(db, "orders"), where("customer.email", "==", normalizedEmail));
+      const q = query(
+        collection(db, "orders"),
+        where("userId", "==", uid),
+        where("customer.email", "==", normalizedEmail)
+      );
       const snap = await getDocs(q);
       return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) })));
     }
@@ -294,11 +330,13 @@ export async function getOrdersByEmail(email: string): Promise<Array<OrderDoc & 
 }
 
 export async function getOrdersByPhone(phone: string): Promise<Array<OrderDoc & { id: string }>> {
+  const { uid } = getCurrentUserContext();
   const normalizedPhone = normalizePhone(phone);
 
   try {
     const q = query(
       collection(db, "orders"),
+      where("userId", "==", uid),
       where("customer.phone", "==", normalizedPhone),
       orderBy("createdAt", "desc")
     );
@@ -306,7 +344,11 @@ export async function getOrdersByPhone(phone: string): Promise<Array<OrderDoc & 
     return snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) }));
   } catch (err) {
     if (isFirestoreIndexError(err)) {
-      const q = query(collection(db, "orders"), where("customer.phone", "==", normalizedPhone));
+      const q = query(
+        collection(db, "orders"),
+        where("userId", "==", uid),
+        where("customer.phone", "==", normalizedPhone)
+      );
       const snap = await getDocs(q);
       return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) })));
     }
@@ -324,137 +366,6 @@ export async function getOrdersByStatus(status: OrderStatus): Promise<Array<Orde
   const q = query(collection(db, "orders"), where("status", "==", status), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrderDoc) }));
-}
-
-async function sendOrderNotificationEmail(
-  orderId: string,
-  order: Omit<OrderDoc, "createdAt" | "updatedAt">
-): Promise<void> {
-  try {
-    // Global on/off switch lives in settings/store (Admin Settings page)
-    const storeSnap = await getDoc(doc(db, "settings", "store"));
-    if (storeSnap.exists() && storeSnap.data()?.enableNotifications === false) return;
-
-    const settingsSnap = await getDoc(doc(db, "settings", "notifications"));
-    if (!settingsSnap.exists()) return;
-
-    const settings = settingsSnap.data();
-    if (!settings.notifyOnNewOrder) return;
-
-    const { emailjsServiceId, emailjsTemplateId, emailjsPublicKey, adminEmail } = settings;
-    if (!emailjsServiceId || !emailjsTemplateId || !emailjsPublicKey || !adminEmail) return;
-
-    const itemsList = order.items
-      .map((item) => `${item.name} x${item.qty} - Rs.${(item.price * item.qty).toLocaleString("en-IN")}`)
-      .join("\
-");
-
-    const emailParams = {
-      to_email: adminEmail,
-      order_number: order.orderNumber,
-      customer_name: order.customer.name,
-      customer_email: order.customer.email,
-      customer_phone: order.customer.phone,
-      customer_address: `${order.customer.address}, ${order.customer.city}, ${order.customer.state} - ${order.customer.pincode}`,
-      items_list: itemsList,
-      subtotal: `Rs.${order.subtotal.toLocaleString("en-IN")}`,
-      shipping: order.shipping === 0 ? "Free" : `Rs.${order.shipping.toLocaleString("en-IN")}`,
-      total: `Rs.${order.total.toLocaleString("en-IN")}`,
-      notes: order.customer.notes || "No notes",
-      order_date: new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" }),
-    };
-
-    const emailjsModule = await import("@emailjs/browser");
-    const emailjsClient = emailjsModule.default;
-    if (!emailjsClient) return;
-    await emailjsClient.send(emailjsServiceId, emailjsTemplateId, emailParams, emailjsPublicKey);
-    await updateDoc(doc(db, "orders", orderId), { emailSent: true });
-  } catch (error) {
-    console.error("Failed to send admin notification email:", error);
-  }
-}
-
-async function sendCustomerConfirmationEmail(
-  orderId: string,
-  order: Omit<OrderDoc, "createdAt" | "updatedAt">
-): Promise<void> {
-  try {
-    const storeSnap = await getDoc(doc(db, "settings", "store"));
-    if (storeSnap.exists() && storeSnap.data()?.enableNotifications === false) return;
-
-    const settingsSnap = await getDoc(doc(db, "settings", "notifications"));
-    if (!settingsSnap.exists()) return;
-
-    const settings = settingsSnap.data();
-    const { emailjsServiceId, customerOrderConfirmationTemplateId, emailjsPublicKey } = settings;
-    if (!emailjsServiceId || !customerOrderConfirmationTemplateId || !emailjsPublicKey) return;
-
-    const itemsList = order.items
-      .map((item) => `${item.name} x${item.qty} - Rs.${(item.price * item.qty).toLocaleString("en-IN")}`)
-      .join("\
-");
-
-    const emailParams = {
-      to_email: order.customer.email,
-      to_name: order.customer.name,
-      order_number: order.orderNumber,
-      items_list: itemsList,
-      subtotal: `Rs.${order.subtotal.toLocaleString("en-IN")}`,
-      shipping: order.shipping === 0 ? "Free" : `Rs.${order.shipping.toLocaleString("en-IN")}`,
-      total: `Rs.${order.total.toLocaleString("en-IN")}`,
-      delivery_address: `${order.customer.address}, ${order.customer.city}, ${order.customer.state} - ${order.customer.pincode}`,
-      order_date: new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" }),
-    };
-
-    const emailjsModule = await import("@emailjs/browser");
-    const emailjsClient = emailjsModule.default;
-    if (!emailjsClient) return;
-    await emailjsClient.send(emailjsServiceId, customerOrderConfirmationTemplateId, emailParams, emailjsPublicKey);
-    await updateDoc(doc(db, "orders", orderId), { customerEmailSent: true });
-  } catch (error) {
-    console.error("Failed to send customer confirmation email:", error);
-  }
-}
-
-async function sendStatusUpdateEmail(orderId: string, order: OrderDoc): Promise<void> {
-  try {
-    const storeSnap = await getDoc(doc(db, "settings", "store"));
-    if (storeSnap.exists() && storeSnap.data()?.enableNotifications === false) return;
-
-    const settingsSnap = await getDoc(doc(db, "settings", "notifications"));
-    if (!settingsSnap.exists()) return;
-
-    const settings = settingsSnap.data();
-    if (!settings.notifyOnStatusChange) return;
-
-    const { emailjsServiceId, customerStatusUpdateTemplateId, emailjsPublicKey } = settings;
-    if (!emailjsServiceId || !customerStatusUpdateTemplateId || !emailjsPublicKey) return;
-
-    const statusMessages: Record<OrderStatus, string> = {
-      Pending: "Your order has been received and is being processed.",
-      Confirmed: "Great news! Your order has been confirmed and is being prepared.",
-      Shipped: `Your order is on its way! ${order.trackingNumber ? `Tracking: ${order.trackingNumber}` : ""}`,
-      Delivered: "Your order has been delivered. Thank you for shopping with us!",
-      Cancelled: `Your order has been cancelled. ${order.cancellationReason || ""}`,
-    };
-
-    const emailParams = {
-      to_email: order.customer.email,
-      to_name: order.customer.name,
-      order_number: order.orderNumber,
-      order_status: order.status,
-      status_message: statusMessages[order.status],
-      tracking_number: order.trackingNumber || "N/A",
-      shipping_carrier: order.shippingCarrier || "N/A",
-    };
-
-    const emailjsModule = await import("@emailjs/browser");
-    const emailjsClient = emailjsModule.default;
-    if (!emailjsClient) return;
-    await emailjsClient.send(emailjsServiceId, customerStatusUpdateTemplateId, emailParams, emailjsPublicKey);
-  } catch (error) {
-    console.error("Failed to send status update email:", error);
-  }
 }
 
 export async function validateOrderItems(

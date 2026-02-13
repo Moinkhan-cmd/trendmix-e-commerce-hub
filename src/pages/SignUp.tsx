@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/auth/AuthProvider";
 import { checkPasswordStrength } from "@/auth/auth-service";
 import { FloatingElement } from "@/components/Card3D";
+import { getRecaptchaToken, verifyRecaptchaAssessment } from "@/lib/recaptcha";
 
 const signUpSchema = z
   .object({
@@ -48,6 +49,7 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [securityError, setSecurityError] = useState<string | null>(null);
 
   const {
     register,
@@ -73,15 +75,22 @@ export default function SignUp() {
   const onSubmit = async (data: SignUpFormData) => {
     setIsLoading(true);
     clearError();
+    setSecurityError(null);
 
     try {
+      const recaptchaToken = await getRecaptchaToken("signup");
+      await verifyRecaptchaAssessment(recaptchaToken, "signup");
+
       await signUp(data.email, data.password, data.name);
       setSuccess(true);
       setTimeout(() => {
         navigate("/login", { replace: true });
       }, 2000);
-    } catch {
-      // Error is handled by AuthProvider
+    } catch (err) {
+      const message = (err as { message?: string })?.message || "";
+      if (message.toLowerCase().includes("security") || message.toLowerCase().includes("captcha")) {
+        setSecurityError(message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -169,6 +178,13 @@ export default function SignUp() {
                   <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {securityError && (
+                  <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{securityError}</AlertDescription>
                   </Alert>
                 )}
 

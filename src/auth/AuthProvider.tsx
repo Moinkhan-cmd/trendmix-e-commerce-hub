@@ -18,6 +18,7 @@ import {
   updateUserProfile,
   isAdmin,
   getAuthErrorMessage,
+  signInWithGoogle,
   resendVerificationEmail,
   refreshCurrentUser,
   isEmailNotVerifiedError,
@@ -35,6 +36,7 @@ interface AuthContextType {
   error: string | null;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
   refreshVerificationStatus: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -159,6 +161,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const handleGoogleSignIn = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      if (isEmailNotVerifiedError(err)) {
+        setVerificationRequired(true);
+      }
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleResendVerificationEmail = useCallback(async () => {
     setError(null);
 
@@ -220,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       profile,
-      isAuthenticated: !!user && !!user.emailVerified,
+      isAuthenticated: !!user,
       isEmailVerified: !!user?.emailVerified,
       verificationRequired,
       isAdmin: isAdminUser,
@@ -228,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       signUp: handleSignUp,
       signIn: handleSignIn,
+      signInWithGoogle: handleGoogleSignIn,
       resendVerificationEmail: handleResendVerificationEmail,
       refreshVerificationStatus,
       signOut: handleSignOut,
@@ -246,6 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       handleSignUp,
       handleSignIn,
+      handleGoogleSignIn,
       handleResendVerificationEmail,
       refreshVerificationStatus,
       handleSignOut,
