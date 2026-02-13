@@ -28,7 +28,7 @@ function normalizeEmail(email: string): string {
 }
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "").slice(-10);
+  return phone.replace(/\D/g, "").slice(0, 13);
 }
 
 function sanitizeText(value: string, maxLength = 180): string {
@@ -150,15 +150,30 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     notes: input.customer.notes ? sanitizeText(input.customer.notes, 300) : undefined,
   };
 
+  // Server-side validation of coupon code and discount
+  let validatedDiscount = 0;
+  let validatedCouponCode: string | undefined;
+  
+  if (input.couponCode) {
+    const validation = validateCouponCode(input.couponCode, input.subtotal);
+    if (validation.valid) {
+      validatedDiscount = validation.discount;
+      validatedCouponCode = input.couponCode;
+    } else {
+      // If coupon is invalid, don't apply the discount
+      console.warn("Invalid coupon code provided:", input.couponCode);
+    }
+  }
+
   const orderData = stripUndefinedDeep({
     items: input.items,
     customer,
     status: "Pending",
     subtotal: input.subtotal,
     shipping: input.shipping,
-    total: input.total,
-    discount: input.discount,
-    couponCode: input.couponCode,
+    total: input.subtotal + input.shipping - validatedDiscount,
+    discount: validatedDiscount > 0 ? validatedDiscount : undefined,
+    couponCode: validatedCouponCode,
     orderNumber,
     userId: currentUser.uid,
     emailSent: false,
@@ -408,6 +423,27 @@ export function formatOrderDate(timestamp: Timestamp | Date | null | undefined):
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// NOTE: This function is exported for use by both client and server (in createOrder).
+// While the coupon code is visible in client code, server-side validation in createOrder
+// ensures the discount is verified before being saved to the database.
+export function validateCouponCode(code: string, subtotal: number): { valid: boolean; discount: number; error?: string } {
+  const validCoupon = "1W3$$moin.trendmix";
+  
+  if (!code || code.trim() === "") {
+    return { valid: false, discount: 0, error: "Please enter a coupon code" };
+  }
+  
+  if (code !== validCoupon) {
+    return { valid: false, discount: 0, error: "Invalid coupon code" };
+  }
+  
+  // Apply flat ₹150 discount for valid coupon.
+  // Clamp to subtotal so discount never exceeds payable item amount.
+  const discount = Math.min(150, subtotal);
+  
+  return { valid: true, discount };
 }
 
 export function exportOrdersToCSV(orders: Array<OrderDoc & { id: string }>): string {

@@ -12,6 +12,7 @@ import { auth } from "@/lib/firebase";
 import {
   signUp,
   signIn,
+  signInWithGoogle,
   logOut,
   resetPassword,
   getUserProfile,
@@ -161,16 +162,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const handleGoogleSignIn = useCallback(async () => {
+  const handleSignInWithGoogle = useCallback(async () => {
     setError(null);
     setLoading(true);
 
     try {
       await signInWithGoogle();
+      setVerificationRequired(false);
     } catch (err) {
-      if (isEmailNotVerifiedError(err)) {
-        setVerificationRequired(true);
-      }
       const message = getAuthErrorMessage(err);
       setError(message);
       throw new Error(message);
@@ -248,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       signUp: handleSignUp,
       signIn: handleSignIn,
-      signInWithGoogle: handleGoogleSignIn,
+      signInWithGoogle: handleSignInWithGoogle,
       resendVerificationEmail: handleResendVerificationEmail,
       refreshVerificationStatus,
       signOut: handleSignOut,
@@ -267,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       handleSignUp,
       handleSignIn,
-      handleGoogleSignIn,
+      handleSignInWithGoogle,
       handleResendVerificationEmail,
       refreshVerificationStatus,
       handleSignOut,

@@ -43,7 +43,7 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { signUp, error, clearError } = useAuth();
+  const { signUp, signInWithGoogle, error, clearError } = useAuth();
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -91,6 +91,20 @@ export default function SignUp() {
       if (message.toLowerCase().includes("security") || message.toLowerCase().includes("captcha")) {
         setSecurityError(message);
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    clearError();
+
+    try {
+      await signInWithGoogle();
+      navigate("/", { replace: true });
+    } catch {
+      // Error is handled by AuthProvider
     } finally {
       setIsLoading(false);
     }
@@ -312,6 +326,23 @@ export default function SignUp() {
                   ) : (
                     <span className="relative z-10">Create account</span>
                   )}
+                </Button>
+
+                <div className="relative">
+                  <Separator className="my-4" />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                    OR
+                  </span>
+                </div>
+
+                <Button type="button" variant="outline" className="w-full" disabled={isLoading} onClick={handleGoogleSignIn}>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.22 3.31v2.74h3.6c2.11-1.94 3.26-4.8 3.26-8.06z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.69l-3.6-2.74c-1 .67-2.28 1.06-3.68 1.06-2.83 0-5.23-1.91-6.09-4.47H2.18v2.81A11 11 0 0012 23z" />
+                    <path fill="#FBBC05" d="M5.91 14.16A6.61 6.61 0 015.56 12c0-.75.13-1.47.35-2.16V7.03H2.18A11 11 0 001 12c0 1.77.42 3.45 1.18 4.97l3.73-2.81z" />
+                    <path fill="#EA4335" d="M12 5.38c1.61 0 3.05.55 4.19 1.63l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 002.18 7.03l3.73 2.81C6.77 7.29 9.17 5.38 12 5.38z" />
+                  </svg>
+                  Continue with Google
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center">

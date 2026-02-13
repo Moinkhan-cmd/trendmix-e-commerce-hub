@@ -9,6 +9,7 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  GoogleAuthProvider,
   browserSessionPersistence,
   setPersistence,
   reload,
@@ -129,6 +130,21 @@ const getVerificationActionCodeSettings = (): ActionCodeSettings | undefined => 
   };
 };
 
+const getPasswordResetActionCodeSettings = (): ActionCodeSettings | undefined => {
+  if (typeof window === "undefined") return undefined;
+
+  const isLocalhost =
+    window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const origin = isLocalhost
+    ? window.location.origin
+    : window.location.origin.replace(/^http:/, "https:");
+
+  return {
+    url: `${origin}/login?passwordReset=sent`,
+    handleCodeInApp: false,
+  };
+};
+
 export class EmailNotVerifiedError extends Error {
   code = "auth/email-not-verified";
   user: User;
@@ -207,6 +223,11 @@ export function getAuthErrorMessage(error: unknown): string {
     "auth/invalid-credential": "Invalid email or password. Please check your credentials.",
     "auth/too-many-requests": "Too many failed attempts. Please wait a few minutes and try again.",
     "auth/network-request-failed": "Network error. Please check your internet connection.",
+    "auth/popup-blocked": "Popup was blocked by your browser. Please allow popups and try again.",
+    "auth/popup-blocked-by-browser": "Popup was blocked by your browser. Please allow popups and try again.",
+    "auth/account-exists-with-different-credential": "An account already exists with this email using a different sign-in method.",
+    "auth/unauthorized-domain": "This domain is not authorized for Google sign-in in Firebase Auth settings.",
+    "auth/missing-email": "Please enter a valid email address.",
     "auth/popup-closed-by-user": "Sign in was cancelled. Please try again.",
     "auth/popup-blocked": "Popup was blocked by your browser. Please allow popups and try again.",
     "auth/cancelled-popup-request": "Sign in was cancelled. Please try again.",
@@ -214,13 +235,9 @@ export function getAuthErrorMessage(error: unknown): string {
     "auth/requires-recent-login": "Please sign out and sign back in to perform this action.",
     "auth/no-pending-verification-user": "Please try logging in again before resending verification email.",
     "auth/already-verified": "Your email is already verified. Please log in.",
-    "auth/verification-resend-throttled": "Please wait before requesting another verification email.",
-    "auth/invalid-continue-uri": "Verification link configuration is invalid. Please contact support.",
-    "auth/unauthorized-continue-uri": "This domain is not authorized for verification emails. Please contact support.",
-    "auth/missing-continue-uri": "Verification link configuration is missing. Please contact support.",
-    "auth/quota-exceeded": "Email sending quota has been exceeded. Please try again later.",
-    "auth/internal-error": "Unable to send verification email right now. Please try again in a moment.",
-    "auth/argument-error": "Unable to process verification request. Please refresh and try again.",
+    "auth/invalid-continue-uri": "Password reset link configuration is invalid. Please contact support.",
+    "auth/unauthorized-continue-uri": "Password reset domain is not authorized. Please contact support.",
+    "auth/missing-continue-uri": "Password reset link configuration is missing. Please contact support.",
   };
 
   if (maybeMessage === "No user signed in") {
@@ -288,20 +305,38 @@ async function syncEmailVerificationStatus(uid: string, emailVerified: boolean):
   });
 }
 
-async function ensureUserProfile(user: User): Promise<void> {
-  const safeDisplayName = sanitizeDisplayName(user.displayName || "Trendmix User");
-  const existing = await getUserProfile(user.uid);
+async function ensureOAuthUserProfile(user: User): Promise<void> {
+  const userRef = doc(db, "users", user.uid);
+  const existingProfile = await getDoc(userRef);
 
-  if (!existing) {
-    await createUserProfile(user, safeDisplayName);
+  if (!existingProfile.exists()) {
+    const profile: Omit<UserProfile, "createdAt" | "updatedAt"> = {
+      uid: user.uid,
+      email: user.email || "",
+      displayName: user.displayName || "User",
+      photoURL: user.photoURL || undefined,
+      role: "user",
+      emailVerified: user.emailVerified,
+      disabled: false,
+    };
+
+    await setDoc(userRef, {
+      ...profile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
+    });
     return;
   }
 
-  await updateDoc(doc(db, "users", user.uid), {
+  await updateDoc(userRef, {
+    displayName: user.displayName || (existingProfile.data()?.displayName as string) || "User",
+    photoURL: user.photoURL || existingProfile.data()?.photoURL || null,
     emailVerified: user.emailVerified,
+    lastLoginAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }).catch(() => {
-    // Profile update failure is non-fatal.
+    // non-fatal for legacy profiles
   });
 }
 
@@ -367,7 +402,6 @@ export async function signIn(email: string, password: string): Promise<User> {
   return credential.user;
 }
 
-// Sign in with Google popup
 export async function signInWithGoogle(): Promise<User> {
   await setPersistence(auth, browserSessionPersistence);
 
@@ -377,18 +411,9 @@ export async function signInWithGoogle(): Promise<User> {
   const credential = await signInWithPopup(auth, provider);
   const user = credential.user;
 
-  await reload(user).catch(() => {
-    // non-fatal
-  });
-
-  if (!user.emailVerified) {
-    pendingVerificationUser = user;
-    throw new EmailNotVerifiedError(user);
-  }
-
   pendingVerificationUser = null;
-  await ensureUserProfile(user);
-  await syncEmailVerificationStatus(user.uid, true);
+  await ensureOAuthUserProfile(user);
+  await syncEmailVerificationStatus(user.uid, user.emailVerified);
   await updateLastLogin(user.uid);
 
   return user;
@@ -407,7 +432,18 @@ export async function logOut(): Promise<void> {
 
 // Send password reset email
 export async function resetPassword(email: string): Promise<void> {
-  await sendPasswordResetEmail(auth, sanitizeEmail(email));
+  try {
+    await sendPasswordResetEmail(auth, email.trim().toLowerCase(), getPasswordResetActionCodeSettings());
+  } catch (error) {
+    const code = ((error as AuthError)?.code || "").toLowerCase();
+
+    // Do not leak whether an account exists for this email.
+    if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 // Change password (requires recent auth)

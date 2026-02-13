@@ -43,7 +43,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 
 import { useShop } from "@/store/shop";
-import { createOrder, formatCurrency, validateOrderItems } from "@/lib/orders";
+import { createOrder, formatCurrency, validateOrderItems, validateCouponCode } from "@/lib/orders";
 import {
   processPayment,
   validateCardNumber,
@@ -64,7 +64,7 @@ const checkoutSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z
     .string()
-    .regex(/^\d{10,13}$/, "Please enter a valid phone number (10 to 13 digits)"),
+    .regex(/^\d{10,13}$/, "Please enter a valid phone number (10-13 digits)"),
   address: z.string().min(10, "Please enter your complete address"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
@@ -121,13 +121,11 @@ export default function Checkout() {
     errorMessage?: string;
     orderNumber?: string;
   }>({});
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [guestCheckout, setGuestCheckout] = useState(false);
-  const [resendingVerification, setResendingVerification] = useState(false);
+  
+  // Coupon state
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCouponCode, setAppliedCouponCode] = useState("");
-  const [couponDiscount, setCouponDiscount] = useState(0);
-  const [couponApplying, setCouponApplying] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [couponApplied, setCouponApplied] = useState(false);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -181,49 +179,34 @@ export default function Checkout() {
 
   const subtotal = cartSubtotal;
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-  const grossTotal = subtotal + shipping;
-  const discount = appliedCouponCode ? Math.min(couponDiscount, grossTotal) : 0;
-  const total = Math.max(0, grossTotal - discount);
-  const isPaymentBlocked = (isAuthenticated && !isEmailVerified) || (!isAuthenticated && !guestCheckout);
+  const total = subtotal + shipping - discount;
 
-  const clearCoupon = () => {
-    setCouponCode("");
-    setAppliedCouponCode("");
-    setCouponDiscount(0);
-  };
-
-  const applyCoupon = async () => {
-    const trimmed = couponCode.trim();
-    if (!trimmed) {
-      toast.error("Enter a coupon code first.");
+  // Handle coupon code application
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      toast.error("Please enter a coupon code");
       return;
     }
 
-    setCouponApplying(true);
-    try {
-      const result = await validateCheckoutCoupon(trimmed);
-      if (!result.valid) {
-        setAppliedCouponCode("");
-        setCouponDiscount(0);
-        toast.error(result.message || "Invalid coupon code.");
-        return;
-      }
-
-      setAppliedCouponCode(trimmed);
-      setCouponDiscount(result.discount);
-      toast.success(`Coupon applied! ${formatCurrency(result.discount)} discount added.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to validate coupon right now.");
-    } finally {
-      setCouponApplying(false);
+    const validation = validateCouponCode(couponCode.trim(), subtotal);
+    
+    if (validation.valid) {
+      setDiscount(validation.discount);
+      setCouponApplied(true);
+      toast.success(`Coupon applied! You saved ${formatCurrency(validation.discount)}`);
+    } else {
+      setDiscount(0);
+      setCouponApplied(false);
+      toast.error(validation.error || "Invalid coupon code");
     }
   };
 
-  useEffect(() => {
-    if (guestCheckout && paymentMethod !== "razorpay") {
-      setPaymentMethod("razorpay");
-    }
-  }, [guestCheckout, paymentMethod]);
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setDiscount(0);
+    setCouponApplied(false);
+    toast.success("Coupon removed");
+  };
 
   // Validate payment details based on selected method
   const validatePaymentDetails = (): boolean => {
@@ -341,7 +324,6 @@ export default function Checkout() {
               productId: item.product.id,
               qty: item.qty,
             })),
-            couponCode: appliedCouponCode || undefined,
             customer: {
               name: formData.name,
               email: formData.email.toLowerCase(),
@@ -350,38 +332,85 @@ export default function Checkout() {
               city: formData.city,
               state: formData.state,
               pincode: formData.pincode,
-              notes: formData.notes,
             },
+            subtotal,
+            shipping,
+            total,
           },
         });
 
-        if (result.success && result.orderNumber) {
-          if (guestCheckout) {
-            disableGuestCheckout();
-            setGuestCheckout(false);
+        if (result.success) {
+          try {
+            // Create the order in our orders collection too
+            const orderItems = cartItems.map((item) => ({
+              productId: item.product.id,
+              name: item.product.name,
+              qty: item.qty,
+              price: item.product.price,
+              imageUrl: item.product.image || "",
+            }));
+
+            const orderResult = await createOrder({
+              items: orderItems,
+              customer: {
+                name: formData.name,
+                email: formData.email.toLowerCase(),
+                phone: formData.phone,
+                address: formData.address,
+                city: formData.city,
+                state: formData.state,
+                pincode: formData.pincode,
+                notes: formData.notes,
+              },
+              subtotal,
+              shipping,
+              total,
+              couponCode: couponApplied ? couponCode : undefined,
+              discount: couponApplied ? discount : undefined,
+              payment: {
+                method: "online",
+                status: result.verificationPending ? "pending" : "completed",
+                transactionId: result.paymentId,
+              },
+            });
+
+            if (result.verificationPending) {
+              toast.info("Payment received. We're confirming it in the background.");
+            }
+
+            clearCart();
+            navigate(`/order-confirmation/${orderResult.orderNumber}`, {
+              state: {
+                orderNumber: orderResult.orderNumber,
+                transactionId: result.paymentId,
+                paymentMethod: "razorpay",
+              },
+            });
+          } catch (orderError) {
+            console.error("Order creation failed after successful payment:", orderError);
+            const paymentIdText = result.paymentId ? ` Payment ID: ${result.paymentId}` : "";
+            toast.error(
+              `Payment was successful, but we couldn't save your order right now.${paymentIdText} Please contact support with this payment ID.`
+            );
           }
-          clearCart();
-          navigate(`/order-confirmation/${result.orderNumber}`, {
-            state: {
-              orderNumber: result.orderNumber,
-              transactionId: result.paymentId,
-              paymentMethod: "razorpay",
-              guestCheckout,
-              guestEmail: guestCheckout ? formData.email : undefined,
-            },
-          });
-        } else if (result.success && !result.orderNumber) {
-          toast.error("Payment succeeded but order confirmation is missing. Please contact support.");
         } else {
-          toast.error(result.message || "Payment was not completed.");
+          if (/cancelled by user/i.test(result.message || "")) {
+            toast.info("Payment cancelled.");
+          } else {
+            toast.error(result.message || "Payment was not completed.");
+          }
         }
       } catch (error) {
         console.error("Razorpay payment error:", error);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Payment failed. Please try again."
-        );
+        if (error instanceof Error && /failed to fetch/i.test(error.message)) {
+          toast.error("Could not connect to payment service. Please check your internet and try again.");
+        } else {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Payment failed. Please try again."
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -432,7 +461,8 @@ export default function Checkout() {
           subtotal,
           shipping,
           total,
-          discount,
+          couponCode: couponApplied ? couponCode : undefined,
+          discount: couponApplied ? discount : undefined,
           payment: {
             ...paymentResponse.paymentInfo,
             status: "pending",
@@ -916,36 +946,41 @@ export default function Checkout() {
 
                 <Separator />
 
-                {/* Coupon */}
+                {/* Coupon Section */}
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Coupon</p>
+                  <label className="text-sm font-medium">Have a coupon code?</label>
                   <div className="flex gap-2">
                     <Input
-                      value={couponCode}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setCouponCode(value);
-                        if (appliedCouponCode && value.trim() !== appliedCouponCode) {
-                          setAppliedCouponCode("");
-                          setCouponDiscount(0);
-                        }
-                      }}
                       placeholder="Enter coupon code"
-                      className="h-9"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      disabled={couponApplied}
+                      className="flex-1"
                     />
-                    {appliedCouponCode ? (
-                      <Button type="button" variant="outline" className="h-9" onClick={clearCoupon}>
-                        Remove
+                    {!couponApplied ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleApplyCoupon}
+                        disabled={!couponCode.trim()}
+                      >
+                        Apply
                       </Button>
                     ) : (
-                      <Button type="button" className="h-9" onClick={applyCoupon} disabled={couponApplying}>
-                        {couponApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleRemoveCoupon}
+                      >
+                        Remove
                       </Button>
                     )}
                   </div>
-                  {appliedCouponCode ? (
-                    <p className="text-xs text-green-600">Coupon applied: -{formatCurrency(discount)}</p>
-                  ) : null}
+                  {couponApplied && (
+                    <p className="text-xs text-green-600">
+                      ✓ Coupon applied successfully
+                    </p>
+                  )}
                 </div>
 
                 <Separator />
@@ -966,12 +1001,12 @@ export default function Checkout() {
                       )}
                     </span>
                   </div>
-                  {discount > 0 ? (
+                  {discount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Coupon Discount</span>
+                      <span className="text-muted-foreground">Discount</span>
                       <span className="text-green-600">-{formatCurrency(discount)}</span>
                     </div>
-                  ) : null}
+                  )}
                   {subtotal < SHIPPING_THRESHOLD && (
                     <p className="text-xs text-muted-foreground">
                       Add {formatCurrency(SHIPPING_THRESHOLD - subtotal)} more for free shipping
