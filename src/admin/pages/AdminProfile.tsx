@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import logoImg from "@/assets/logo.png";
+import logoImg from "@/assets/logo.webp";
 import { doc, deleteDoc, deleteField, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";

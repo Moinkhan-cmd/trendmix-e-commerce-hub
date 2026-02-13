@@ -1,8 +1,8 @@
-import productHenna from "@/assets/product-henna.jpg";
-import productHome from "@/assets/product-home.png";
+import productHenna from "@/assets/product-henna.webp";
+import productHome from "@/assets/product-home.webp";
 
 // Fallback images
-import productCosmetics from "@/assets/product-cosmetics.png";
+import productCosmetics from "@/assets/product-cosmetics.webp";
 import productJewelry from "@/assets/product-jewelry.jpg";
 import productSocks from "@/assets/product-socks.jpg";
 import productAccessories from "@/assets/product-accessories.jpg";

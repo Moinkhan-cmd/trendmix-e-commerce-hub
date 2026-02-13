@@ -126,6 +126,13 @@ export default function Checkout() {
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
+  const [guestCheckout, setGuestCheckout] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  const isPaymentBlocked =
+    (isAuthenticated && !isEmailVerified) ||
+    (guestCheckout && paymentMethod !== "razorpay");
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
