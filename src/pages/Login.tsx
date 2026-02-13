@@ -23,6 +23,9 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
+  const RESEND_COOLDOWN_SECONDS = 30;
+  const RESEND_COOLDOWN_STORAGE_KEY = "trendmix_verification_resend_cooldown_until";
+
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -42,6 +45,38 @@ export default function Login() {
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [localVerificationRequired, setLocalVerificationRequired] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  const setCooldown = (seconds: number) => {
+    const nextSeconds = Math.max(0, Math.ceil(seconds));
+    setResendCooldown(nextSeconds);
+
+    if (nextSeconds <= 0) {
+      sessionStorage.removeItem(RESEND_COOLDOWN_STORAGE_KEY);
+      return;
+    }
+
+    const cooldownUntil = Date.now() + nextSeconds * 1000;
+    sessionStorage.setItem(RESEND_COOLDOWN_STORAGE_KEY, String(cooldownUntil));
+  };
+
+  useEffect(() => {
+    const cooldownUntilRaw = sessionStorage.getItem(RESEND_COOLDOWN_STORAGE_KEY);
+    if (!cooldownUntilRaw) return;
+
+    const cooldownUntil = Number(cooldownUntilRaw);
+    if (!Number.isFinite(cooldownUntil)) {
+      sessionStorage.removeItem(RESEND_COOLDOWN_STORAGE_KEY);
+      return;
+    }
+
+    const remainingSeconds = Math.ceil((cooldownUntil - Date.now()) / 1000);
+    if (remainingSeconds > 0) {
+      setResendCooldown(remainingSeconds);
+    } else {
+      sessionStorage.removeItem(RESEND_COOLDOWN_STORAGE_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     const state = location.state as { verificationRequired?: boolean } | null;
@@ -54,8 +89,25 @@ export default function Login() {
     if (user?.emailVerified || isEmailVerified) {
       setLocalVerificationRequired(false);
       clearVerificationRequired();
+      setCooldown(0);
     }
   }, [user?.emailVerified, isEmailVerified, clearVerificationRequired]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((prev) => {
+        const next = prev > 0 ? prev - 1 : 0;
+        if (next <= 0) {
+          sessionStorage.removeItem(RESEND_COOLDOWN_STORAGE_KEY);
+        }
+        return next;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   const from = (location.state as { from?: Location })?.from?.pathname || "/";
 
@@ -89,6 +141,10 @@ export default function Login() {
   const shouldShowVerificationAlert = verificationRequired || localVerificationRequired;
 
   const handleResendVerification = async () => {
+    if (resendCooldown > 0) {
+      return;
+    }
+
     setIsResending(true);
     setResendMessage(null);
     clearError();
@@ -96,9 +152,14 @@ export default function Login() {
     try {
       await resendVerificationEmail();
       setResendMessage("Verification email sent. Please check your inbox.");
+      setCooldown(RESEND_COOLDOWN_SECONDS);
       await refreshVerificationStatus();
-    } catch {
-      // Error is handled by AuthProvider
+    } catch (err) {
+      const message = (err as { message?: string })?.message || "";
+      const match = message.match(/Please wait (\d+) seconds/i);
+      if (match?.[1]) {
+        setCooldown(Number(match[1]));
+      }
     } finally {
       setIsResending(false);
     }
@@ -152,7 +213,7 @@ export default function Login() {
                           variant="outline"
                           size="sm"
                           onClick={handleResendVerification}
-                          disabled={isResending || !user}
+                          disabled={isResending || resendCooldown > 0}
                           className="w-full"
                         >
                           {isResending ? (
@@ -160,6 +221,8 @@ export default function Login() {
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Sending verification email...
                             </>
+                          ) : resendCooldown > 0 ? (
+                            `Resend available in ${resendCooldown}s`
                           ) : (
                             "Resend verification email"
                           )}

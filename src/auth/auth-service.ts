@@ -25,6 +25,10 @@ import {
 import { auth, db } from "@/lib/firebase";
 import type { UserProfile, UserRole, PasswordStrength, AuthError } from "./types";
 
+let pendingVerificationUser: User | null = null;
+const VERIFICATION_RESEND_COOLDOWN_MS = 30_000;
+let lastVerificationEmailSentAt = 0;
+
 const getVerificationActionCodeSettings = (): ActionCodeSettings | undefined => {
   if (typeof window === "undefined") return undefined;
 
@@ -96,6 +100,7 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Please verify your email before logging in.";
   }
 
+  const maybeMessage = (error as { message?: string })?.message || "";
   const code = (error as AuthError)?.code || "";
   
   const errorMessages: Record<string, string> = {
@@ -111,7 +116,21 @@ export function getAuthErrorMessage(error: unknown): string {
     "auth/network-request-failed": "Network error. Please check your internet connection.",
     "auth/popup-closed-by-user": "Sign in was cancelled. Please try again.",
     "auth/requires-recent-login": "Please sign out and sign back in to perform this action.",
+    "auth/no-pending-verification-user": "Please try logging in again before resending verification email.",
+    "auth/already-verified": "Your email is already verified. Please log in.",
   };
+
+  if (maybeMessage === "No user signed in") {
+    return "Please try logging in again before resending verification email.";
+  }
+
+  if (maybeMessage === "Your email is already verified.") {
+    return "Your email is already verified. Please log in.";
+  }
+
+  if (code === "auth/verification-resend-throttled" && maybeMessage) {
+    return maybeMessage;
+  }
 
   return errorMessages[code] || "An unexpected error occurred. Please try again.";
 }
@@ -201,8 +220,11 @@ export async function signIn(email: string, password: string): Promise<User> {
   await reload(credential.user);
 
   if (!credential.user.emailVerified) {
+    pendingVerificationUser = credential.user;
     throw new EmailNotVerifiedError(credential.user);
   }
+
+  pendingVerificationUser = null;
 
   await syncEmailVerificationStatus(credential.user.uid, true);
   
@@ -214,6 +236,8 @@ export async function signIn(email: string, password: string): Promise<User> {
 
 // Sign out
 export async function logOut(): Promise<void> {
+  pendingVerificationUser = null;
+
   // Clear the Firebase auth state
   await signOut(auth);
   
@@ -273,13 +297,36 @@ export async function isAdmin(uid: string): Promise<boolean> {
 
 // Resend verification email
 export async function resendVerificationEmail(): Promise<void> {
-  const user = auth.currentUser;
-  if (!user) throw new Error("No user signed in");
+  const now = Date.now();
+  const remainingMs = VERIFICATION_RESEND_COOLDOWN_MS - (now - lastVerificationEmailSentAt);
+  if (remainingMs > 0) {
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    const err = new Error(`Please wait ${remainingSeconds} seconds before requesting another verification email.`) as Error & { code: string };
+    err.code = "auth/verification-resend-throttled";
+    throw err;
+  }
+
+  const user = auth.currentUser ?? pendingVerificationUser;
+  if (!user) {
+    const err = new Error("Please try logging in again before resending verification email.") as Error & { code: string };
+    err.code = "auth/no-pending-verification-user";
+    throw err;
+  }
+
+  await reload(user).catch(() => {
+    // non-fatal
+  });
+
   if (user.emailVerified) {
-    throw new Error("Your email is already verified.");
+    pendingVerificationUser = null;
+    const err = new Error("Your email is already verified.") as Error & { code: string };
+    err.code = "auth/already-verified";
+    throw err;
   }
 
   await sendEmailVerification(user, getVerificationActionCodeSettings());
+  pendingVerificationUser = user;
+  lastVerificationEmailSentAt = Date.now();
 }
 
 export async function refreshCurrentUser(): Promise<User | null> {
