@@ -27,7 +27,7 @@ function normalizeEmail(email: string): string {
 }
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "").slice(-13);
+  return phone.replace(/\D/g, "").slice(0, 13);
 }
 
 function isFirestoreIndexError(err: unknown): boolean {
@@ -122,15 +122,30 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     phone: normalizePhone(input.customer.phone),
   };
 
+  // Server-side validation of coupon code and discount
+  let validatedDiscount = 0;
+  let validatedCouponCode: string | undefined;
+  
+  if (input.couponCode) {
+    const validation = validateCouponCode(input.couponCode, input.subtotal);
+    if (validation.valid) {
+      validatedDiscount = validation.discount;
+      validatedCouponCode = input.couponCode;
+    } else {
+      // If coupon is invalid, don't apply the discount
+      console.warn("Invalid coupon code provided:", input.couponCode);
+    }
+  }
+
   const orderData = stripUndefinedDeep({
     items: input.items,
     customer,
     status: "Pending",
     subtotal: input.subtotal,
     shipping: input.shipping,
-    total: input.total,
-    discount: input.discount,
-    couponCode: input.couponCode,
+    total: input.subtotal + input.shipping - validatedDiscount,
+    discount: validatedDiscount > 0 ? validatedDiscount : undefined,
+    couponCode: validatedCouponCode,
     orderNumber,
     userId: input.userId ?? "guest",
     emailSent: false,
@@ -499,6 +514,9 @@ export function formatOrderDate(timestamp: Timestamp | Date | null | undefined):
   });
 }
 
+// NOTE: This function is exported for use by both client and server (in createOrder).
+// While the coupon code is visible in client code, server-side validation in createOrder
+// ensures the discount is verified before being saved to the database.
 export function validateCouponCode(code: string, subtotal: number): { valid: boolean; discount: number; error?: string } {
   const validCoupon = "1W3$$moin.trendmix";
   
@@ -511,7 +529,8 @@ export function validateCouponCode(code: string, subtotal: number): { valid: boo
   }
   
   // Apply 10% discount for valid coupon
-  const discount = Math.round(subtotal * 0.1);
+  // Use precise rounding for currency: multiply by 10, round, then divide by 100
+  const discount = Math.round(subtotal * 10) / 100;
   
   return { valid: true, discount };
 }
