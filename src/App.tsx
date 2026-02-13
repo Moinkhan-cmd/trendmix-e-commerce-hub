@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -100,7 +101,16 @@ const App = () => (
             <ScrollToTop />
             <ScrollToHash />
             <AppErrorBoundary>
-              <Suspense fallback={<div className="min-h-screen" />}>
+              <Suspense
+                fallback={(
+                  <div className="min-h-screen flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Loading app…</span>
+                    </div>
+                  </div>
+                )}
+              >
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />

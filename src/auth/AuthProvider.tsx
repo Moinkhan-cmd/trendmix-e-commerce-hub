@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -19,7 +20,6 @@ import {
   updateUserProfile,
   isAdmin,
   getAuthErrorMessage,
-  signInWithGoogle,
   resendVerificationEmail,
   refreshCurrentUser,
   isEmailNotVerifiedError,
@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [verificationRequired, setVerificationRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const authInitSettledRef = useRef(false);
 
   const clearError = useCallback(() => setError(null), []);
   const clearVerificationRequired = useCallback(() => setVerificationRequired(false), []);
@@ -94,6 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Listen for auth state changes
   useEffect(() => {
+    const loadingTimeout = window.setTimeout(() => {
+      if (authInitSettledRef.current) return;
+      authInitSettledRef.current = true;
+      setLoading(false);
+    }, 8000);
+
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
       setLoading(true);
 
@@ -122,11 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error("Auth state change error:", err);
       } finally {
+        authInitSettledRef.current = true;
+        window.clearTimeout(loadingTimeout);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      window.clearTimeout(loadingTimeout);
+      unsubscribe();
+    };
   }, []);
 
   const handleSignUp = useCallback(async (email: string, password: string, name: string) => {

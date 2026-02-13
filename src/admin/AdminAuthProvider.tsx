@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -18,6 +18,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const authInitSettledRef = useRef(false);
 
   const refreshAdminCheck = async () => {
     if (!auth.currentUser) {
@@ -40,6 +41,12 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    const loadingTimeout = window.setTimeout(() => {
+      if (authInitSettledRef.current) return;
+      authInitSettledRef.current = true;
+      setLoading(false);
+    }, 8000);
+
     const unsub = onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser);
       setLoading(true);
@@ -55,11 +62,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setIsAdmin(false);
       } finally {
+        authInitSettledRef.current = true;
+        window.clearTimeout(loadingTimeout);
         setLoading(false);
       }
     });
 
-    return () => unsub();
+    return () => {
+      window.clearTimeout(loadingTimeout);
+      unsub();
+    };
   }, []);
 
   const value = useMemo(

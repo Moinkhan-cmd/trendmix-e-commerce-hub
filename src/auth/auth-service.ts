@@ -13,7 +13,6 @@ import {
   browserSessionPersistence,
   setPersistence,
   reload,
-  GoogleAuthProvider,
   type User,
   type ActionCodeSettings,
 } from "firebase/auth";
