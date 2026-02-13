@@ -39,6 +39,7 @@ import { toast } from "@/components/ui/sonner";
 import { getOrderByNumber, getOrdersByEmail, getOrdersByPhone, formatCurrency, formatOrderDate } from "@/lib/orders";
 import type { OrderDoc, OrderStatus } from "@/lib/models";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth/AuthProvider";
 
 const orderNumberSchema = z.object({
   orderNumber: z.string().min(1, "Order number is required"),
@@ -65,6 +66,7 @@ const statusConfig: Record<OrderStatus, { icon: typeof Clock; color: string; bgC
 const statusOrder: OrderStatus[] = ["Pending", "Confirmed", "Shipped", "Delivered"];
 
 export default function OrderTracking() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<OrderWithId[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -128,6 +130,47 @@ export default function OrderTracking() {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <Card className="w-full max-w-md text-center">
+            <CardHeader>
+              <CardTitle>Login Required</CardTitle>
+              <CardDescription>
+                Sign in with your verified account to securely track your orders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button asChild className="w-full">
+                <Link to="/login" state={{ from: { pathname: "/track-order" } }}>
+                  Log In
+                </Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full">
+                <Link to="/signup">Create Account</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -30,6 +30,8 @@ type OrderConfirmationState = {
   orderNumber?: string;
   transactionId?: string;
   paymentMethod?: string;
+  guestCheckout?: boolean;
+  guestEmail?: string;
 };
 
 export default function OrderConfirmation() {
@@ -45,6 +47,11 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     const fetchOrder = async () => {
+      if (navState?.guestCheckout) {
+        setLoading(false);
+        return;
+      }
+
       if (!orderId) {
         setLoading(false);
         return;
@@ -61,7 +68,7 @@ export default function OrderConfirmation() {
     };
 
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, navState?.guestCheckout]);
 
   const handleCopyOrderNumber = async () => {
     const orderNumber = order?.orderNumber || orderId || "";
@@ -416,6 +423,24 @@ export default function OrderConfirmation() {
               </Link>
             </Button>
           </div>
+
+          {navState?.guestCheckout && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">Create your Trendmix account</p>
+                  <p className="text-sm text-muted-foreground">
+                    Save this order and speed up your next checkout.
+                  </p>
+                </div>
+                <Button asChild>
+                  <Link to="/signup" state={{ email: navState.guestEmail }}>
+                    Create Account
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Demo Footer Note */}

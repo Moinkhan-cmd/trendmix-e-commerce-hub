@@ -3,45 +3,46 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import emailjs from "@emailjs/browser";
+import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, Mail, Send, Settings } from "lucide-react";
+import { Loader2, Mail, Settings } from "lucide-react";
+
+const FUNCTIONS_BASE_URL = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
+  || "https://us-central1-trendmix-admin.cloudfunctions.net";
+const NOTIFICATION_HEALTH_URL = `${FUNCTIONS_BASE_URL}/getNotificationHealth`;
 
 const notificationSettingsSchema = z.object({
-  emailjsServiceId: z.string().min(1, "Service ID is required"),
-  emailjsTemplateId: z.string().min(1, "Template ID is required"),
-  emailjsPublicKey: z.string().min(1, "Public Key is required"),
   adminEmail: z.string().email("Invalid email address"),
   notifyOnNewOrder: z.boolean().default(true),
-  notifyOnStatusChange: z.boolean().default(true),
-  customerOrderConfirmationTemplateId: z.string().optional(),
-  customerStatusUpdateTemplateId: z.string().optional(),
+  sendCustomerConfirmation: z.boolean().default(false),
 });
 
 type NotificationSettingsFormValues = z.infer<typeof notificationSettingsSchema>;
 
 const defaultValues: NotificationSettingsFormValues = {
-  emailjsServiceId: "",
-  emailjsTemplateId: "",
-  emailjsPublicKey: "",
   adminEmail: "",
   notifyOnNewOrder: true,
-  notifyOnStatusChange: true,
-  customerOrderConfirmationTemplateId: "",
-  customerStatusUpdateTemplateId: "",
+  sendCustomerConfirmation: false,
 };
 
 export default function AdminNotificationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [health, setHealth] = useState<{
+    sendgridKeyConfigured: boolean;
+    fromEmailConfigured: boolean;
+    adminEmailConfigured: boolean;
+    sendgridReadyForAdminNotifications: boolean;
+    adminEmailSource: "settings" | "functions-config" | "missing";
+  } | null>(null);
 
   const form = useForm<NotificationSettingsFormValues>({
     resolver: zodResolver(notificationSettingsSchema),
@@ -72,6 +73,58 @@ export default function AdminNotificationSettings() {
     loadSettings();
   }, [form]);
 
+  useEffect(() => {
+    const loadNotificationHealth = async () => {
+      setHealthLoading(true);
+      setHealthError(null);
+
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setHealthError("Please sign in as admin to check backend status.");
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const response = await fetch(NOTIFICATION_HEALTH_URL, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errorData.error || "Failed to load backend notification health");
+        }
+
+        const payload = (await response.json()) as {
+          success: boolean;
+          health?: {
+            sendgridKeyConfigured: boolean;
+            fromEmailConfigured: boolean;
+            adminEmailConfigured: boolean;
+            sendgridReadyForAdminNotifications: boolean;
+            adminEmailSource: "settings" | "functions-config" | "missing";
+          };
+        };
+
+        if (!payload.success || !payload.health) {
+          throw new Error("Invalid backend health response");
+        }
+
+        setHealth(payload.health);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load backend status";
+        setHealthError(message);
+      } finally {
+        setHealthLoading(false);
+      }
+    };
+
+    loadNotificationHealth();
+  }, []);
+
   const onSubmit = async (data: NotificationSettingsFormValues) => {
     setSaving(true);
     try {
@@ -83,38 +136,6 @@ export default function AdminNotificationSettings() {
       toast.error("Failed to save notification settings");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const testEmail = async () => {
-    const values = form.getValues();
-    
-    if (!values.emailjsServiceId || !values.emailjsTemplateId || !values.emailjsPublicKey || !values.adminEmail) {
-      toast.error("Please fill in all required EmailJS fields before testing");
-      return;
-    }
-
-    setSendingTest(true);
-    try {
-      await emailjs.send(
-        values.emailjsServiceId,
-        values.emailjsTemplateId,
-        {
-          to_email: values.adminEmail,
-          subject: "Test Email from TrendMix Admin",
-          message: "This is a test email to verify your EmailJS configuration is working correctly.",
-          order_id: "TEST-001",
-          customer_name: "Test Customer",
-          order_total: "$0.00",
-        },
-        values.emailjsPublicKey
-      );
-      toast.success("Test email sent successfully! Check your inbox.");
-    } catch (error) {
-      console.error("Error sending test email:", error);
-      toast.error("Failed to send test email. Please check your EmailJS configuration.");
-    } finally {
-      setSendingTest(false);
     }
   };
 
@@ -131,9 +152,37 @@ export default function AdminNotificationSettings() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Notification Settings</h1>
         <p className="text-muted-foreground">
-          Configure email notifications for orders and status updates using EmailJS.
+          Configure order notification behavior. Delivery is handled by backend Cloud Functions using SendGrid.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">SendGrid Backend Health</CardTitle>
+          <CardDescription>
+            Secure readiness check from backend (no secret values exposed).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {healthLoading ? (
+            <div className="flex items-center text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Checking backend configuration...
+            </div>
+          ) : healthError ? (
+            <p className="text-destructive">{healthError}</p>
+          ) : health ? (
+            <>
+              <p>API key: <strong>{health.sendgridKeyConfigured ? "Configured" : "Missing"}</strong></p>
+              <p>From email: <strong>{health.fromEmailConfigured ? "Configured" : "Missing"}</strong></p>
+              <p>Admin email: <strong>{health.adminEmailConfigured ? "Configured" : "Missing"}</strong> ({health.adminEmailSource})</p>
+              <p>
+                Overall: <strong>{health.sendgridReadyForAdminNotifications ? "Ready" : "Not ready"}</strong>
+              </p>
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -141,73 +190,13 @@ export default function AdminNotificationSettings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                EmailJS Configuration
+                Admin Notification Target
               </CardTitle>
               <CardDescription>
-                Enter your EmailJS credentials to enable email notifications.
-                Get your credentials from{" "}
-                <a
-                  href="https://www.emailjs.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline"
-                >
-                  emailjs.com
-                </a>
+                Set the admin inbox for paid-order alerts. SendGrid API key/from address are configured in Firebase Functions config.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="emailjsServiceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Service ID *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="service_xxxxxxx" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Your EmailJS service ID (found in Email Services)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="emailjsTemplateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Admin Notification Template ID *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="template_xxxxxxx" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Template ID for admin order notifications
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="emailjsPublicKey"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Public Key *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="xxxxxxxxxxxxxxx" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Your EmailJS public key (found in Account &gt; API Keys)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="adminEmail"
@@ -218,33 +207,12 @@ export default function AdminNotificationSettings() {
                       <Input type="email" placeholder="admin@example.com" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Email address to receive admin notifications
+                      This value is read by backend function `onOrderCreatedSendEmailNotifications`.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={testEmail}
-                  disabled={sendingTest}
-                >
-                  {sendingTest ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Send Test Email
-                    </>
-                  )}
-                </Button>
-              </div>
             </CardContent>
           </Card>
 
@@ -267,7 +235,7 @@ export default function AdminNotificationSettings() {
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">New Order Notifications</FormLabel>
                       <FormDescription>
-                        Receive an email when a new order is placed
+                        Receive an email after successful payment verification and order creation
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -279,16 +247,15 @@ export default function AdminNotificationSettings() {
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
-                name="notifyOnStatusChange"
+                name="sendCustomerConfirmation"
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Order Status Change Notifications</FormLabel>
+                      <FormLabel className="text-base">Customer Confirmation Email</FormLabel>
                       <FormDescription>
-                        Receive an email when an order status is updated
+                        Send optional customer confirmation email for successful paid orders
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -297,49 +264,6 @@ export default function AdminNotificationSettings() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Email Templates (Optional)</CardTitle>
-              <CardDescription>
-                Configure template IDs for customer-facing emails. Leave blank to disable.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="customerOrderConfirmationTemplateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Order Confirmation Template ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="template_xxxxxxx" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Template for sending order confirmations to customers
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="customerStatusUpdateTemplateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status Update Template ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="template_xxxxxxx" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Template for sending status updates to customers
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

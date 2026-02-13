@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
@@ -11,6 +12,7 @@ import {
   browserSessionPersistence,
   setPersistence,
   reload,
+  GoogleAuthProvider,
   type User,
   type ActionCodeSettings,
 } from "firebase/auth";
@@ -28,6 +30,95 @@ import type { UserProfile, UserRole, PasswordStrength, AuthError } from "./types
 let pendingVerificationUser: User | null = null;
 const VERIFICATION_RESEND_COOLDOWN_MS = 30_000;
 let lastVerificationEmailSentAt = 0;
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 10 * 60 * 1000;
+
+type LoginAttemptState = {
+  attempts: number;
+  lockUntil: number;
+};
+
+function normalizeText(value: string, maxLength = 120): string {
+  return value.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function sanitizeEmail(email: string): string {
+  return normalizeText(email, 254).toLowerCase();
+}
+
+function sanitizeDisplayName(name: string): string {
+  return normalizeText(name, 80);
+}
+
+function sanitizeOptionalText(value: string | undefined, maxLength = 120): string | undefined {
+  if (!value) return undefined;
+  const normalized = normalizeText(value, maxLength);
+  return normalized || undefined;
+}
+
+function getLoginAttemptStorageKey(email: string): string {
+  return `trendmix_login_attempts_${sanitizeEmail(email)}`;
+}
+
+function getLoginAttemptState(email: string): LoginAttemptState {
+  if (typeof window === "undefined") return { attempts: 0, lockUntil: 0 };
+
+  const key = getLoginAttemptStorageKey(email);
+  const raw = localStorage.getItem(key);
+  if (!raw) return { attempts: 0, lockUntil: 0 };
+
+  try {
+    const parsed = JSON.parse(raw) as LoginAttemptState;
+    return {
+      attempts: Number(parsed.attempts ?? 0),
+      lockUntil: Number(parsed.lockUntil ?? 0),
+    };
+  } catch {
+    localStorage.removeItem(key);
+    return { attempts: 0, lockUntil: 0 };
+  }
+}
+
+function setLoginAttemptState(email: string, state: LoginAttemptState): void {
+  if (typeof window === "undefined") return;
+  const key = getLoginAttemptStorageKey(email);
+  localStorage.setItem(key, JSON.stringify(state));
+}
+
+function clearLoginAttemptState(email: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(getLoginAttemptStorageKey(email));
+}
+
+function enforceLoginLockout(email: string): void {
+  const state = getLoginAttemptState(email);
+  const now = Date.now();
+  if (state.lockUntil > now) {
+    const waitSeconds = Math.ceil((state.lockUntil - now) / 1000);
+    const err = new Error(`Too many failed attempts. Please wait ${waitSeconds} seconds and try again.`) as Error & { code: string };
+    err.code = "auth/too-many-requests";
+    throw err;
+  }
+}
+
+function recordLoginFailure(email: string): void {
+  const now = Date.now();
+  const state = getLoginAttemptState(email);
+  const nextAttempts = state.lockUntil > now ? state.attempts : state.attempts + 1;
+
+  if (nextAttempts >= LOGIN_MAX_ATTEMPTS) {
+    setLoginAttemptState(email, {
+      attempts: nextAttempts,
+      lockUntil: now + LOGIN_LOCKOUT_MS,
+    });
+    return;
+  }
+
+  setLoginAttemptState(email, {
+    attempts: nextAttempts,
+    lockUntil: 0,
+  });
+}
 
 const getVerificationActionCodeSettings = (): ActionCodeSettings | undefined => {
   if (typeof window === "undefined") return undefined;
@@ -101,7 +192,9 @@ export function getAuthErrorMessage(error: unknown): string {
   }
 
   const maybeMessage = (error as { message?: string })?.message || "";
-  const code = (error as AuthError)?.code || "";
+  const directCode = (error as AuthError)?.code || "";
+  const messageCodeMatch = maybeMessage.match(/(auth\/[a-z0-9-]+)/i);
+  const code = (directCode || messageCodeMatch?.[1] || "").toLowerCase();
   
   const errorMessages: Record<string, string> = {
     "auth/email-already-in-use": "An account with this email already exists. Please login instead.",
@@ -115,9 +208,19 @@ export function getAuthErrorMessage(error: unknown): string {
     "auth/too-many-requests": "Too many failed attempts. Please wait a few minutes and try again.",
     "auth/network-request-failed": "Network error. Please check your internet connection.",
     "auth/popup-closed-by-user": "Sign in was cancelled. Please try again.",
+    "auth/popup-blocked": "Popup was blocked by your browser. Please allow popups and try again.",
+    "auth/cancelled-popup-request": "Sign in was cancelled. Please try again.",
+    "auth/account-exists-with-different-credential": "An account already exists with a different sign-in method for this email.",
     "auth/requires-recent-login": "Please sign out and sign back in to perform this action.",
     "auth/no-pending-verification-user": "Please try logging in again before resending verification email.",
     "auth/already-verified": "Your email is already verified. Please log in.",
+    "auth/verification-resend-throttled": "Please wait before requesting another verification email.",
+    "auth/invalid-continue-uri": "Verification link configuration is invalid. Please contact support.",
+    "auth/unauthorized-continue-uri": "This domain is not authorized for verification emails. Please contact support.",
+    "auth/missing-continue-uri": "Verification link configuration is missing. Please contact support.",
+    "auth/quota-exceeded": "Email sending quota has been exceeded. Please try again later.",
+    "auth/internal-error": "Unable to send verification email right now. Please try again in a moment.",
+    "auth/argument-error": "Unable to process verification request. Please refresh and try again.",
   };
 
   if (maybeMessage === "No user signed in") {
@@ -185,24 +288,44 @@ async function syncEmailVerificationStatus(uid: string, emailVerified: boolean):
   });
 }
 
+async function ensureUserProfile(user: User): Promise<void> {
+  const safeDisplayName = sanitizeDisplayName(user.displayName || "Trendmix User");
+  const existing = await getUserProfile(user.uid);
+
+  if (!existing) {
+    await createUserProfile(user, safeDisplayName);
+    return;
+  }
+
+  await updateDoc(doc(db, "users", user.uid), {
+    emailVerified: user.emailVerified,
+    updatedAt: serverTimestamp(),
+  }).catch(() => {
+    // Profile update failure is non-fatal.
+  });
+}
+
 // Sign up new user
 export async function signUp(
   email: string,
   password: string,
   displayName: string
 ): Promise<User> {
+  const safeEmail = sanitizeEmail(email);
+  const safeDisplayName = sanitizeDisplayName(displayName);
+
   // Use session persistence so the user is logged out when the browser is closed
   await setPersistence(auth, browserSessionPersistence);
   
   // Create Firebase Auth user
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const credential = await createUserWithEmailAndPassword(auth, safeEmail, password);
   const user = credential.user;
 
   // Update display name
-  await updateProfile(user, { displayName });
+  await updateProfile(user, { displayName: safeDisplayName });
 
   // Create Firestore profile
-  await createUserProfile(user, displayName);
+  await createUserProfile(user, safeDisplayName);
 
   // Send verification email
   await sendEmailVerification(user, getVerificationActionCodeSettings());
@@ -212,10 +335,19 @@ export async function signUp(
 
 // Sign in existing user
 export async function signIn(email: string, password: string): Promise<User> {
+  const safeEmail = sanitizeEmail(email);
+  enforceLoginLockout(safeEmail);
+
   // Use session persistence so the user is logged out when the browser is closed
   await setPersistence(auth, browserSessionPersistence);
-  
-  const credential = await signInWithEmailAndPassword(auth, email, password);
+
+  let credential;
+  try {
+    credential = await signInWithEmailAndPassword(auth, safeEmail, password);
+  } catch (error) {
+    recordLoginFailure(safeEmail);
+    throw error;
+  }
 
   await reload(credential.user);
 
@@ -230,8 +362,36 @@ export async function signIn(email: string, password: string): Promise<User> {
   
   // Update last login
   await updateLastLogin(credential.user.uid);
+  clearLoginAttemptState(safeEmail);
   
   return credential.user;
+}
+
+// Sign in with Google popup
+export async function signInWithGoogle(): Promise<User> {
+  await setPersistence(auth, browserSessionPersistence);
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  const credential = await signInWithPopup(auth, provider);
+  const user = credential.user;
+
+  await reload(user).catch(() => {
+    // non-fatal
+  });
+
+  if (!user.emailVerified) {
+    pendingVerificationUser = user;
+    throw new EmailNotVerifiedError(user);
+  }
+
+  pendingVerificationUser = null;
+  await ensureUserProfile(user);
+  await syncEmailVerificationStatus(user.uid, true);
+  await updateLastLogin(user.uid);
+
+  return user;
 }
 
 // Sign out
@@ -247,7 +407,7 @@ export async function logOut(): Promise<void> {
 
 // Send password reset email
 export async function resetPassword(email: string): Promise<void> {
-  await sendPasswordResetEmail(auth, email);
+  await sendPasswordResetEmail(auth, sanitizeEmail(email));
 }
 
 // Change password (requires recent auth)
@@ -272,15 +432,30 @@ export async function updateUserProfile(
   data: Partial<Pick<UserProfile, "displayName" | "phone" | "address">>
 ): Promise<void> {
   const userRef = doc(db, "users", uid);
+
+  const sanitizedData = {
+    ...data,
+    displayName: data.displayName ? sanitizeDisplayName(data.displayName) : undefined,
+    phone: sanitizeOptionalText(data.phone, 30),
+    address: data.address
+      ? {
+          street: sanitizeOptionalText(data.address.street, 180) || "",
+          city: sanitizeOptionalText(data.address.city, 80) || "",
+          state: sanitizeOptionalText(data.address.state, 80) || "",
+          pincode: sanitizeOptionalText(data.address.pincode, 12) || "",
+          country: sanitizeOptionalText(data.address.country, 80) || "India",
+        }
+      : undefined,
+  };
   
   await updateDoc(userRef, {
-    ...data,
+    ...sanitizedData,
     updatedAt: serverTimestamp(),
   });
 
   // Update Firebase Auth display name if changed
-  if (data.displayName && auth.currentUser) {
-    await updateProfile(auth.currentUser, { displayName: data.displayName });
+  if (sanitizedData.displayName && auth.currentUser) {
+    await updateProfile(auth.currentUser, { displayName: sanitizedData.displayName });
   }
 }
 
