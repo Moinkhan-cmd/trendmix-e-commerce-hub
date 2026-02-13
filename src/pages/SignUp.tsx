@@ -78,7 +78,7 @@ export default function SignUp() {
       await signUp(data.email, data.password, data.name);
       setSuccess(true);
       setTimeout(() => {
-        navigate("/");
+        navigate("/login", { replace: true });
       }, 2000);
     } catch {
       // Error is handled by AuthProvider
@@ -110,11 +110,11 @@ export default function SignUp() {
               <div className="reveal-up stagger-1" style={{ animationFillMode: "backwards" }}>
                 <h2 className="text-2xl font-bold text-3d">Account created!</h2>
                 <p className="text-muted-foreground mt-2">
-                  Welcome to TrendMix! A verification email has been sent to your inbox.
+                  Verification email sent. Please check your inbox.
                 </p>
               </div>
               <p className="text-sm text-muted-foreground reveal-up stagger-2" style={{ animationFillMode: "backwards" }}>
-                Redirecting you to the homepage...
+                Redirecting you to the login page...
               </p>
             </CardContent>
           </Card>

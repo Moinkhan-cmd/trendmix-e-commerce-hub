@@ -122,8 +122,22 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* Protected customer routes */}
-                <Route path="/account" element={<Account />} />
-                <Route path="/checkout" element={<Checkout />} />
+                <Route
+                  path="/account"
+                  element={(
+                    <RequireAuth requireVerified>
+                      <Account />
+                    </RequireAuth>
+                  )}
+                />
+                <Route
+                  path="/checkout"
+                  element={(
+                    <RequireAuth requireVerified>
+                      <Checkout />
+                    </RequireAuth>
+                  )}
+                />
 
                 {/* Admin routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />

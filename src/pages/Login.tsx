@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,10 +25,37 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, error, clearError } = useAuth();
+  const {
+    signIn,
+    error,
+    clearError,
+    verificationRequired,
+    resendVerificationEmail,
+    refreshVerificationStatus,
+    clearVerificationRequired,
+    isEmailVerified,
+    user,
+  } = useAuth();
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [localVerificationRequired, setLocalVerificationRequired] = useState(false);
+
+  useEffect(() => {
+    const state = location.state as { verificationRequired?: boolean } | null;
+    if (state?.verificationRequired) {
+      setLocalVerificationRequired(true);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (user?.emailVerified || isEmailVerified) {
+      setLocalVerificationRequired(false);
+      clearVerificationRequired();
+    }
+  }, [user?.emailVerified, isEmailVerified, clearVerificationRequired]);
 
   const from = (location.state as { from?: Location })?.from?.pathname || "/";
 
@@ -46,6 +73,7 @@ export default function Login() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setResendMessage(null);
     clearError();
 
     try {
@@ -55,6 +83,24 @@ export default function Login() {
       // Error is handled by AuthProvider
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const shouldShowVerificationAlert = verificationRequired || localVerificationRequired;
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    setResendMessage(null);
+    clearError();
+
+    try {
+      await resendVerificationEmail();
+      setResendMessage("Verification email sent. Please check your inbox.");
+      await refreshVerificationStatus();
+    } catch {
+      // Error is handled by AuthProvider
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -96,6 +142,39 @@ export default function Login() {
 
             <CardContent className="relative z-20">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  {shouldShowVerificationAlert && (
+                    <Alert className="animate-in fade-in slide-in-from-top-2 duration-300">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="space-y-3">
+                        <p>Please verify your email before logging in.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleResendVerification}
+                          disabled={isResending || !user}
+                          className="w-full"
+                        >
+                          {isResending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Sending verification email...
+                            </>
+                          ) : (
+                            "Resend verification email"
+                          )}
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {resendMessage && (
+                    <Alert className="animate-in fade-in slide-in-from-top-2 duration-300 border-green-600/30 text-green-700 dark:text-green-400">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{resendMessage}</AlertDescription>
+                    </Alert>
+                  )}
+
                   {error && (
                     <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300">
                       <AlertCircle className="h-4 w-4" />

@@ -53,6 +53,7 @@ import {
   type CardDetails,
   type UpiDetails,
 } from "@/lib/payment";
+import { initiateRazorpayPayment } from "@/lib/razorpay";
 
 const checkoutSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -84,7 +85,7 @@ export default function Checkout() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("address");
   
   // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("razorpay");
   const [cardDetails, setCardDetails] = useState<CardDetails>({
     cardNumber: "",
     expiryDate: "",
@@ -218,12 +219,107 @@ export default function Checkout() {
 
   // Handle payment submission
   const handlePaymentSubmit = async () => {
-    // Validate payment details
-    if (!validatePaymentDetails()) {
-      toast.error("Please fix the payment details");
+    // Razorpay doesn't need local validation — its own checkout handles that
+    if (paymentMethod !== "razorpay") {
+      if (!validatePaymentDetails()) {
+        toast.error("Please fix the payment details");
+        return;
+      }
+    }
+
+    // ── Razorpay Flow ───────────────────────────────────────
+    if (paymentMethod === "razorpay") {
+      setLoading(true);
+      try {
+        const formData = form.getValues();
+        const amountInPaise = Math.round(total * 100);
+
+        const result = await initiateRazorpayPayment({
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: `order_${Date.now()}`,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          orderDetails: {
+            items: cartItems.map((item) => ({
+              productId: item.product.id,
+              name: item.product.name,
+              qty: item.qty,
+              price: item.product.price,
+            })),
+            customer: {
+              name: formData.name,
+              email: formData.email.toLowerCase(),
+              phone: formData.phone,
+              address: formData.address,
+              city: formData.city,
+              state: formData.state,
+              pincode: formData.pincode,
+            },
+            subtotal,
+            shipping,
+            total,
+          },
+        });
+
+        if (result.success) {
+          // Create the order in our orders collection too
+          const orderItems = cartItems.map((item) => ({
+            productId: item.product.id,
+            name: item.product.name,
+            qty: item.qty,
+            price: item.product.price,
+            imageUrl: item.product.image || "",
+          }));
+
+          const orderResult = await createOrder({
+            items: orderItems,
+            customer: {
+              name: formData.name,
+              email: formData.email.toLowerCase(),
+              phone: formData.phone,
+              address: formData.address,
+              city: formData.city,
+              state: formData.state,
+              pincode: formData.pincode,
+              notes: formData.notes,
+            },
+            subtotal,
+            shipping,
+            total,
+            payment: {
+              method: "online",
+              status: "completed",
+              transactionId: result.paymentId,
+            },
+          });
+
+          clearCart();
+          navigate(`/order-confirmation/${orderResult.orderNumber}`, {
+            state: {
+              orderNumber: orderResult.orderNumber,
+              transactionId: result.paymentId,
+              paymentMethod: "razorpay",
+            },
+          });
+        } else {
+          toast.error(result.message || "Payment was not completed.");
+        }
+      } catch (error) {
+        console.error("Razorpay payment error:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Payment failed. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
+    // ── Legacy mock flow (card / upi / cod) ─────────────────
     // Show processing modal
     setPaymentModalOpen(true);
     setPaymentModalStatus("processing");
@@ -634,11 +730,6 @@ export default function Checkout() {
                     <PaymentMethodSelector
                       selectedMethod={paymentMethod}
                       onMethodChange={setPaymentMethod}
-                      cardDetails={cardDetails}
-                      onCardDetailsChange={setCardDetails}
-                      upiDetails={upiDetails}
-                      onUpiDetailsChange={setUpiDetails}
-                      errors={paymentErrors}
                       disabled={loading}
                     />
                   </CardContent>
@@ -692,9 +783,6 @@ export default function Checkout() {
                       </>
                     )}
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground mt-2">
-                    💡 Demo payment - no real charges
-                  </p>
                 </div>
                 {/* Add padding at bottom for mobile sticky button */}
                 <div className="lg:hidden h-24" />
@@ -801,9 +889,6 @@ export default function Checkout() {
                         </>
                       )}
                     </Button>
-                    <p className="text-xs text-center text-muted-foreground">
-                      💡 Demo payment - no real charges
-                    </p>
                   </>
                 )}
               </CardFooter>
@@ -825,12 +910,6 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Demo Footer Note */}
-        <div className="mt-12 text-center">
-          <p className="text-xs text-muted-foreground">
-            💡 Payment flow simulated for demonstration purposes.
-          </p>
-        </div>
       </main>
       <Footer />
 

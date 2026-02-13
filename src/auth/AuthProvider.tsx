@@ -18,6 +18,9 @@ import {
   updateUserProfile,
   isAdmin,
   getAuthErrorMessage,
+  resendVerificationEmail,
+  refreshCurrentUser,
+  isEmailNotVerifiedError,
 } from "./auth-service";
 import type { UserProfile } from "./types";
 
@@ -25,15 +28,20 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   isAuthenticated: boolean;
+  isEmailVerified: boolean;
+  verificationRequired: boolean;
   isAdmin: boolean;
   loading: boolean;
   error: string | null;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
+  refreshVerificationStatus: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<Pick<UserProfile, "displayName" | "phone" | "address">>) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  clearVerificationRequired: () => void;
   clearError: () => void;
 }
 
@@ -43,10 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [verificationRequired, setVerificationRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
+  const clearVerificationRequired = useCallback(() => setVerificationRequired(false), []);
 
   const refreshProfile = useCallback(async () => {
     if (!auth.currentUser) {
@@ -66,22 +76,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshVerificationStatus = useCallback(async () => {
+    try {
+      const refreshed = await refreshCurrentUser();
+      setUser(refreshed);
+      if (refreshed?.emailVerified) {
+        setVerificationRequired(false);
+      }
+      await refreshProfile();
+    } catch (err) {
+      console.error("Failed to refresh verification status:", err);
+    }
+  }, [refreshProfile]);
+
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
-      setUser(nextUser);
       setLoading(true);
 
       try {
         if (nextUser) {
+          await nextUser.reload().catch(() => {
+            // non-fatal
+          });
+
+          setUser(nextUser);
+          if (nextUser.emailVerified) {
+            setVerificationRequired(false);
+          }
+
           const userProfile = await getUserProfile(nextUser.uid);
           setProfile(userProfile);
           
           const adminStatus = await isAdmin(nextUser.uid);
           setIsAdminUser(adminStatus);
         } else {
+          setUser(null);
           setProfile(null);
           setIsAdminUser(false);
+          setVerificationRequired(false);
         }
       } catch (err) {
         console.error("Auth state change error:", err);
@@ -115,11 +148,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signIn(email, password);
     } catch (err) {
+      if (isEmailNotVerifiedError(err)) {
+        setVerificationRequired(true);
+      }
       const message = getAuthErrorMessage(err);
       setError(message);
       throw new Error(message);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const handleResendVerificationEmail = useCallback(async () => {
+    setError(null);
+
+    try {
+      await resendVerificationEmail();
+    } catch (err) {
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      throw new Error(message);
     }
   }, []);
 
@@ -132,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setProfile(null);
       setIsAdminUser(false);
+      setVerificationRequired(false);
     } catch (err) {
       const message = getAuthErrorMessage(err);
       setError(message);
@@ -171,30 +220,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       profile,
-      isAuthenticated: !!user,
+      isAuthenticated: !!user && !!user.emailVerified,
+      isEmailVerified: !!user?.emailVerified,
+      verificationRequired,
       isAdmin: isAdminUser,
       loading,
       error,
       signUp: handleSignUp,
       signIn: handleSignIn,
+      resendVerificationEmail: handleResendVerificationEmail,
+      refreshVerificationStatus,
       signOut: handleSignOut,
       resetPassword: handleResetPassword,
       updateProfile: handleUpdateProfile,
       refreshProfile,
+      clearVerificationRequired,
       clearError,
     }),
     [
       user,
       profile,
+      verificationRequired,
       isAdminUser,
       loading,
       error,
       handleSignUp,
       handleSignIn,
+      handleResendVerificationEmail,
+      refreshVerificationStatus,
       handleSignOut,
       handleResetPassword,
       handleUpdateProfile,
       refreshProfile,
+      clearVerificationRequired,
       clearError,
     ]
   );

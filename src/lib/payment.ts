@@ -7,7 +7,7 @@
 import { Timestamp } from "firebase/firestore";
 import type { PaymentInfo } from "./models";
 
-export type PaymentMethod = "card" | "upi" | "cod";
+export type PaymentMethod = "card" | "upi" | "cod" | "razorpay";
 
 export type CardDetails = {
   cardNumber: string;

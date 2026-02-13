@@ -1,29 +1,14 @@
-import { useState, useEffect } from "react";
 import {
-  CreditCard,
-  Smartphone,
   Banknote,
   Lock,
-  AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import {
-  formatCardNumber,
-  formatExpiryDate,
-  getCardType,
-  validateCardNumber,
-  validateExpiryDate,
-  validateCVV,
-  validateUpiId,
-  TEST_CARDS,
-  TEST_UPI,
   type PaymentMethod,
   type CardDetails,
   type UpiDetails,
@@ -32,10 +17,10 @@ import {
 type PaymentMethodSelectorProps = {
   selectedMethod: PaymentMethod;
   onMethodChange: (method: PaymentMethod) => void;
-  cardDetails: CardDetails;
-  onCardDetailsChange: (details: CardDetails) => void;
-  upiDetails: UpiDetails;
-  onUpiDetailsChange: (details: UpiDetails) => void;
+  cardDetails?: CardDetails;
+  onCardDetailsChange?: (details: CardDetails) => void;
+  upiDetails?: UpiDetails;
+  onUpiDetailsChange?: (details: UpiDetails) => void;
   errors?: {
     cardNumber?: string;
     expiryDate?: string;
@@ -48,16 +33,11 @@ type PaymentMethodSelectorProps = {
 
 const PAYMENT_METHODS = [
   {
-    id: "card" as const,
-    name: "Credit / Debit Card",
-    description: "Visa, Mastercard, RuPay",
-    icon: CreditCard,
-  },
-  {
-    id: "upi" as const,
-    name: "UPI",
-    description: "Google Pay, PhonePe, Paytm",
-    icon: Smartphone,
+    id: "razorpay" as const,
+    name: "Pay Online (Razorpay)",
+    description: "Cards, UPI, Netbanking, Wallets",
+    icon: ShieldCheck,
+    recommended: true,
   },
   {
     id: "cod" as const,
@@ -67,67 +47,14 @@ const PAYMENT_METHODS = [
   },
 ];
 
-// Card type icons (using simple colored squares for demo)
-function CardTypeIcon({ type }: { type: "visa" | "mastercard" | "amex" | "unknown" }) {
-  const colors = {
-    visa: "bg-blue-600",
-    mastercard: "bg-gradient-to-r from-red-500 to-yellow-500",
-    amex: "bg-blue-400",
-    unknown: "bg-gray-400",
-  };
-
-  const labels = {
-    visa: "VISA",
-    mastercard: "MC",
-    amex: "AMEX",
-    unknown: "",
-  };
-
-  if (type === "unknown") return null;
-
-  return (
-    <span className={cn("px-2 py-0.5 text-[10px] font-bold text-white rounded", colors[type])}>
-      {labels[type]}
-    </span>
-  );
-}
-
 export default function PaymentMethodSelector({
   selectedMethod,
   onMethodChange,
-  cardDetails,
-  onCardDetailsChange,
-  upiDetails,
-  onUpiDetailsChange,
-  errors = {},
   disabled = false,
 }: PaymentMethodSelectorProps) {
-  const [cardType, setCardType] = useState<"visa" | "mastercard" | "amex" | "unknown">("unknown");
-
-  useEffect(() => {
-    setCardType(getCardType(cardDetails.cardNumber));
-  }, [cardDetails.cardNumber]);
-
-  const handleCardNumberChange = (value: string) => {
-    const formatted = formatCardNumber(value);
-    onCardDetailsChange({ ...cardDetails, cardNumber: formatted });
-  };
-
-  const handleExpiryChange = (value: string) => {
-    const formatted = formatExpiryDate(value);
-    onCardDetailsChange({ ...cardDetails, expiryDate: formatted });
-  };
 
   return (
     <div className="space-y-4">
-      {/* Demo Mode Banner */}
-      <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
-        <AlertCircle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
-          <strong>Demo Mode:</strong> This is a simulated payment system. No real transactions will occur.
-        </AlertDescription>
-      </Alert>
-
       {/* Payment Method Selection */}
       <RadioGroup
         value={selectedMethod}
@@ -164,7 +91,14 @@ export default function PaymentMethodSelector({
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium">{method.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{method.name}</p>
+                    {"recommended" in method && method.recommended && (
+                      <Badge className="bg-green-600 hover:bg-green-600 text-[10px] px-1.5 py-0">
+                        Recommended
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">{method.description}</p>
                 </div>
                 {isSelected && (
@@ -178,157 +112,28 @@ export default function PaymentMethodSelector({
         })}
       </RadioGroup>
 
-      {/* Card Payment Form */}
-      {selectedMethod === "card" && (
-        <Card className="mt-4 border-primary/20">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium flex items-center gap-2">
-                <Lock className="h-3 w-3" />
-                Secure Card Details
-              </span>
-              <Badge variant="outline" className="text-xs">
-                🔒 Demo Only
-              </Badge>
-            </div>
-
-            {/* Test Card Info */}
-            <div className="p-3 bg-muted/50 rounded-lg text-xs space-y-1">
-              <p className="font-medium text-muted-foreground">Test Cards:</p>
-              <p>✅ Success: <code className="bg-background px-1 rounded">{TEST_CARDS.SUCCESS}</code></p>
-              <p>❌ Decline: <code className="bg-background px-1 rounded">{TEST_CARDS.DECLINE}</code></p>
-            </div>
-
-            {/* Card Number */}
-            <div className="space-y-2">
-              <Label htmlFor="cardNumber">Card Number</Label>
-              <div className="relative">
-                <Input
-                  id="cardNumber"
-                  placeholder="1234 5678 9012 3456"
-                  value={cardDetails.cardNumber}
-                  onChange={(e) => handleCardNumberChange(e.target.value)}
-                  className={cn(
-                    "pr-16 font-mono text-base",
-                    errors.cardNumber && "border-destructive"
-                  )}
-                  disabled={disabled}
-                  maxLength={19}
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <CardTypeIcon type={cardType} />
+      {/* Razorpay Info */}
+      {selectedMethod === "razorpay" && (
+        <Card className="mt-4 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <p className="font-medium text-indigo-800 dark:text-indigo-200">
+                  Secure Razorpay Checkout
+                </p>
+                <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
+                  You'll be redirected to Razorpay's secure payment page. Pay via Cards, UPI, Netbanking, or Wallets — all in one place.
+                </p>
+                <div className="flex items-center gap-1 mt-2">
+                  <Lock className="h-3 w-3 text-indigo-500" />
+                  <span className="text-xs text-indigo-600 dark:text-indigo-400">
+                    256-bit SSL encrypted &amp; PCI DSS compliant
+                  </span>
                 </div>
               </div>
-              {errors.cardNumber && (
-                <p className="text-sm text-destructive">{errors.cardNumber}</p>
-              )}
-            </div>
-
-            {/* Cardholder Name */}
-            <div className="space-y-2">
-              <Label htmlFor="cardholderName">Cardholder Name</Label>
-              <Input
-                id="cardholderName"
-                placeholder="John Doe"
-                value={cardDetails.cardholderName}
-                onChange={(e) =>
-                  onCardDetailsChange({ ...cardDetails, cardholderName: e.target.value })
-                }
-                className={cn(errors.cardholderName && "border-destructive")}
-                disabled={disabled}
-              />
-              {errors.cardholderName && (
-                <p className="text-sm text-destructive">{errors.cardholderName}</p>
-              )}
-            </div>
-
-            {/* Expiry and CVV */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expiryDate">Expiry Date</Label>
-                <Input
-                  id="expiryDate"
-                  placeholder="MM/YY"
-                  value={cardDetails.expiryDate}
-                  onChange={(e) => handleExpiryChange(e.target.value)}
-                  className={cn(
-                    "font-mono",
-                    errors.expiryDate && "border-destructive"
-                  )}
-                  disabled={disabled}
-                  maxLength={5}
-                />
-                {errors.expiryDate && (
-                  <p className="text-sm text-destructive">{errors.expiryDate}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cvv">CVV</Label>
-                <Input
-                  id="cvv"
-                  type="password"
-                  placeholder="•••"
-                  value={cardDetails.cvv}
-                  onChange={(e) =>
-                    onCardDetailsChange({
-                      ...cardDetails,
-                      cvv: e.target.value.replace(/\D/g, "").slice(0, 3),
-                    })
-                  }
-                  className={cn(
-                    "font-mono",
-                    errors.cvv && "border-destructive"
-                  )}
-                  disabled={disabled}
-                  maxLength={3}
-                />
-                {errors.cvv && (
-                  <p className="text-sm text-destructive">{errors.cvv}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* UPI Payment Form */}
-      {selectedMethod === "upi" && (
-        <Card className="mt-4 border-primary/20">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium flex items-center gap-2">
-                <Smartphone className="h-3 w-3" />
-                UPI Payment
-              </span>
-              <Badge variant="outline" className="text-xs">
-                🔒 Demo Only
-              </Badge>
-            </div>
-
-            {/* Test UPI Info */}
-            <div className="p-3 bg-muted/50 rounded-lg text-xs space-y-1">
-              <p className="font-medium text-muted-foreground">Test UPI IDs:</p>
-              <p>✅ Success: <code className="bg-background px-1 rounded">{TEST_UPI.SUCCESS}</code></p>
-              <p>❌ Failure: <code className="bg-background px-1 rounded">{TEST_UPI.FAILURE}</code></p>
-            </div>
-
-            {/* UPI ID */}
-            <div className="space-y-2">
-              <Label htmlFor="upiId">UPI ID</Label>
-              <Input
-                id="upiId"
-                placeholder="yourname@upi"
-                value={upiDetails.upiId}
-                onChange={(e) => onUpiDetailsChange({ upiId: e.target.value })}
-                className={cn(errors.upiId && "border-destructive")}
-                disabled={disabled}
-              />
-              {errors.upiId && (
-                <p className="text-sm text-destructive">{errors.upiId}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Enter your UPI ID (e.g., name@paytm, name@okicici)
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -358,5 +163,4 @@ export default function PaymentMethodSelector({
   );
 }
 
-// Export validation functions for use in forms
-export { validateCardNumber, validateExpiryDate, validateCVV, validateUpiId };
+

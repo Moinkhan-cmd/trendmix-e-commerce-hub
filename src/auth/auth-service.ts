@@ -10,7 +10,9 @@ import {
   EmailAuthProvider,
   browserSessionPersistence,
   setPersistence,
+  reload,
   type User,
+  type ActionCodeSettings,
 } from "firebase/auth";
 import {
   doc,
@@ -22,6 +24,30 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { UserProfile, UserRole, PasswordStrength, AuthError } from "./types";
+
+const getVerificationActionCodeSettings = (): ActionCodeSettings | undefined => {
+  if (typeof window === "undefined") return undefined;
+
+  return {
+    url: `${window.location.origin}/login`,
+    handleCodeInApp: false,
+  };
+};
+
+export class EmailNotVerifiedError extends Error {
+  code = "auth/email-not-verified";
+  user: User;
+
+  constructor(user: User) {
+    super("Please verify your email before logging in.");
+    this.name = "EmailNotVerifiedError";
+    this.user = user;
+  }
+}
+
+export function isEmailNotVerifiedError(error: unknown): error is EmailNotVerifiedError {
+  return error instanceof EmailNotVerifiedError;
+}
 
 // Password strength checker
 export function checkPasswordStrength(password: string): PasswordStrength {
@@ -66,6 +92,10 @@ export function checkPasswordStrength(password: string): PasswordStrength {
 
 // Friendly error messages
 export function getAuthErrorMessage(error: unknown): string {
+  if (isEmailNotVerifiedError(error)) {
+    return "Please verify your email before logging in.";
+  }
+
   const code = (error as AuthError)?.code || "";
   
   const errorMessages: Record<string, string> = {
@@ -125,6 +155,17 @@ async function updateLastLogin(uid: string): Promise<void> {
   });
 }
 
+async function syncEmailVerificationStatus(uid: string, emailVerified: boolean): Promise<void> {
+  const userRef = doc(db, "users", uid);
+
+  await updateDoc(userRef, {
+    emailVerified,
+    updatedAt: serverTimestamp(),
+  }).catch(() => {
+    // Profile might not exist yet for legacy users
+  });
+}
+
 // Sign up new user
 export async function signUp(
   email: string,
@@ -145,7 +186,7 @@ export async function signUp(
   await createUserProfile(user, displayName);
 
   // Send verification email
-  await sendEmailVerification(user).catch(console.error);
+  await sendEmailVerification(user, getVerificationActionCodeSettings());
 
   return user;
 }
@@ -156,6 +197,14 @@ export async function signIn(email: string, password: string): Promise<User> {
   await setPersistence(auth, browserSessionPersistence);
   
   const credential = await signInWithEmailAndPassword(auth, email, password);
+
+  await reload(credential.user);
+
+  if (!credential.user.emailVerified) {
+    throw new EmailNotVerifiedError(credential.user);
+  }
+
+  await syncEmailVerificationStatus(credential.user.uid, true);
   
   // Update last login
   await updateLastLogin(credential.user.uid);
@@ -226,5 +275,18 @@ export async function isAdmin(uid: string): Promise<boolean> {
 export async function resendVerificationEmail(): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error("No user signed in");
-  await sendEmailVerification(user);
+  if (user.emailVerified) {
+    throw new Error("Your email is already verified.");
+  }
+
+  await sendEmailVerification(user, getVerificationActionCodeSettings());
+}
+
+export async function refreshCurrentUser(): Promise<User | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+
+  await reload(user);
+  await syncEmailVerificationStatus(user.uid, user.emailVerified);
+  return user;
 }

@@ -5,10 +5,15 @@ import { Loader2 } from "lucide-react";
 interface RequireAuthProps {
   children?: React.ReactNode;
   requireAdmin?: boolean;
+  requireVerified?: boolean;
 }
 
-export function RequireAuth({ children, requireAdmin = false }: RequireAuthProps) {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+export function RequireAuth({
+  children,
+  requireAdmin = false,
+  requireVerified = false,
+}: RequireAuthProps) {
+  const { user, isAuthenticated, isEmailVerified, isAdmin, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -16,6 +21,16 @@ export function RequireAuth({ children, requireAdmin = false }: RequireAuthProps
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (requireVerified && user && !isEmailVerified) {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location, verificationRequired: true }}
+        replace
+      />
     );
   }
 
