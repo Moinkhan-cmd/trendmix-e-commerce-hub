@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
@@ -8,6 +9,7 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  GoogleAuthProvider,
   browserSessionPersistence,
   setPersistence,
   reload,
@@ -129,6 +131,10 @@ export function getAuthErrorMessage(error: unknown): string {
     "auth/invalid-credential": "Invalid email or password. Please check your credentials.",
     "auth/too-many-requests": "Too many failed attempts. Please wait a few minutes and try again.",
     "auth/network-request-failed": "Network error. Please check your internet connection.",
+    "auth/popup-blocked": "Popup was blocked by your browser. Please allow popups and try again.",
+    "auth/popup-blocked-by-browser": "Popup was blocked by your browser. Please allow popups and try again.",
+    "auth/account-exists-with-different-credential": "An account already exists with this email using a different sign-in method.",
+    "auth/unauthorized-domain": "This domain is not authorized for Google sign-in in Firebase Auth settings.",
     "auth/missing-email": "Please enter a valid email address.",
     "auth/popup-closed-by-user": "Sign in was cancelled. Please try again.",
     "auth/requires-recent-login": "Please sign out and sign back in to perform this action.",
@@ -204,6 +210,41 @@ async function syncEmailVerificationStatus(uid: string, emailVerified: boolean):
   });
 }
 
+async function ensureOAuthUserProfile(user: User): Promise<void> {
+  const userRef = doc(db, "users", user.uid);
+  const existingProfile = await getDoc(userRef);
+
+  if (!existingProfile.exists()) {
+    const profile: Omit<UserProfile, "createdAt" | "updatedAt"> = {
+      uid: user.uid,
+      email: user.email || "",
+      displayName: user.displayName || "User",
+      photoURL: user.photoURL || undefined,
+      role: "user",
+      emailVerified: user.emailVerified,
+      disabled: false,
+    };
+
+    await setDoc(userRef, {
+      ...profile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  await updateDoc(userRef, {
+    displayName: user.displayName || (existingProfile.data()?.displayName as string) || "User",
+    photoURL: user.photoURL || existingProfile.data()?.photoURL || null,
+    emailVerified: user.emailVerified,
+    lastLoginAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }).catch(() => {
+    // non-fatal for legacy profiles
+  });
+}
+
 // Sign up new user
 export async function signUp(
   email: string,
@@ -251,6 +292,23 @@ export async function signIn(email: string, password: string): Promise<User> {
   await updateLastLogin(credential.user.uid);
   
   return credential.user;
+}
+
+export async function signInWithGoogle(): Promise<User> {
+  await setPersistence(auth, browserSessionPersistence);
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  const credential = await signInWithPopup(auth, provider);
+  const user = credential.user;
+
+  pendingVerificationUser = null;
+  await ensureOAuthUserProfile(user);
+  await syncEmailVerificationStatus(user.uid, user.emailVerified);
+  await updateLastLogin(user.uid);
+
+  return user;
 }
 
 // Sign out

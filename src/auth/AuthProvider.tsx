@@ -12,6 +12,7 @@ import { auth } from "@/lib/firebase";
 import {
   signUp,
   signIn,
+  signInWithGoogle,
   logOut,
   resetPassword,
   getUserProfile,
@@ -35,6 +36,7 @@ interface AuthContextType {
   error: string | null;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
   refreshVerificationStatus: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -159,6 +161,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const handleSignInWithGoogle = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      await signInWithGoogle();
+      setVerificationRequired(false);
+    } catch (err) {
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleResendVerificationEmail = useCallback(async () => {
     setError(null);
 
@@ -228,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       signUp: handleSignUp,
       signIn: handleSignIn,
+      signInWithGoogle: handleSignInWithGoogle,
       resendVerificationEmail: handleResendVerificationEmail,
       refreshVerificationStatus,
       signOut: handleSignOut,
@@ -246,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       handleSignUp,
       handleSignIn,
+      handleSignInWithGoogle,
       handleResendVerificationEmail,
       refreshVerificationStatus,
       handleSignOut,
