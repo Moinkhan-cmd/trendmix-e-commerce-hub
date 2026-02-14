@@ -443,12 +443,6 @@ export default function OrderConfirmation() {
           )}
         </div>
 
-        {/* Demo Footer Note */}
-        <div className="mt-12 text-center">
-          <p className="text-xs text-muted-foreground">
-            💡 Payment flow simulated for demonstration purposes.
-          </p>
-        </div>
       </main>
       <Footer />
     </div>

@@ -26,22 +26,6 @@ const SUCCESS_MESSAGE =
 const REQUEST_COOLDOWN_SECONDS = 30;
 const COOLDOWN_STORAGE_KEY = "trendmix_password_reset_cooldown_until";
 
-function getReadableResetError(message: string): string {
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes("network")) {
-    return "Network error. Please check your connection and try again.";
-  }
-  if (normalized.includes("too many")) {
-    return "Too many attempts. Please wait and try again.";
-  }
-  if (normalized.includes("invalid-email") || normalized.includes("invalid email")) {
-    return "Please enter a valid email address.";
-  }
-
-  return "Unable to process the request right now. Please try again.";
-}
-
 export default function ForgotPassword() {
   const { resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -108,7 +92,7 @@ export default function ForgotPassword() {
       );
     } catch (error) {
       const message = (error as { message?: string })?.message || "";
-      setErrorMessage(getReadableResetError(message));
+      setErrorMessage(message || "Unable to process the request right now. Please try again.");
     } finally {
       setIsLoading(false);
     }

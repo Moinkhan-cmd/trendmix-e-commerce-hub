@@ -233,12 +233,6 @@ export default function PaymentProcessingModal({
           </>
         )}
 
-        {/* Demo Footer */}
-        <div className="mt-4 pt-4 border-t">
-          <p className="text-xs text-center text-muted-foreground">
-            💡 Payment flow simulated for demonstration purposes.
-          </p>
-        </div>
       </DialogContent>
     </Dialog>
   );

@@ -30,6 +30,10 @@ function canBypassForLocalhost(): boolean {
   return RECAPTCHA_ALLOW_LOCALHOST_BYPASS && isLocalhostRuntime();
 }
 
+export function isRecaptchaConfigured(): boolean {
+  return Boolean(RECAPTCHA_SITE_KEY) || canBypassForLocalhost();
+}
+
 function ensureRecaptchaConfigured(): string {
   if (!RECAPTCHA_SITE_KEY) {
     throw new Error("Security challenge is not configured. Please contact support.");

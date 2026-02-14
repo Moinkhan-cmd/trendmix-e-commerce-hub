@@ -269,7 +269,11 @@ export async function updateOrderStatus(
   });
   
   if (status === "Cancelled" && previousStatus !== "Cancelled") {
-    await restoreProductStock(order.items);
+    try {
+      await restoreProductStock(order.items);
+    } catch (error) {
+      console.warn("Order status updated to Cancelled, but failed to restore stock (non-fatal):", error);
+    }
   }
 }
 

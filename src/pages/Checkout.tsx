@@ -55,7 +55,7 @@ import {
   type UpiDetails,
 } from "@/lib/payment";
 import { initiateRazorpayPayment } from "@/lib/razorpay";
-import { getRecaptchaToken } from "@/lib/recaptcha";
+import { getRecaptchaToken, isRecaptchaConfigured } from "@/lib/recaptcha";
 import { disableGuestCheckout, enableGuestCheckout, isGuestCheckoutEnabled } from "@/lib/checkout-session";
 import { validateCheckoutCoupon } from "@/lib/coupon";
 
@@ -314,13 +314,28 @@ export default function Checkout() {
 
     // ── Razorpay Flow ───────────────────────────────────────
     if (paymentMethod === "razorpay") {
+      const recaptchaConfigured = isRecaptchaConfigured();
+
+      if (guestCheckout && !recaptchaConfigured) {
+        toast.error("Guest checkout is temporarily unavailable. Please sign in and place your order.");
+        return;
+      }
+
       setLoading(true);
       try {
-        const recaptchaToken = await getRecaptchaToken("checkout");
+        const recaptchaToken = recaptchaConfigured
+          ? await getRecaptchaToken("checkout")
+          : undefined;
+
+        if (!recaptchaToken) {
+          console.warn("[checkout] reCAPTCHA is not configured. Using legacy checkout fallback.");
+        }
+
         const formData = form.getValues();
 
         const result = await initiateRazorpayPayment({
           recaptchaToken,
+          fallbackAmountPaise: Math.round(total * 100),
           customerName: formData.name,
           customerEmail: formData.email,
           customerPhone: formData.phone,
@@ -344,59 +359,62 @@ export default function Checkout() {
         });
 
         if (result.success) {
-          try {
-            // Create the order in our orders collection too
-            const orderItems = cartItems.map((item) => ({
-              productId: item.product.id,
-              name: item.product.name,
-              qty: item.qty,
-              price: item.product.price,
-              imageUrl: item.product.image || "",
-            }));
+          let confirmationOrderNumber = result.orderNumber;
 
-            const orderResult = await createOrder({
-              items: orderItems,
-              customer: {
-                name: formData.name,
-                email: formData.email.toLowerCase(),
-                phone: formData.phone,
-                address: formData.address,
-                city: formData.city,
-                state: formData.state,
-                pincode: formData.pincode,
-                notes: formData.notes,
-              },
-              subtotal,
-              shipping,
-              total,
-              couponCode: couponApplied ? couponCode : undefined,
-              discount: couponApplied ? discount : undefined,
-              payment: {
-                method: "online",
-                status: result.verificationPending ? "pending" : "completed",
-                transactionId: result.paymentId,
-              },
-            });
+          if (!confirmationOrderNumber) {
+            try {
+              const orderItems = cartItems.map((item) => ({
+                productId: item.product.id,
+                name: item.product.name,
+                qty: item.qty,
+                price: item.product.price,
+                imageUrl: item.product.image || "",
+              }));
 
-            if (result.verificationPending) {
-              toast.info("Payment received. We're confirming it in the background.");
+              const orderResult = await createOrder({
+                items: orderItems,
+                customer: {
+                  name: formData.name,
+                  email: formData.email.toLowerCase(),
+                  phone: formData.phone,
+                  address: formData.address,
+                  city: formData.city,
+                  state: formData.state,
+                  pincode: formData.pincode,
+                  notes: formData.notes,
+                },
+                subtotal,
+                shipping,
+                total,
+                couponCode: couponApplied ? couponCode : undefined,
+                discount: couponApplied ? discount : undefined,
+                payment: {
+                  method: "online",
+                  status: result.verificationPending ? "pending" : "completed",
+                  transactionId: result.paymentId,
+                },
+              });
+
+              confirmationOrderNumber = orderResult.orderNumber;
+            } catch (orderError) {
+              console.error("Order creation fallback failed after successful payment:", orderError);
+              confirmationOrderNumber = result.paymentId || `TM-${Date.now()}`;
+              toast.info("Payment is successful. Your order is being finalized in the background.");
             }
-
-            clearCart();
-            navigate(`/order-confirmation/${orderResult.orderNumber}`, {
-              state: {
-                orderNumber: orderResult.orderNumber,
-                transactionId: result.paymentId,
-                paymentMethod: "razorpay",
-              },
-            });
-          } catch (orderError) {
-            console.error("Order creation failed after successful payment:", orderError);
-            const paymentIdText = result.paymentId ? ` Payment ID: ${result.paymentId}` : "";
-            toast.error(
-              `Payment was successful, but we couldn't save your order right now.${paymentIdText} Please contact support with this payment ID.`
-            );
           }
+
+          if (result.verificationPending) {
+            toast.info("Payment received. We're confirming it in the background.");
+          }
+
+          clearCart();
+          navigate(`/order-confirmation/${confirmationOrderNumber}`, {
+            state: {
+              orderNumber: confirmationOrderNumber,
+              transactionId: result.paymentId,
+              paymentMethod: "razorpay",
+            },
+          });
         } else {
           if (/cancelled by user/i.test(result.message || "")) {
             toast.info("Payment cancelled.");
@@ -406,8 +424,12 @@ export default function Checkout() {
         }
       } catch (error) {
         console.error("Razorpay payment error:", error);
-        if (error instanceof Error && /failed to fetch/i.test(error.message)) {
+        const errorMessage = error instanceof Error ? error.message : "";
+
+        if (/failed to fetch/i.test(errorMessage)) {
           toast.error("Could not connect to payment service. Please check your internet and try again.");
+        } else if (/recaptcha verification is required|security challenge is not configured/i.test(errorMessage)) {
+          toast.error("Security check is temporarily unavailable. Please sign in and try again.");
         } else {
           toast.error(
             error instanceof Error

@@ -18,11 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 
-function getSafeRedirectPath(fromPath: unknown) {
+function getSafeRedirectPath(fromPath: unknown, search = "", hash = "") {
   if (typeof fromPath !== "string") return "/admin";
   if (!fromPath.startsWith("/admin")) return "/admin";
   if (fromPath === "/admin/login") return "/admin";
-  return fromPath;
+  return `${fromPath}${search}${hash}`;
 }
 
 export default function AdminLogin() {
@@ -43,8 +43,10 @@ export default function AdminLogin() {
   const state = location.state as AdminLoginLocationState | null;
   const reason = state?.reason;
   const fromPath = state?.from?.pathname;
+  const fromSearch = state?.from?.search ?? "";
+  const fromHash = state?.from?.hash ?? "";
 
-  const safeFromPath = useMemo(() => getSafeRedirectPath(fromPath), [fromPath]);
+  const safeFromPath = useMemo(() => getSafeRedirectPath(fromPath, fromSearch, fromHash), [fromHash, fromPath, fromSearch]);
 
   const banner = useMemo(() => {
     if (reason === "not-admin") {
@@ -64,7 +66,7 @@ export default function AdminLogin() {
     e.preventDefault();
     if (loading) return;
 
-    const normalizedEmail = email.trim();
+    const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
       setError("Please enter your email and password.");
       return;
@@ -78,7 +80,7 @@ export default function AdminLogin() {
       const ok = await isUidAdmin(cred.user.uid);
       if (!ok) {
         await signOut(auth);
-        setError("Not authorized: this user is not in admins/{uid}.");
+        setError("Not authorized: this account does not have admin access.");
         return;
       }
 
@@ -123,7 +125,10 @@ export default function AdminLogin() {
                 autoCapitalize="none"
                 spellCheck={false}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
                 required
                 disabled={loading}
               />
@@ -137,7 +142,10 @@ export default function AdminLogin() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError(null);
+                  }}
                   required
                   disabled={loading}
                   className="pr-10"

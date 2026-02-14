@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/auth/AuthProvider";
 import { FloatingElement } from "@/components/Card3D";
-import { getRecaptchaToken, verifyRecaptchaAssessment } from "@/lib/recaptcha";
+import { getRecaptchaToken, isRecaptchaConfigured, verifyRecaptchaAssessment } from "@/lib/recaptcha";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -151,16 +151,20 @@ export default function Login() {
     clearError();
 
     try {
-      const recaptchaToken = await withTimeout(
-        getRecaptchaToken("login"),
-        10000,
-        "Security verification timed out. Please refresh and try again."
-      );
-      await withTimeout(
-        verifyRecaptchaAssessment(recaptchaToken, "login"),
-        10000,
-        "Security verification timed out. Please refresh and try again."
-      );
+      if (isRecaptchaConfigured()) {
+        const recaptchaToken = await withTimeout(
+          getRecaptchaToken("login"),
+          10000,
+          "Security verification timed out. Please refresh and try again."
+        );
+        await withTimeout(
+          verifyRecaptchaAssessment(recaptchaToken, "login"),
+          10000,
+          "Security verification timed out. Please refresh and try again."
+        );
+      } else {
+        console.warn("[auth] reCAPTCHA is not configured. Skipping login security challenge.");
+      }
 
       await signIn(data.email, data.password);
       navigate(from, { replace: true });

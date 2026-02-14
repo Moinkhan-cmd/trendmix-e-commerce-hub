@@ -38,7 +38,8 @@ export interface RazorpayVerifyResponse {
 }
 
 export interface RazorpayCheckoutOptions {
-  recaptchaToken: string;
+  recaptchaToken?: string;
+  fallbackAmountPaise?: number;
   guestCheckout?: boolean;
   guestEmail?: string;
   customerName?: string;
@@ -119,13 +120,21 @@ function ensureRazorpayLoaded(): void {
 
 // ─── Step 1: Create Razorpay Order via Cloud Function ───────
 async function createRazorpayOrder(
-  recaptchaToken: string,
+  recaptchaToken: string | undefined,
   orderDetails: RazorpayCheckoutOptions["orderDetails"],
   guestCheckout?: boolean,
-  guestEmail?: string
+  guestEmail?: string,
+  fallbackAmountPaise?: number
 ): Promise<RazorpayOrderResponse> {
+  if (guestCheckout && !recaptchaToken) {
+    throw new Error("Guest checkout is temporarily unavailable. Please sign in and place your order.");
+  }
+
   const token = await maybeGetAuthToken(guestCheckout);
   const endpoint = guestCheckout ? CREATE_GUEST_ORDER_URL : CREATE_ORDER_URL;
+  const payload = recaptchaToken
+    ? { recaptchaToken, orderDetails, guestEmail }
+    : { amount: fallbackAmountPaise, currency: "INR", orderDetails, guestEmail };
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -133,7 +142,7 @@ async function createRazorpayOrder(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ recaptchaToken, orderDetails, guestEmail }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -201,7 +210,8 @@ export async function initiateRazorpayPayment(
     options.recaptchaToken,
     options.orderDetails,
     options.guestCheckout,
-    options.guestEmail
+    options.guestEmail,
+    options.fallbackAmountPaise
   );
 
   // Step 2: Open Razorpay Checkout
