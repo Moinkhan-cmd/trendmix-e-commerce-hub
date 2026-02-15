@@ -11,6 +11,20 @@ type State = {
   errorMessage?: string;
 };
 
+const CHUNK_RELOAD_FLAG = 'trendmix:chunk-reload-once';
+
+const isRecoverableChunkError = (error: unknown): boolean => {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+
+  return (
+    message.includes('failed to fetch dynamically imported module') ||
+    message.includes('importing a module script failed') ||
+    message.includes('chunkloaderror') ||
+    message.includes('loading chunk') ||
+    message.includes('dynamically imported module')
+  );
+};
+
 export default class AppErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false };
 
@@ -20,6 +34,16 @@ export default class AppErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: unknown) {
+    if (typeof window !== 'undefined' && isRecoverableChunkError(error)) {
+      const hasReloaded = window.sessionStorage.getItem(CHUNK_RELOAD_FLAG) === '1';
+      if (!hasReloaded) {
+        window.sessionStorage.setItem(CHUNK_RELOAD_FLAG, '1');
+        window.location.reload();
+        return;
+      }
+      window.sessionStorage.removeItem(CHUNK_RELOAD_FLAG);
+    }
+
     // Ensures we get a useful stack trace in dev/prod logs.
     console.error("App render error:", error);
   }
