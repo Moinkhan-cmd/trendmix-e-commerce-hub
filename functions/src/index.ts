@@ -35,6 +35,175 @@ function formatInr(value: unknown): string {
   return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+type ParsedOrderEmailContext = {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  address: string;
+  itemsText: string;
+  totalText: string;
+  statusText: string;
+  trackingNumber: string;
+  shippingCarrier: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  paymentId: string;
+};
+
+type OutgoingEmail = {
+  subject: string;
+  text: string;
+};
+
+function parseOrderEmailContext(orderData: Record<string, unknown>, orderId: string): ParsedOrderEmailContext {
+  const payment = (orderData.payment ?? {}) as Record<string, unknown>;
+  const customer = (orderData.customer ?? {}) as Record<string, unknown>;
+  const items = Array.isArray(orderData.items) ? orderData.items : [];
+
+  const orderNumber = normalizeText(orderData.orderNumber, 80) || orderId;
+  const customerName = normalizeText(customer.name, 120) || "Customer";
+  const customerEmail = normalizeEmail(customer.email);
+  const customerPhone = normalizeText(customer.phone, 30) || "N/A";
+  const statusText = normalizeText(orderData.status, 40) || "Pending";
+  const trackingNumber = normalizeText(orderData.trackingNumber, 120) || "N/A";
+  const shippingCarrier = normalizeText(orderData.shippingCarrier, 80) || "Standard";
+
+  const paymentMethod = normalizeText(payment.method, 40) || "N/A";
+  const paymentStatus = normalizeText(payment.status, 40) || "N/A";
+  const paymentId = normalizeText(payment.transactionId, 120) || "N/A";
+
+  const address = [
+    normalizeText(customer.address, 250),
+    normalizeText(customer.city, 80),
+    normalizeText(customer.state, 80),
+    normalizeText(customer.pincode, 20),
+  ]
+    .filter(Boolean)
+    .join(", ") || "N/A";
+
+  const itemsText = items
+    .map((entry) => {
+      const item = (typeof entry === "object" && entry !== null ? entry : {}) as Record<string, unknown>;
+      const itemName = normalizeText(item.name, 160) || "Item";
+      const qty = Number(item.qty ?? 1);
+      const price = Number(item.price ?? 0);
+      const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+      return `• ${itemName} x${safeQty} (${formatInr(price)})`;
+    })
+    .join("\n") || "N/A";
+
+  return {
+    orderNumber,
+    customerName,
+    customerEmail,
+    customerPhone,
+    address,
+    itemsText,
+    totalText: formatInr(orderData.total),
+    statusText,
+    trackingNumber,
+    shippingCarrier,
+    paymentMethod,
+    paymentStatus,
+    paymentId,
+  };
+}
+
+function buildAdminNewOrderEmail(orderId: string, ctx: ParsedOrderEmailContext): OutgoingEmail {
+  return {
+    subject: `New order placed: ${ctx.orderNumber}`,
+    text: [
+      "New order placed",
+      `Order ID: ${orderId}`,
+      `Order Number: ${ctx.orderNumber}`,
+      `Customer Name: ${ctx.customerName}`,
+      `Customer Email: ${ctx.customerEmail || "N/A"}`,
+      `Phone: ${ctx.customerPhone}`,
+      "Products:",
+      ctx.itemsText,
+      `Total: ${ctx.totalText}`,
+      `Payment Method: ${ctx.paymentMethod}`,
+      `Payment Status: ${ctx.paymentStatus}`,
+      `Payment ID: ${ctx.paymentId}`,
+      `Delivery Address: ${ctx.address}`,
+    ].join("\n"),
+  };
+}
+
+function buildCustomerOrderPlacedEmail(orderId: string, ctx: ParsedOrderEmailContext): OutgoingEmail {
+  return {
+    subject: `Thank you for your order ${ctx.orderNumber}`,
+    text: [
+      `Hi ${ctx.customerName},`,
+      "",
+      "Thank you for shopping with TrendMix. Your order has been placed successfully.",
+      "",
+      `Order Number: ${ctx.orderNumber}`,
+      `Order ID: ${orderId}`,
+      `Order Status: ${ctx.statusText}`,
+      "",
+      "Items:",
+      ctx.itemsText,
+      "",
+      `Order Total: ${ctx.totalText}`,
+      `Delivery Address: ${ctx.address}`,
+      "",
+      "We will send you another update when your order is shipped.",
+      "",
+      "Thanks,",
+      "TrendMix Team",
+    ].join("\n"),
+  };
+}
+
+function buildCustomerShippedEmail(orderId: string, ctx: ParsedOrderEmailContext): OutgoingEmail {
+  return {
+    subject: `Your order ${ctx.orderNumber} has been shipped`,
+    text: [
+      `Hi ${ctx.customerName},`,
+      "",
+      "Great news! Your TrendMix order has been shipped.",
+      "",
+      `Order Number: ${ctx.orderNumber}`,
+      `Order ID: ${orderId}`,
+      `Current Status: ${ctx.statusText}`,
+      `Shipping Carrier: ${ctx.shippingCarrier}`,
+      `Tracking Number: ${ctx.trackingNumber}`,
+      "",
+      `Order Total: ${ctx.totalText}`,
+      "",
+      "Thanks,",
+      "TrendMix Team",
+    ].join("\n"),
+  };
+}
+
+function buildCustomerDeliveredEmail(orderId: string, ctx: ParsedOrderEmailContext): OutgoingEmail {
+  return {
+    subject: `Order delivered: ${ctx.orderNumber}`,
+    text: [
+      `Hi ${ctx.customerName},`,
+      "",
+      "Your order has been delivered successfully. Thank you for shopping with TrendMix.",
+      "",
+      `Order Number: ${ctx.orderNumber}`,
+      `Order ID: ${orderId}`,
+      `Current Status: ${ctx.statusText}`,
+      "",
+      "Items:",
+      ctx.itemsText,
+      "",
+      `Order Total: ${ctx.totalText}`,
+      "",
+      "We hope to see you again soon!",
+      "",
+      "Thanks,",
+      "TrendMix Team",
+    ].join("\n"),
+  };
+}
+
 // ─── Razorpay Instance ──────────────────────────────────────
 // Credentials are loaded from functions/.env (see .env.example)
 function getRazorpayInstance(): Razorpay {
@@ -538,95 +707,165 @@ export const onOrderCreatedSendEmailNotifications = functions
     const orderId = String(context.params.orderId ?? snapshot.id);
     const orderData = snapshot.data() as Record<string, unknown>;
 
-    if (orderData.emailSent === true) {
-      return null;
-    }
-
     const settingsSnap = await db.collection("settings").doc("notifications").get();
     const settingsData = settingsSnap.exists ? (settingsSnap.data() as Record<string, unknown>) : {};
 
-    if (settingsData.notifyOnNewOrder === false) {
+    const shouldSendAdminEmail = orderData.emailSent !== true && settingsData.notifyOnNewOrder !== false;
+    const shouldSendCustomerConfirmation =
+      orderData.customerEmailSent !== true && settingsData.sendCustomerConfirmation !== false;
+
+    if (!shouldSendAdminEmail && !shouldSendCustomerConfirmation) {
       return null;
     }
 
     const apiKey = normalizeText(SENDGRID_KEY.value(), 5000);
     const fromEmail = normalizeEmail(SENDGRID_FROM_EMAIL.value());
     const fromName = normalizeText(SENDGRID_FROM_NAME.value(), 120) || "TrendMix";
-    const adminEmail = normalizeEmail(settingsData.adminEmail || SENDGRID_ADMIN_EMAIL.value());
+    const adminEmail = normalizeEmail(settingsData.adminEmail ?? SENDGRID_ADMIN_EMAIL.value());
 
-    if (!apiKey || !fromEmail || !adminEmail) {
+    if (!apiKey || !fromEmail) {
       console.error("SendGrid configuration missing for order notifications", { orderId });
       return null;
     }
 
-    const payment = (orderData.payment ?? {}) as Record<string, unknown>;
-    const customer = (orderData.customer ?? {}) as Record<string, unknown>;
-    const items = Array.isArray(orderData.items) ? orderData.items : [];
+    const parsed = parseOrderEmailContext(orderData, orderId);
 
-    const paymentMethod = normalizeText(payment.method, 40) || "N/A";
-    const paymentStatus = normalizeText(payment.status, 40) || "N/A";
-    const paymentId = normalizeText(payment.transactionId, 120) || "N/A";
+    sgMail.setApiKey(apiKey);
 
-    const orderNumber = normalizeText(orderData.orderNumber, 80) || orderId;
-    const customerName = normalizeText(customer.name, 120) || "Customer";
-    const customerEmail = normalizeEmail(customer.email) || "N/A";
-    const customerPhone = normalizeText(customer.phone, 30) || "N/A";
-    const address = [
-      normalizeText(customer.address, 250),
-      normalizeText(customer.city, 80),
-      normalizeText(customer.state, 80),
-      normalizeText(customer.pincode, 20),
-    ]
-      .filter(Boolean)
-      .join(", ") || "N/A";
+    const updatePayload: Record<string, unknown> = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
 
-    const itemsText = items
-      .map((entry) => {
-        const item = (typeof entry === "object" && entry !== null ? entry : {}) as Record<string, unknown>;
-        const itemName = normalizeText(item.name, 160) || "Item";
-        const qty = Number(item.qty ?? 1);
-        const price = Number(item.price ?? 0);
-        const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
-        return `${itemName} x${safeQty} (${formatInr(price)})`;
-      })
-      .join(" | ") || "N/A";
+    if (shouldSendAdminEmail && adminEmail) {
+      try {
+        const adminEmailBody = buildAdminNewOrderEmail(orderId, parsed);
+        await sgMail.send({
+          to: adminEmail,
+          from: {
+            email: fromEmail,
+            name: fromName,
+          },
+          subject: adminEmailBody.subject,
+          text: adminEmailBody.text,
+        });
+        updatePayload.emailSent = true;
+      } catch (error) {
+        console.error("Failed to send admin order notification", {
+          orderId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    if (shouldSendCustomerConfirmation && parsed.customerEmail) {
+      try {
+        const customerEmailBody = buildCustomerOrderPlacedEmail(orderId, parsed);
+        await sgMail.send({
+          to: parsed.customerEmail,
+          from: {
+            email: fromEmail,
+            name: fromName,
+          },
+          subject: customerEmailBody.subject,
+          text: customerEmailBody.text,
+        });
+        updatePayload.customerEmailSent = true;
+      } catch (error) {
+        console.error("Failed to send customer order confirmation", {
+          orderId,
+          customerEmail: parsed.customerEmail,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    if (Object.keys(updatePayload).length > 1) {
+      await snapshot.ref.set(updatePayload, { merge: true });
+    }
+
+    return null;
+  });
+
+export const onOrderStatusChangedSendCustomerEmail = functions
+  .runWith({ secrets: [SENDGRID_KEY] })
+  .firestore
+  .document("orders/{orderId}")
+  .onUpdate(async (change, context) => {
+    const orderId = String(context.params.orderId ?? change.after.id);
+    const beforeData = change.before.data() as Record<string, unknown>;
+    const afterData = change.after.data() as Record<string, unknown>;
+
+    const previousStatus = normalizeText(beforeData.status, 40);
+    const currentStatus = normalizeText(afterData.status, 40);
+
+    if (!currentStatus || currentStatus === previousStatus) {
+      return null;
+    }
+
+    const shouldHandleStatus = currentStatus === "Shipped" || currentStatus === "Delivered";
+    if (!shouldHandleStatus) {
+      return null;
+    }
+
+    const statusEmails =
+      (typeof afterData.customerStatusEmails === "object" && afterData.customerStatusEmails !== null
+        ? (afterData.customerStatusEmails as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+
+    if ((currentStatus === "Shipped" && statusEmails.shipped === true) ||
+        (currentStatus === "Delivered" && statusEmails.delivered === true)) {
+      return null;
+    }
+
+    const apiKey = normalizeText(SENDGRID_KEY.value(), 5000);
+    const fromEmail = normalizeEmail(SENDGRID_FROM_EMAIL.value());
+    const fromName = normalizeText(SENDGRID_FROM_NAME.value(), 120) || "TrendMix";
+    if (!apiKey || !fromEmail) {
+      console.error("SendGrid configuration missing for customer status notifications", { orderId, currentStatus });
+      return null;
+    }
+
+    const parsed = parseOrderEmailContext(afterData, orderId);
+    if (!parsed.customerEmail) {
+      console.warn("Customer email missing for status notification", { orderId, currentStatus });
+      return null;
+    }
+
+    const emailBody =
+      currentStatus === "Shipped"
+        ? buildCustomerShippedEmail(orderId, parsed)
+        : buildCustomerDeliveredEmail(orderId, parsed);
 
     sgMail.setApiKey(apiKey);
 
     try {
       await sgMail.send({
-        to: adminEmail,
+        to: parsed.customerEmail,
         from: {
           email: fromEmail,
           name: fromName,
         },
-        subject: `New order placed: ${orderNumber}`,
-        text: [
-          "New order placed",
-          `Order ID: ${orderId}`,
-          `Order Number: ${orderNumber}`,
-          `Customer Name: ${customerName}`,
-          `Customer Email: ${customerEmail}`,
-          `Phone: ${customerPhone}`,
-          `Products: ${itemsText}`,
-          `Total: ${formatInr(orderData.total)}`,
-          `Payment Method: ${paymentMethod}`,
-          `Payment Status: ${paymentStatus}`,
-          `Payment ID: ${paymentId}`,
-          `Delivery Address: ${address}`,
-        ].join("\n"),
+        subject: emailBody.subject,
+        text: emailBody.text,
       });
 
-      await snapshot.ref.set(
+      const updatedStatusEmails: Record<string, unknown> = {
+        ...statusEmails,
+        [currentStatus === "Shipped" ? "shipped" : "delivered"]: true,
+      };
+
+      await change.after.ref.set(
         {
-          emailSent: true,
+          customerStatusEmails: updatedStatusEmails,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
     } catch (error) {
-      console.error("Failed to send admin order notification", {
+      console.error("Failed to send customer status update email", {
         orderId,
+        currentStatus,
+        customerEmail: parsed.customerEmail,
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }

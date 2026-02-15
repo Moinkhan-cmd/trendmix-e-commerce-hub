@@ -9,7 +9,8 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import type { CategoryDoc, ProductBadge, ProductDoc } from "@/lib/models";
 import { slugify } from "@/lib/slug";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -185,6 +186,7 @@ export default function AdminProducts() {
   });
 
   const [imagePreviewErrors, setImagePreviewErrors] = useState<Record<number, boolean>>({});
+  const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
 
   // Search, filter, and pagination
   const [search, setSearch] = useState("");
@@ -548,6 +550,43 @@ export default function AdminProducts() {
       }
       return next;
     });
+  };
+
+  const uploadImageForField = async (idx: number, file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+
+    setUploadingImageIndex(idx);
+    try {
+      const ext = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "jpg";
+      const productName = productForm.getValues("name");
+      const safeProductName = slugify((productName || "product").slice(0, 80)) || "product";
+      const path = `products/${editing?.id ?? "new"}/${Date.now()}-${safeProductName}.${ext || "jpg"}`;
+      const fileRef = storageRef(storage, path);
+
+      await uploadBytes(fileRef, file, { contentType: file.type });
+      const downloadUrl = await getDownloadURL(fileRef);
+
+      productForm.setValue(`imageUrls.${idx}.value`, downloadUrl, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+      setImagePreviewErrors((prev) => {
+        if (!(idx in prev)) return prev;
+        const next = { ...prev };
+        delete next[idx];
+        return next;
+      });
+      toast.success("Image uploaded");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to upload image");
+    } finally {
+      setUploadingImageIndex(null);
+    }
   };
 
   const getStockBadge = (stock: number) => {
@@ -1205,15 +1244,30 @@ export default function AdminProducts() {
                                   }}
                                 />
                               </FormControl>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                className="max-w-[210px]"
+                                disabled={uploadingImageIndex !== null}
+                                onChange={(e) => {
+                                  const selectedFile = e.target.files?.[0] ?? null;
+                                  void uploadImageForField(idx, selectedFile);
+                                  e.currentTarget.value = "";
+                                }}
+                              />
                               <Button
                                 type="button"
                                 variant="outline"
                                 onClick={() => removeImageUrlField(idx)}
-                                disabled={imageUrlsArray.fields.length === 1}
+                                disabled={imageUrlsArray.fields.length === 1 || uploadingImageIndex !== null}
                               >
                                 Remove
                               </Button>
                             </div>
+
+                            {uploadingImageIndex === idx && (
+                              <p className="text-xs text-muted-foreground">Uploading image...</p>
+                            )}
 
                             {String(field.value ?? "").trim() && !imagePreviewErrors[idx] && (
                               <img
@@ -1245,7 +1299,7 @@ export default function AdminProducts() {
                 <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={saving}>
+                <Button type="submit" disabled={saving || uploadingImageIndex !== null}>
                   {saving ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>
