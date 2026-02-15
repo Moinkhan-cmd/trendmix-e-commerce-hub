@@ -124,15 +124,15 @@ export default function CheckoutAuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl border-border/70 p-0 overflow-hidden">
-        <div className="bg-gradient-to-br from-background to-muted/30 p-6 sm:p-8">
+      <DialogContent className="sm:max-w-lg border-border/70 p-0 overflow-hidden">
+        <div className="bg-gradient-to-br from-background to-muted/30 p-5 sm:p-6">
           <DialogHeader className="space-y-2">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Lock className="h-6 w-6 text-primary" />
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Lock className="h-5 w-5 text-primary" />
             </div>
-            <DialogTitle className="text-center text-2xl">Secure Checkout — Please login to continue</DialogTitle>
+            <DialogTitle className="text-center text-xl sm:text-2xl">Secure Checkout</DialogTitle>
             <DialogDescription className="text-center">
-              Continue with one-click sign in or use your email.
+              Please login to continue.
             </DialogDescription>
           </DialogHeader>
 
@@ -147,7 +147,7 @@ export default function CheckoutAuthModal({
           <Button
             type="button"
             variant="outline"
-            className="mt-5 w-full h-11"
+            className="mt-4 w-full h-10"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading || isSubmitting}
           >
@@ -164,7 +164,7 @@ export default function CheckoutAuthModal({
             )}
           </Button>
 
-          <Tabs value={tab} onValueChange={(value) => setTab(value as "login" | "signup")} className="mt-5">
+          <Tabs value={tab} onValueChange={(value) => setTab(value as "login" | "signup")} className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Email Login</TabsTrigger>
               <TabsTrigger value="signup">Create Account</TabsTrigger>

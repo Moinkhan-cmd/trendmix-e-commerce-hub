@@ -2,6 +2,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
@@ -337,6 +338,14 @@ async function ensureOAuthUserProfile(user: User): Promise<void> {
   });
 }
 
+async function finalizeOAuthSignIn(user: User): Promise<User> {
+  pendingVerificationUser = null;
+  await ensureOAuthUserProfile(user);
+  await syncEmailVerificationStatus(user.uid, user.emailVerified);
+  await updateLastLogin(user.uid);
+  return user;
+}
+
 // Sign up new user
 export async function signUp(
   email: string,
@@ -405,15 +414,22 @@ export async function signInWithGoogle(): Promise<User> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
 
-  const credential = await signInWithPopup(auth, provider);
-  const user = credential.user;
+  try {
+    const credential = await signInWithPopup(auth, provider);
+    return finalizeOAuthSignIn(credential.user);
+  } catch (error) {
+    const code = ((error as AuthError)?.code || "").toLowerCase();
+    const shouldFallbackToRedirect =
+      code === "auth/popup-blocked" ||
+      code === "auth/popup-blocked-by-browser";
 
-  pendingVerificationUser = null;
-  await ensureOAuthUserProfile(user);
-  await syncEmailVerificationStatus(user.uid, user.emailVerified);
-  await updateLastLogin(user.uid);
+    if (shouldFallbackToRedirect) {
+      await signInWithRedirect(auth, provider);
+      return auth.currentUser as User;
+    }
 
-  return user;
+    throw error;
+  }
 }
 
 // Sign out

@@ -70,34 +70,34 @@ const Cart = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
             <div className="space-y-4">
               {cartItems.map((item) => (
                 <Card key={item.product.id}>
-                  <CardContent className="p-4 flex gap-4 items-center">
+                  <CardContent className="p-3 sm:p-4 flex gap-3 sm:gap-4 items-center">
                     {item.product.image ? (
                       <img
                         src={item.product.image}
                         alt={item.product.name}
-                        className="h-16 w-16 rounded-md object-cover border"
+                        className="h-14 w-14 sm:h-16 sm:w-16 rounded-md object-cover border"
                       />
                     ) : (
-                      <div className="h-16 w-16 rounded-md bg-muted" />
+                      <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-md bg-muted" />
                     )}
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{item.product.name}</p>
-                      <p className="text-sm text-muted-foreground">Rs.{item.product.price}</p>
+                      <p className="font-medium text-sm sm:text-base truncate">{item.product.name}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Rs.{item.product.price}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <label className="sr-only" htmlFor={`qty-${item.product.id}`}>
                         Quantity
                       </label>
                       <Input
                         id={`qty-${item.product.id}`}
                         type="number"
-                        className="w-20"
+                        className="w-16 sm:w-20 h-9"
                         min={1}
                         value={item.qty}
                         onChange={(e) => setQty(item.product.id, Number(e.target.value))}
@@ -105,6 +105,7 @@ const Cart = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 sm:h-9 sm:w-9"
                         onClick={() => removeFromCart(item.product.id)}
                         aria-label={`Remove ${item.product.name} from cart`}
                       >
@@ -116,11 +117,11 @@ const Cart = () => {
               ))}
             </div>
 
-            <Card className="h-fit lg:sticky lg:top-4">
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
+            <Card className="h-fit lg:sticky lg:top-4 border-border/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 pt-0">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal ({cartCount} items)</span>
                   <span>Rs.{subtotal}</span>
@@ -141,11 +142,11 @@ const Cart = () => {
                   </p>
                 )}
                 <Separator />
-                <div className="flex items-center justify-between font-medium text-lg">
+                <div className="flex items-center justify-between font-semibold">
                   <span>Total</span>
                   <span>Rs.{total}</span>
                 </div>
-                <Button className="w-full" size="lg" onClick={handleProceedToCheckout}>
+                <Button className="w-full" onClick={handleProceedToCheckout}>
                   Proceed to Checkout
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
