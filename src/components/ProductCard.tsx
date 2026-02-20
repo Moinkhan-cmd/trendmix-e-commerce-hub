@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, ImageIcon, ShoppingCart, Star } from "lucide-react";
+import { Heart, ImageIcon, Minus, Plus, ShoppingCart, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useShop } from "@/store/shop";
 import type { ProductBadge } from "@/lib/models";
@@ -31,6 +32,7 @@ const ProductCard = ({
   badges,
 }: ProductCardProps) => {
   const { addToCart, toggleWishlist, isWishlisted } = useShop();
+  const [quickQty, setQuickQty] = useState(1);
   const discount = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const wished = isWishlisted(id);
 
@@ -82,9 +84,17 @@ const ProductCard = ({
     ? `₹${Number(originalPrice).toLocaleString("en-IN")}`
     : null;
 
+  const decreaseQty = () => {
+    setQuickQty((prev) => Math.max(1, prev - 1));
+  };
+
+  const increaseQty = () => {
+    setQuickQty((prev) => Math.min(10, prev + 1));
+  };
+
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-xl xs:rounded-2xl border border-border/50 bg-card shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl xs:rounded-2xl border border-border/50 bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20"
     >
       {/* Subtle gradient overlay on hover */}
       <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
@@ -148,40 +158,71 @@ const ProductCard = ({
         </Button>
       </div>
 
-      <div className="relative flex flex-1 flex-col p-2.5 xs:p-3 sm:p-4">
+      <div className="relative flex flex-1 flex-col p-2.5 xs:p-3 sm:p-3.5">
         <Link to={`/product/${id}`} className="group/title">
-          <h3 className="min-h-[2rem] xs:min-h-[2.25rem] sm:min-h-[2.75rem] text-[11px] xs:text-xs sm:text-sm font-medium leading-snug line-clamp-2 transition-colors duration-300 group-hover/title:text-primary">
+          <h3 className="min-h-[2rem] xs:min-h-[2.25rem] sm:min-h-[2.5rem] text-[11px] xs:text-xs sm:text-[13px] font-medium leading-snug line-clamp-2 transition-colors duration-300 group-hover/title:text-primary">
             {name}
           </h3>
         </Link>
 
-        <div className="mt-1.5 xs:mt-2 sm:mt-2.5 flex items-center gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              className={
-                i < Math.floor(rating)
-                  ? "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 fill-amber-400 text-amber-400"
-                  : "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-muted-foreground/20"
-              }
-            />
-          ))}
-          <span className="ml-1 text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground">({reviews})</span>
-        </div>
+        {reviews > 0 ? (
+          <div className="mt-1.5 xs:mt-2 sm:mt-2 flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className={
+                  i < Math.floor(rating)
+                    ? "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-400"
+                    : "h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/20"
+                }
+              />
+            ))}
+            <span className="ml-1 text-[9px] xs:text-[10px] sm:text-[11px] text-muted-foreground">({reviews})</span>
+          </div>
+        ) : (
+          <p className="mt-1.5 xs:mt-2 text-[10px] sm:text-[11px] text-muted-foreground">New arrival</p>
+        )}
 
-        <div className="mt-2 xs:mt-2.5 sm:mt-3 flex items-end justify-between gap-1 xs:gap-2 sm:gap-3">
+        <div className="mt-2 xs:mt-2.5 sm:mt-2.5 flex items-end justify-between gap-1 xs:gap-2 sm:gap-3">
           <div className="flex flex-wrap items-baseline gap-1 xs:gap-1.5 sm:gap-2">
-            <span className="text-sm xs:text-base sm:text-lg font-bold text-foreground">{priceText}</span>
+            <span className="text-sm xs:text-base sm:text-[17px] font-bold text-foreground">{priceText}</span>
             {originalPriceText ? (
-              <span className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground/60 line-through">{originalPriceText}</span>
+              <span className="text-[9px] xs:text-[10px] sm:text-[11px] text-muted-foreground/60 line-through">{originalPriceText}</span>
             ) : null}
           </div>
         </div>
 
+        <div className="mt-2 hidden sm:flex items-center justify-between rounded-md border border-border/70 bg-muted/30 px-2 py-1 opacity-0 translate-y-1 pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">
+          <span className="text-[11px] text-muted-foreground">Quick qty</span>
+          <div className="inline-flex items-center rounded-md border border-border bg-background">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-none"
+              onClick={decreaseQty}
+              aria-label="Decrease quantity"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <span className="w-7 text-center text-[11px] font-medium">{quickQty}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-none"
+              onClick={increaseQty}
+              aria-label="Increase quantity"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
         <Button
-          className="mt-2.5 xs:mt-3 sm:mt-4 w-full h-8 xs:h-9 sm:h-10 text-[10px] xs:text-xs sm:text-sm font-medium rounded-lg bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
+          className="mt-auto pt-2.5 xs:pt-3 sm:pt-3 w-full h-8 xs:h-9 sm:h-9.5 text-[10px] xs:text-xs sm:text-[13px] font-medium rounded-lg bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
           size="sm"
-          onClick={() => addToCart({ id, name, price, image }, 1)}
+          onClick={() => addToCart({ id, name, price, image }, quickQty)}
         >
           <ShoppingCart className="mr-1 xs:mr-1.5 sm:mr-2 h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
           Add to Cart

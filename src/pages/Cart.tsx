@@ -35,7 +35,7 @@ const Cart = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 container py-8">
+      <main className="flex-1 container py-6 sm:py-8">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold">Your Cart</h1>
@@ -70,11 +70,12 @@ const Cart = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_360px]">
             <div className="space-y-4">
               {cartItems.map((item) => (
-                <Card key={item.product.id}>
-                  <CardContent className="p-3 sm:p-4 flex gap-3 sm:gap-4 items-center">
+                <Card key={item.product.id} className="border-border/70 shadow-sm">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
                     {item.product.image ? (
                       <img
                         src={item.product.image}
@@ -86,18 +87,22 @@ const Cart = () => {
                     )}
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm sm:text-base truncate">{item.product.name}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Rs.{item.product.price}</p>
+                      <p className="font-medium text-sm sm:text-base truncate leading-tight">{item.product.name}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                        <span>Rs.{item.product.price}</span>
+                        <span>•</span>
+                        <span>Qty {item.qty}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 rounded-md bg-muted/40 p-1">
                       <label className="sr-only" htmlFor={`qty-${item.product.id}`}>
                         Quantity
                       </label>
                       <Input
                         id={`qty-${item.product.id}`}
                         type="number"
-                        className="w-16 sm:w-20 h-9"
+                        className="w-14 sm:w-16 h-8"
                         min={1}
                         value={item.qty}
                         onChange={(e) => setQty(item.product.id, Number(e.target.value))}
@@ -105,53 +110,47 @@ const Cart = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 sm:h-9 sm:w-9"
+                        className="h-8 w-8"
                         onClick={() => removeFromCart(item.product.id)}
                         aria-label={`Remove ${item.product.name} from cart`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            <Card className="h-fit lg:sticky lg:top-4 border-border/70 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Order Summary</CardTitle>
+            <Card className="h-fit lg:sticky lg:top-4 border-border/70 shadow-sm bg-gradient-to-b from-background to-muted/25">
+              <CardHeader className="pb-1 pt-4 px-4">
+                <CardTitle className="text-base tracking-tight">Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-0">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({cartCount} items)</span>
-                  <span>Rs.{subtotal}</span>
+              <CardContent className="pt-1 pb-4 px-4">
+                <div className="rounded-lg border border-border/70 bg-background/80 p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal ({cartCount} items)</span>
+                    <span className="font-medium">Rs.{subtotal}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="font-medium">
+                      {shipping === 0 ? (
+                        <span className="text-green-600 dark:text-green-400">Free</span>
+                      ) : (
+                        'Rs.' + shipping
+                      )}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>
-                    {shipping === 0 ? (
-                      <span className="text-green-600 dark:text-green-400">Free</span>
-                    ) : (
-                      'Rs.' + shipping
-                    )}
-                  </span>
+                <div className="mt-2.5 mb-2 flex items-center justify-between rounded-lg border border-border/70 bg-background px-3 py-2">
+                  <span className="font-medium">Total</span>
+                  <span className="text-base font-semibold">Rs.{total}</span>
                 </div>
-                {shipping > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Add Rs.{500 - subtotal} more for free shipping
-                  </p>
-                )}
-                <Separator />
-                <div className="flex items-center justify-between font-semibold">
-                  <span>Total</span>
-                  <span>Rs.{total}</span>
-                </div>
-                <Button className="w-full" onClick={handleProceedToCheckout}>
+                <Button className="w-full h-10 rounded-md" onClick={handleProceedToCheckout}>
                   Proceed to Checkout
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link to="/products">Continue Shopping</Link>
                 </Button>
               </CardContent>
             </Card>

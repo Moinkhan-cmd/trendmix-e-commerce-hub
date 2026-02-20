@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Loader2, Lock, ShieldCheck, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
@@ -43,11 +43,6 @@ export default function CheckoutAuthModal({
     password: "",
     confirmPassword: "",
   });
-
-  const trustBadges = useMemo(
-    () => ["Secure Payment", "Powered by Razorpay", "Encrypted Checkout"],
-    []
-  );
 
   const closeAndContinue = () => {
     onOpenChange(false);
@@ -124,30 +119,26 @@ export default function CheckoutAuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg border-border/70 p-0 overflow-hidden">
-        <div className="bg-gradient-to-br from-background to-muted/30 p-5 sm:p-6">
-          <DialogHeader className="space-y-2">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Lock className="h-5 w-5 text-primary" />
+      <DialogContent className="sm:max-w-md border-border/70 shadow-xl p-0 overflow-hidden max-h-[90vh]">
+        <div className="bg-gradient-to-br from-background via-background to-muted/20 p-4 sm:p-5 overflow-y-auto max-h-[90vh]">
+          <DialogHeader className="space-y-1.5">
+            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+              <Lock className="h-4.5 w-4.5 text-primary" />
             </div>
-            <DialogTitle className="text-center text-xl sm:text-2xl">Secure Checkout</DialogTitle>
-            <DialogDescription className="text-center">
+            <DialogTitle className="text-center text-lg sm:text-xl">Secure Checkout</DialogTitle>
+            <DialogDescription className="text-center text-sm">
               Please login to continue.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {trustBadges.map((badge) => (
-              <div key={badge} className="rounded-md border bg-background/80 px-3 py-2 text-xs text-center text-muted-foreground">
-                {badge}
-              </div>
-            ))}
+          <div className="mt-3 rounded-md border border-border/70 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground text-center">
+            Secure Payment • Razorpay • Encrypted Checkout
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className="mt-4 w-full h-10"
+            className="mt-3 w-full h-9"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading || isSubmitting}
           >
@@ -164,37 +155,45 @@ export default function CheckoutAuthModal({
             )}
           </Button>
 
-          <Tabs value={tab} onValueChange={(value) => setTab(value as "login" | "signup")} className="mt-4">
-            <TabsList className="grid w-full grid-cols-2">
+          <div className="my-2 flex items-center gap-2">
+            <div className="h-px flex-1 bg-border/70" />
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">or</span>
+            <div className="h-px flex-1 bg-border/70" />
+          </div>
+
+          <Tabs value={tab} onValueChange={(value) => setTab(value as "login" | "signup")} className="mt-2.5">
+            <TabsList className="grid w-full grid-cols-2 h-9 rounded-lg bg-muted/60 p-1">
               <TabsTrigger value="login">Email Login</TabsTrigger>
               <TabsTrigger value="signup">Create Account</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="login" className="mt-4">
-              <form className="space-y-3" onSubmit={handleLogin}>
-                <div className="space-y-1.5">
-                  <Label htmlFor="checkout-login-email">Email</Label>
+            <TabsContent value="login" className="mt-3">
+              <form className="space-y-2.5" onSubmit={handleLogin}>
+                <div className="space-y-1">
+                  <Label htmlFor="checkout-login-email" className="text-xs">Email</Label>
                   <Input
                     id="checkout-login-email"
                     type="email"
                     required
+                    className="h-9 bg-background/90"
                     value={loginForm.email}
                     onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
                     placeholder="name@example.com"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="checkout-login-password">Password</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="checkout-login-password" className="text-xs">Password</Label>
                   <Input
                     id="checkout-login-password"
                     type="password"
                     required
+                    className="h-9 bg-background/90"
                     value={loginForm.password}
                     onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
                     placeholder="Enter password"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleLoading}>
+                <Button type="submit" className="w-full h-9" disabled={isSubmitting || isGoogleLoading}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -204,60 +203,64 @@ export default function CheckoutAuthModal({
                     "Continue to Checkout"
                   )}
                 </Button>
-                <Button type="button" variant="link" className="h-auto p-0 text-xs" asChild>
+                <Button type="button" variant="link" className="h-auto p-0 text-[11px]" asChild>
                   <Link to="/forgot-password">Forgot your password?</Link>
                 </Button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup" className="mt-4">
-              <form className="space-y-3" onSubmit={handleSignUp}>
-                <div className="space-y-1.5">
-                  <Label htmlFor="checkout-signup-name">Full Name</Label>
+            <TabsContent value="signup" className="mt-3">
+              <form className="space-y-2.5" onSubmit={handleSignUp}>
+                <div className="space-y-1">
+                  <Label htmlFor="checkout-signup-name" className="text-xs">Full Name</Label>
                   <Input
                     id="checkout-signup-name"
                     required
+                    className="h-9 bg-background/90"
                     value={signUpForm.name}
                     onChange={(event) => setSignUpForm((prev) => ({ ...prev, name: event.target.value }))}
                     placeholder="Your name"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="checkout-signup-email">Email</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="checkout-signup-email" className="text-xs">Email</Label>
                   <Input
                     id="checkout-signup-email"
                     type="email"
                     required
+                    className="h-9 bg-background/90"
                     value={signUpForm.email}
                     onChange={(event) => setSignUpForm((prev) => ({ ...prev, email: event.target.value }))}
                     placeholder="name@example.com"
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="checkout-signup-password">Password</Label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="checkout-signup-password" className="text-xs">Password</Label>
                     <Input
                       id="checkout-signup-password"
                       type="password"
                       required
+                      className="h-9 bg-background/90"
                       value={signUpForm.password}
                       onChange={(event) => setSignUpForm((prev) => ({ ...prev, password: event.target.value }))}
                       placeholder="Password"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="checkout-signup-confirm">Confirm</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="checkout-signup-confirm" className="text-xs">Confirm</Label>
                     <Input
                       id="checkout-signup-confirm"
                       type="password"
                       required
+                      className="h-9 bg-background/90"
                       value={signUpForm.confirmPassword}
                       onChange={(event) => setSignUpForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
                       placeholder="Confirm"
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleLoading}>
+                <Button type="submit" className="w-full h-9" disabled={isSubmitting || isGoogleLoading}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -270,7 +273,7 @@ export default function CheckoutAuthModal({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="w-full"
+                  className="w-full h-9"
                   disabled={isResending || isSubmitting || isGoogleLoading}
                   onClick={handleResendVerification}
                 >
@@ -281,24 +284,24 @@ export default function CheckoutAuthModal({
           </Tabs>
 
           {(error || info) && (
-            <Alert className="mt-4">
+            <Alert className="mt-3 py-2">
               <AlertDescription>{error || info}</AlertDescription>
             </Alert>
           )}
 
           {onContinueGuest && (
-            <div className="mt-4 rounded-lg border bg-background/70 p-3">
-              <p className="text-xs text-muted-foreground mb-2">
-                Prefer guest checkout? You can continue without an account and add one after payment.
+            <div className="mt-3 rounded-lg border border-border/70 bg-background/70 p-2.5">
+              <p className="text-[11px] text-muted-foreground mb-1.5 text-center">
+                Prefer guest checkout?
               </p>
-              <Button variant="secondary" className="w-full" onClick={onContinueGuest}>
+              <Button variant="outline" className="w-full h-9" onClick={onContinueGuest}>
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 Continue as Guest
               </Button>
             </div>
           )}
 
-          <div className="mt-4 flex items-center justify-center text-xs text-muted-foreground">
+          <div className="mt-3 flex items-center justify-center text-[11px] text-muted-foreground">
             <BadgeCheck className="mr-1.5 h-3.5 w-3.5" />
             Protected by industry standard encryption.
           </div>

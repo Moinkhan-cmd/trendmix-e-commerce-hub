@@ -216,18 +216,21 @@ export async function processPayment(request: PaymentRequest): Promise<PaymentRe
     card: "online",
     upi: "upi",
     cod: "cod",
+    razorpay: "online",
   };
 
   if (outcome.success) {
+    const isCod = request.method === "cod";
+
     return {
       success: true,
       transactionId,
       message: outcome.message,
       paymentInfo: {
         method: methodMap[request.method],
-        status: request.method === "cod" ? "pending" : "completed",
-        transactionId: request.method !== "cod" ? transactionId : undefined,
-        paidAt: request.method !== "cod" ? Timestamp.now() : undefined,
+        status: isCod ? "pending" : "completed",
+        transactionId: isCod ? undefined : transactionId,
+        paidAt: isCod ? undefined : Timestamp.now(),
       },
     };
   }

@@ -16,13 +16,20 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { SlidersHorizontal, ImageIcon } from "lucide-react";
+import { SlidersHorizontal, ImageIcon, Search, X } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import type { ProductDoc, CategoryDoc } from "@/lib/models";
 import { getRecentlyViewed, type RecentlyViewedItem } from "@/lib/recently-viewed";
 
 type WithId<T> = T & { id: string };
+type ProductListDoc = ProductDoc & {
+  category?: string;
+  categoryName?: string;
+  rating?: number;
+  reviews?: number;
+  featured?: boolean;
+};
 
 type SortOption = "featured" | "price-low" | "price-high" | "newest" | "rating";
 
@@ -39,14 +46,21 @@ function isPublished(value: unknown): boolean {
 }
 
 function getTimestampMs(value: unknown) {
-  const anyValue = value as any;
-  return typeof anyValue?.toMillis === "function" ? Number(anyValue.toMillis()) : 0;
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toMillis" in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === "function"
+  ) {
+    return Number((value as { toMillis: () => number }).toMillis());
+  }
+  return 0;
 }
 
 const Products = () => {
   const hiddenCategorySlugs = useMemo(() => new Set(["electronics"]), []);
 
-  const [products, setProducts] = useState<Array<WithId<ProductDoc>>>([]);
+  const [products, setProducts] = useState<Array<WithId<ProductListDoc>>>([]);
   const [categories, setCategories] = useState<Array<WithId<CategoryDoc>>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -61,6 +75,7 @@ const Products = () => {
   const [sort, setSort] = useState<SortOption>("featured");
   const [showFilters, setShowFilters] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState("");
 
   useEffect(() => {
     const qProducts = collection(db, "products");
@@ -69,7 +84,7 @@ const Products = () => {
     const unsubProducts = onSnapshot(
       qProducts,
       (snap) => {
-        setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductDoc) })));
+        setProducts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ProductListDoc) })));
         setLoading(false);
         setLoadError(null);
       },
@@ -114,6 +129,10 @@ const Products = () => {
 
   const queryParam = (searchParams.get("q") ?? "").toLowerCase().trim();
 
+  useEffect(() => {
+    setSearchInput(searchParams.get("q") ?? "");
+  }, [searchParams]);
+
   const priceSliderMax = useMemo(() => {
     const maxInCatalog = products.reduce((acc, p) => {
       const price = Number(p.price ?? 0);
@@ -149,20 +168,25 @@ const Products = () => {
 
     const categoryById = new Map(categories.map((c) => [c.id, c] as const));
 
-    const getProductCategorySlug = (product: WithId<ProductDoc>): string => {
+    const getProductCategorySlug = (product: WithId<ProductListDoc>): string => {
       const cat = product.categoryId ? categoryById.get(product.categoryId) : undefined;
 
       // Prefer explicit category slug fields; fall back to category doc name/slug.
       // Avoid using product.name here (it can accidentally override slugs via getCategorySlug heuristics).
       const rawSlug =
-        String((product as any)?.categorySlug ?? "").trim() ||
-        String((product as any)?.category ?? "").trim() ||
-        String((product as any)?.categoryName ?? "").trim() ||
+        String(product.categorySlug ?? "").trim() ||
+        String(product.category ?? "").trim() ||
+        String(product.categoryName ?? "").trim() ||
         String(cat?.slug ?? "").trim();
 
-      const name = String(cat?.name ?? (product as any)?.categoryName ?? rawSlug ?? "").trim();
+      const name = String(cat?.name ?? product.categoryName ?? rawSlug ?? "").trim();
 
       return getCategorySlug(name, rawSlug);
+    };
+
+    const getProductRating = (product: WithId<ProductListDoc>) => {
+      const raw = Number(product.rating ?? 0);
+      return Number.isFinite(raw) ? raw : 0;
     };
 
     const next = products.filter((product) => {
@@ -176,7 +200,7 @@ const Products = () => {
           product.description,
           product.brand,
           product.sku,
-          (product as any).gender,
+          product.gender,
           ...(product.tags ?? []),
         ]
           .filter(Boolean)
@@ -188,16 +212,31 @@ const Products = () => {
       })();
       const price = Number(product.price ?? 0);
       const priceOk = price >= minPrice && price <= maxPrice;
-      const ratingOk = minRating != null ? true : true;
+      const ratingOk = minRating != null ? getProductRating(product) >= minRating : true;
       const genderOk =
         genderFilter === "all"
           ? true
-          : String((product as any).gender ?? "").toLowerCase() === genderFilter;
+          : String(product.gender ?? "").toLowerCase() === genderFilter;
 
       return publishedOk && categoryOk && queryOk && priceOk && ratingOk && genderOk;
     });
 
-    if (sort === "featured" || sort === "rating") return next;
+    if (sort === "rating") {
+      return [...next].sort((a, b) => getProductRating(b) - getProductRating(a));
+    }
+
+    if (sort === "featured") {
+      return [...next].sort((a, b) => {
+        const aFeatured = Boolean(a.featured);
+        const bFeatured = Boolean(b.featured);
+        if (aFeatured !== bFeatured) {
+          return aFeatured ? -1 : 1;
+        }
+        const aMs = getTimestampMs(a.createdAt ?? a.updatedAt);
+        const bMs = getTimestampMs(b.createdAt ?? b.updatedAt);
+        return bMs - aMs;
+      });
+    }
 
     return [...next].sort((a, b) => {
       const aPrice = Number(a.price ?? 0);
@@ -218,6 +257,40 @@ const Products = () => {
       }
     });
   }, [activeCategory, categories, genderFilter, minRating, priceRange, products, queryParam, sort]);
+
+  const publishedProducts = useMemo(() => products.filter((p) => isPublished(p.published)), [products]);
+
+  const categoryProductCounts = useMemo(() => {
+    const categoryById = new Map(categories.map((c) => [c.id, c] as const));
+    const counts = new Map<string, number>();
+
+    for (const product of publishedProducts) {
+      const cat = product.categoryId ? categoryById.get(product.categoryId) : undefined;
+      const rawSlug =
+        String(product.categorySlug ?? "").trim() ||
+        String(product.category ?? "").trim() ||
+        String(product.categoryName ?? "").trim() ||
+        String(cat?.slug ?? "").trim();
+
+      const name = String(cat?.name ?? product.categoryName ?? rawSlug ?? "").trim();
+      const slug = getCategorySlug(name, rawSlug);
+
+      if (!slug || hiddenCategorySlugs.has(slug)) continue;
+      counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    }
+
+    return counts;
+  }, [categories, hiddenCategorySlugs, publishedProducts]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (activeCategory) count += 1;
+    if (genderFilter !== "all") count += 1;
+    if (minRating != null) count += 1;
+    if (!isDefaultPriceRange) count += 1;
+    if (queryParam) count += 1;
+    return count;
+  }, [activeCategory, genderFilter, isDefaultPriceRange, minRating, queryParam]);
 
   const pageTitle = useMemo(() => {
     if (!activeCategory) return "All Products";
@@ -292,6 +365,29 @@ const Products = () => {
     setGenderFilter("all");
     setSort("featured");
     setCategoryParam(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete("q");
+    setSearchParams(next);
+  };
+
+  const applySearch = () => {
+    const next = new URLSearchParams(searchParams);
+    const value = searchInput.trim();
+
+    if (value) {
+      next.set("q", value);
+    } else {
+      next.delete("q");
+    }
+
+    setSearchParams(next);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    const next = new URLSearchParams(searchParams);
+    next.delete("q");
+    setSearchParams(next);
   };
 
   const hasAnyPublishedProduct = useMemo(() => {
@@ -306,10 +402,12 @@ const Products = () => {
         <div className="container px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col gap-2.5 xs:gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between mb-5 sm:mb-6 md:mb-8">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h1 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight truncate">{pageTitle}</h1>
                 <p className="mt-0.5 xs:mt-1 sm:mt-1.5 text-[11px] xs:text-xs sm:text-sm text-muted-foreground">
-                  {loading ? "Loading..." : `Showing ${filteredProducts.length} product${filteredProducts.length !== 1 ? "s" : ""}`}
+                  {loading
+                    ? "Loading..."
+                    : `Showing ${filteredProducts.length} of ${publishedProducts.length} product${publishedProducts.length !== 1 ? "s" : ""}`}
                 </p>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -320,7 +418,7 @@ const Products = () => {
                   className="lg:hidden h-8 xs:h-9 text-[11px] xs:text-xs sm:text-sm px-2.5 xs:px-3"
                 >
                   <SlidersHorizontal className="mr-1 xs:mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  Filters
+                  Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
                 </Button>
                 <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
                   <SelectTrigger className="w-[120px] xs:w-[140px] sm:w-[180px] h-8 xs:h-9 text-[11px] xs:text-xs sm:text-sm">
@@ -335,6 +433,104 @@ const Products = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="mb-4 sm:mb-5 md:mb-6 rounded-xl border border-border bg-card p-2.5 sm:p-3 shadow-sm">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        applySearch();
+                      }
+                    }}
+                    placeholder="Search products, brand, tags..."
+                    className="h-9 pl-8 pr-9 text-xs sm:text-sm"
+                    aria-label="Search products"
+                  />
+                  {searchInput ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={clearSearch}
+                      className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+                <Button type="button" variant="outline" className="h-9 px-4 text-xs sm:text-sm" onClick={applySearch}>
+                  Search
+                </Button>
+              </div>
+
+              {activeFiltersCount > 0 ? (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  {activeCategory ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 rounded-full px-2.5 text-[11px]"
+                      onClick={() => setCategoryParam(null)}
+                    >
+                      Category: {pageTitle}
+                      <X className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                  {genderFilter !== "all" ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 rounded-full px-2.5 text-[11px]"
+                      onClick={() => setGenderFilter("all")}
+                    >
+                      Gender: {genderFilter}
+                      <X className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                  {minRating != null ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 rounded-full px-2.5 text-[11px]"
+                      onClick={() => setMinRating(null)}
+                    >
+                      Rating: {minRating}+★
+                      <X className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                  {!isDefaultPriceRange ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 rounded-full px-2.5 text-[11px]"
+                      onClick={() => setPriceRange([0, priceSliderMax])}
+                    >
+                      Price: ₹{priceCurrency.format(priceRange[0])} - ₹{priceCurrency.format(priceRange[1])}
+                      <X className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                  {queryParam ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 rounded-full px-2.5 text-[11px]"
+                      onClick={clearSearch}
+                    >
+                      Search: {queryParam}
+                      <X className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={clearFilters}>
+                    Clear all
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
             {recentlyViewed.length ? (
@@ -386,7 +582,10 @@ const Products = () => {
                   </Button>
                 </div>
                 <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold">Categories</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold">Categories</h3>
+                    <span className="text-[11px] text-muted-foreground">{visibleCategories.length}</span>
+                  </div>
                   <div className="mt-4 space-y-3">
                     <div className="space-y-3">
                       <div className="flex items-center space-x-2">
@@ -399,9 +598,10 @@ const Products = () => {
                         />
                         <label
                           htmlFor="category-all"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          className="flex w-full items-center justify-between gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                         >
-                          All
+                          <span>All</span>
+                          <span className="text-xs text-muted-foreground">{publishedProducts.length}</span>
                         </label>
                       </div>
                       {visibleCategories.map((category) => {
@@ -424,32 +624,37 @@ const Products = () => {
                             />
                             <label
                               htmlFor={id}
-                              className="flex items-center text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                              className="flex items-center justify-between text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                             >
-                              {(() => {
-                                const image = getCategoryImage(slug) || category.imageUrl;
+                              <span className="flex items-center min-w-0">
+                                {(() => {
+                                  const image = getCategoryImage(slug) || category.imageUrl;
 
-                                return image ? (
-                                  <img
-                                    src={image}
-                                    alt={category.name}
-                                    className="h-8 w-8 rounded object-cover mr-2 border border-border"
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 rounded bg-muted flex items-center justify-center mr-2 border border-border">
-                                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                );
-                              })()}
-                              {(() => {
-                                // Handle legacy "Beauty" category - display as "Cosmetics"
-                                const nameLower = String(category.name ?? "").toLowerCase().trim();
-                                const slugLower = String(category.slug ?? "").toLowerCase().trim();
-                                if (nameLower === "beauty" || slugLower === "beauty") {
-                                  return "Cosmetics";
-                                }
-                                return category.name;
-                              })()}
+                                  return image ? (
+                                    <img
+                                      src={image}
+                                      alt={category.name}
+                                      className="h-8 w-8 rounded object-cover mr-2 border border-border"
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-8 rounded bg-muted flex items-center justify-center mr-2 border border-border">
+                                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                  );
+                                })()}
+                                <span className="truncate">
+                                  {(() => {
+                                    // Handle legacy "Beauty" category - display as "Cosmetics"
+                                    const nameLower = String(category.name ?? "").toLowerCase().trim();
+                                    const slugLower = String(category.slug ?? "").toLowerCase().trim();
+                                    if (nameLower === "beauty" || slugLower === "beauty") {
+                                      return "Cosmetics";
+                                    }
+                                    return category.name;
+                                  })()}
+                                </span>
+                              </span>
+                              <span className="ml-2 text-xs text-muted-foreground">{categoryProductCounts.get(slug) ?? 0}</span>
                             </label>
                           </div>
                         );
@@ -574,7 +779,7 @@ const Products = () => {
                   </div>
                 </div>
                 <Button variant="outline" className="w-full h-9 sm:h-10 text-sm" onClick={clearFilters}>
-                  Clear Filters
+                  Clear Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
                 </Button>
                 {/* Mobile apply filters button */}
                 <Button 
@@ -613,10 +818,15 @@ const Products = () => {
                         ? "We’re stocking the store right now. New products will be available soon."
                         : "Nothing matches your filters right now. Try clearing filters or selecting a different category."}
                   </p>
+                  {activeFiltersCount > 0 ? (
+                    <Button variant="outline" className="mt-4 h-9 text-sm" onClick={clearFilters}>
+                      Reset filters
+                    </Button>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mx-auto w-full">
-                  <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {filteredProducts.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -626,8 +836,8 @@ const Products = () => {
                         originalPrice={typeof product.compareAtPrice === "number" ? product.compareAtPrice : undefined}
                         image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
                         badges={Array.isArray(product.badges) ? product.badges : undefined}
-                        rating={0}
-                        reviews={0}
+                        rating={Number(product.rating ?? 0)}
+                        reviews={Number(product.reviews ?? 0)}
                       />
                     ))}
                   </div>

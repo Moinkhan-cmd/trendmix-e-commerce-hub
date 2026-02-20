@@ -368,7 +368,10 @@ export default function AdminOrders() {
                   <TableHead>Order</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Items</TableHead>
+                  <TableHead>Payment</TableHead>
+                  <TableHead>COD Fee</TableHead>
                   <TableHead>Total</TableHead>
+                  <TableHead>Final Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -377,7 +380,7 @@ export default function AdminOrders() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12">
+                    <TableCell colSpan={10} className="text-center py-12">
                       <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <p className="text-muted-foreground">No orders found</p>
                     </TableCell>
@@ -406,7 +409,16 @@ export default function AdminOrders() {
                           <p className="text-sm">{order.items.length} item{order.items.length !== 1 ? "s" : ""}</p>
                         </TableCell>
                         <TableCell>
+                          <p className="text-sm font-medium">{order.paymentMethod || (order.payment?.method === "cod" ? "COD" : order.payment?.method === "upi" ? "UPI" : "ONLINE")}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{formatCurrency(order.codFee ?? 0)}</p>
+                        </TableCell>
+                        <TableCell>
                           <p className="font-medium">{formatCurrency(order.total)}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{formatCurrency(order.finalAmount ?? order.total)}</p>
                         </TableCell>
                         <TableCell>
                           <Badge className={cn("gap-1", config.bgColor, config.color)}>
@@ -537,12 +549,20 @@ export default function AdminOrders() {
                 {/* Order Summary */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Payment Method</span>
+                    <span>{selectedOrder.paymentMethod || (selectedOrder.payment?.method === "cod" ? "COD" : selectedOrder.payment?.method === "upi" ? "UPI" : "ONLINE")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>{formatCurrency(selectedOrder.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
                     <span>{selectedOrder.shipping === 0 ? "Free" : formatCurrency(selectedOrder.shipping)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Cash Handling &amp; Logistics Fee</span>
+                    <span>{formatCurrency(selectedOrder.codFee ?? 0)}</span>
                   </div>
                   {selectedOrder.discount && selectedOrder.discount > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
@@ -551,9 +571,13 @@ export default function AdminOrders() {
                     </div>
                   )}
                   <Separator />
-                  <div className="flex justify-between font-bold">
+                  <div className="flex justify-between text-sm">
                     <span>Total</span>
                     <span>{formatCurrency(selectedOrder.total)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold">
+                    <span>Final Amount</span>
+                    <span>{formatCurrency(selectedOrder.finalAmount ?? selectedOrder.total)}</span>
                   </div>
                 </div>
 

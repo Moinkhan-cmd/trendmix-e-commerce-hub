@@ -57,7 +57,24 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow create: if isVerifiedUser()
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.payment.status == 'pending';
+        && request.resource.data.payment.status == 'pending'
+        && (
+          (
+            request.resource.data.payment.method == 'cod'
+            // COD enabled with ₹29 fee. Minimum order ₹399 to reduce fake orders.
+            && request.resource.data.total >= 399
+            && request.resource.data.codFee == 29
+            && request.resource.data.paymentMethod == 'COD'
+            && request.resource.data.finalAmount == request.resource.data.total + 29
+          )
+          ||
+          (
+            request.resource.data.payment.method != 'cod'
+            && request.resource.data.codFee == 0
+            && request.resource.data.finalAmount == request.resource.data.total
+            && request.resource.data.paymentMethod in ['ONLINE', 'UPI']
+          )
+        );
       allow read: if (isVerifiedUser() && resource.data.userId == request.auth.uid) || isAdmin();
       allow update, delete: if isAdmin();
     }

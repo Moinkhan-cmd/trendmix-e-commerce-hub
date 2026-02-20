@@ -90,6 +90,8 @@ export default function PaymentProcessingModal({
         return <CreditCard className="h-6 w-6" />;
       case "upi":
         return <Smartphone className="h-6 w-6" />;
+      case "razorpay":
+        return <Shield className="h-6 w-6" />;
       default:
         return <Shield className="h-6 w-6" />;
     }
@@ -101,6 +103,8 @@ export default function PaymentProcessingModal({
         return "Card Payment";
       case "upi":
         return "UPI Payment";
+      case "razorpay":
+        return "Pay Online (Razorpay)";
       case "cod":
         return "Cash on Delivery";
     }

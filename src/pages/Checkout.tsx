@@ -18,6 +18,9 @@ import {
   Home,
   FileText,
   ArrowRight,
+  Minus,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
@@ -76,13 +79,16 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 const SHIPPING_THRESHOLD = 999;
 const SHIPPING_COST = 49;
+const COD_MIN_ORDER_TOTAL = 399;
+const COD_FEE = 29;
+// COD enabled with ₹29 fee. Minimum order ₹399 to reduce fake orders.
 
 type CheckoutStep = "address" | "payment";
 type PaymentModalStatus = "processing" | "success" | "failed";
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { cartItems, cartCount, subtotal: cartSubtotal, clearCart } = useShop();
+  const { cartItems, cartCount, subtotal: cartSubtotal, clearCart, setQty, removeFromCart } = useShop();
   const {
     isAuthenticated,
     isEmailVerified,
@@ -120,6 +126,7 @@ export default function Checkout() {
     transactionId?: string;
     errorMessage?: string;
     orderNumber?: string;
+    amountPaid?: number;
   }>({});
   
   // Coupon state
@@ -187,6 +194,15 @@ export default function Checkout() {
   const subtotal = cartSubtotal;
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
   const total = subtotal + shipping - discount;
+  const canUseCod = total >= COD_MIN_ORDER_TOTAL;
+  const codFee = paymentMethod === "cod" ? COD_FEE : 0;
+  const finalTotal = total + codFee;
+
+  useEffect(() => {
+    if (!canUseCod && paymentMethod === "cod") {
+      setPaymentMethod("razorpay");
+    }
+  }, [canUseCod, paymentMethod]);
 
   // Handle coupon code application
   const handleApplyCoupon = () => {
@@ -301,6 +317,12 @@ export default function Checkout() {
 
     if (guestCheckout && paymentMethod !== "razorpay") {
       toast.error("Guest checkout currently supports secure Razorpay payment only.");
+      return;
+    }
+
+    // COD enabled with ₹29 fee. Minimum order ₹399 to reduce fake orders.
+    if (paymentMethod === "cod" && !canUseCod) {
+      toast.error("Cash on Delivery is available only for orders of ₹399 or more.");
       return;
     }
 
@@ -443,7 +465,7 @@ export default function Checkout() {
       return;
     }
 
-    // ── Legacy mock flow (card / upi / cod) ─────────────────
+    // ── Legacy mock flow (card / upi) ───────────────────────
     // Show processing modal
     setPaymentModalOpen(true);
     setPaymentModalStatus("processing");
@@ -453,7 +475,7 @@ export default function Checkout() {
       // Process payment
       const paymentResponse = await processPayment({
         method: paymentMethod,
-        amount: total,
+      amount: finalTotal,
         cardDetails: paymentMethod === "card" ? {
           ...cardDetails,
           cardNumber: cardDetails.cardNumber.replace(/\s/g, ""),
@@ -499,6 +521,7 @@ export default function Checkout() {
         setPaymentResult({
           transactionId: paymentResponse.transactionId,
           orderNumber: orderResult.orderNumber,
+          amountPaid: finalTotal,
         });
 
         // Clear cart
@@ -882,8 +905,14 @@ export default function Checkout() {
                     <PaymentMethodSelector
                       selectedMethod={paymentMethod}
                       onMethodChange={setPaymentMethod}
+                      showCod={canUseCod}
                       disabled={loading || guestCheckout}
                     />
+                    {!canUseCod && (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        Cash on Delivery is available for orders of ₹{COD_MIN_ORDER_TOTAL} or more.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -931,7 +960,7 @@ export default function Checkout() {
                     ) : (
                       <>
                         <ShoppingBag className="mr-2 h-5 w-5" />
-                        Place Order - {formatCurrency(total)}
+                        Place Order - {formatCurrency(finalTotal)}
                       </>
                     )}
                   </Button>
@@ -963,7 +992,42 @@ export default function Checkout() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{item.product.name}</p>
-                        <p className="text-xs text-muted-foreground">Qty: {item.qty}</p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={loading || item.qty <= 1}
+                            onClick={() => setQty(item.product.id, Math.max(1, item.qty - 1))}
+                            aria-label={`Decrease quantity of ${item.product.name}`}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs text-muted-foreground min-w-12 text-center">Qty {item.qty}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={loading}
+                            onClick={() => setQty(item.product.id, item.qty + 1)}
+                            aria-label={`Increase quantity of ${item.product.name}`}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            disabled={loading}
+                            onClick={() => removeFromCart(item.product.id)}
+                            aria-label={`Remove ${item.product.name} from cart`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                         <p className="text-sm font-medium">{formatCurrency(item.product.price * item.qty)}</p>
                       </div>
                     </div>
@@ -1033,6 +1097,12 @@ export default function Checkout() {
                       <span className="text-green-600">-{formatCurrency(discount)}</span>
                     </div>
                   )}
+                  {codFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Cash Handling &amp; Logistics Fee</span>
+                      <span>{formatCurrency(codFee)}</span>
+                    </div>
+                  )}
                   {subtotal < SHIPPING_THRESHOLD && (
                     <p className="text-xs text-muted-foreground">
                       Add {formatCurrency(SHIPPING_THRESHOLD - subtotal)} more for free shipping
@@ -1041,7 +1111,7 @@ export default function Checkout() {
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
+                    <span>{formatCurrency(finalTotal)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -1130,7 +1200,7 @@ export default function Checkout() {
         onOpenChange={setPaymentModalOpen}
         status={paymentModalStatus}
         paymentMethod={paymentMethod}
-        amount={total}
+        amount={paymentResult.amountPaid ?? finalTotal}
         transactionId={paymentResult.transactionId}
         errorMessage={paymentResult.errorMessage}
         onRetry={handleRetryPayment}

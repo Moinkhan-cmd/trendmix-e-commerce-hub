@@ -250,6 +250,31 @@ export function getAuthErrorMessage(error: unknown): string {
     return maybeMessage;
   }
 
+  if (code === "auth/unauthorized-domain") {
+    const host =
+      typeof window !== "undefined" && window.location.hostname
+        ? window.location.hostname
+        : "unknown-host";
+
+    return `Google sign-in is blocked for this domain (${host}). Add this domain in Firebase Authentication → Settings → Authorized domains.`;
+  }
+
+  if (code === "auth/operation-not-allowed") {
+    return "Google sign-in is not enabled in Firebase. Enable Google in Authentication → Sign-in method.";
+  }
+
+  if (code === "auth/popup-blocked" || code === "auth/popup-blocked-by-browser") {
+    return "Browser blocked the Google popup. Allow popups for this site and try again.";
+  }
+
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+    return "Google sign-in was cancelled before completion. Please try again and complete the Google prompt.";
+  }
+
+  if (code === "auth/network-request-failed") {
+    return "Network error during Google sign-in. Check your internet and try again.";
+  }
+
   return errorMessages[code] || "An unexpected error occurred. Please try again.";
 }
 

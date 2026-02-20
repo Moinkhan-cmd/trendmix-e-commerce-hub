@@ -18,6 +18,9 @@ import { db } from "./firebase";
 import { auth } from "./firebase";
 import type { OrderDoc, OrderItem, CustomerInfo, OrderStatus, OrderTimelineEvent } from "./models";
 
+const COD_MIN_ORDER_TOTAL = 399;
+const COD_FEE = 29;
+
 type FirestoreLikeError = {
   code?: string;
   message?: string;
@@ -165,13 +168,32 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     }
   }
 
+  const baseTotal = input.subtotal + input.shipping - validatedDiscount;
+  const isCodPayment = input.payment?.method === "cod";
+
+  // COD enabled with ₹29 fee. Minimum order ₹399 to reduce fake orders.
+  if (isCodPayment && baseTotal < COD_MIN_ORDER_TOTAL) {
+    throw new Error("Cash on Delivery is available only for orders of ₹399 or more.");
+  }
+
+  const codFee = isCodPayment ? COD_FEE : 0;
+  const finalAmount = baseTotal + codFee;
+  const paymentMethod: OrderDoc["paymentMethod"] = isCodPayment
+    ? "COD"
+    : input.payment?.method === "upi"
+      ? "UPI"
+      : "ONLINE";
+
   const orderData = stripUndefinedDeep({
     items: input.items,
     customer,
     status: "Pending",
     subtotal: input.subtotal,
     shipping: input.shipping,
-    total: input.subtotal + input.shipping - validatedDiscount,
+    total: baseTotal,
+    codFee,
+    finalAmount,
+    paymentMethod,
     discount: validatedDiscount > 0 ? validatedDiscount : undefined,
     couponCode: validatedCouponCode,
     orderNumber,
@@ -180,7 +202,7 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
     customerEmailSent: false,
     timeline: createInitialTimeline(),
     payment: input.payment ?? {
-      method: "cod",
+      method: "online",
       status: "pending",
     },
   }) as Omit<OrderDoc, "createdAt" | "updatedAt">;
@@ -453,7 +475,7 @@ export function validateCouponCode(code: string, subtotal: number): { valid: boo
 export function exportOrdersToCSV(orders: Array<OrderDoc & { id: string }>): string {
   const headers = [
     "Order Number", "Date", "Customer Name", "Email", "Phone", "Address",
-    "City", "State", "Pincode", "Items", "Subtotal", "Shipping", "Total", "Status", "Notes",
+    "City", "State", "Pincode", "Items", "Subtotal", "Shipping", "Total", "Payment Method", "COD Fee", "Final Amount", "Status", "Notes",
   ];
 
   const rows = orders.map((order) => [
@@ -470,6 +492,9 @@ export function exportOrdersToCSV(orders: Array<OrderDoc & { id: string }>): str
     order.subtotal,
     order.shipping,
     order.total,
+    order.paymentMethod || (order.payment?.method === "cod" ? "COD" : order.payment?.method === "upi" ? "UPI" : "ONLINE"),
+    order.codFee ?? 0,
+    order.finalAmount ?? order.total,
     order.status,
     `"${(order.customer.notes || "").replace(/"/g, '""')}"`,
   ]);

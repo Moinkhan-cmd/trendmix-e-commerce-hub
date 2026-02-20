@@ -99,6 +99,9 @@ export type OrderDoc = {
   customer: CustomerInfo;
   status: OrderStatus;
   total: number;
+  finalAmount?: number;
+  codFee?: number;
+  paymentMethod?: "COD" | "ONLINE" | "UPI";
   subtotal: number;
   shipping: number;
   discount?: number;

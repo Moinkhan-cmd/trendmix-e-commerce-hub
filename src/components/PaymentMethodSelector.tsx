@@ -29,6 +29,7 @@ type PaymentMethodSelectorProps = {
     upiId?: string;
   };
   disabled?: boolean;
+  showCod?: boolean;
 };
 
 const PAYMENT_METHODS = [
@@ -47,11 +48,18 @@ const PAYMENT_METHODS = [
   },
 ];
 
+// COD enabled with ₹29 fee. Minimum order ₹399 to reduce fake orders.
+const COD_FEE = 29;
+
 export default function PaymentMethodSelector({
   selectedMethod,
   onMethodChange,
   disabled = false,
+  showCod = false,
 }: PaymentMethodSelectorProps) {
+  const visiblePaymentMethods = PAYMENT_METHODS.filter(
+    (method) => showCod || method.id !== "cod"
+  );
 
   return (
     <div className="space-y-4">
@@ -62,7 +70,7 @@ export default function PaymentMethodSelector({
         className="grid gap-3"
         disabled={disabled}
       >
-        {PAYMENT_METHODS.map((method) => {
+        {visiblePaymentMethods.map((method) => {
           const Icon = method.icon;
           const isSelected = selectedMethod === method.id;
 
@@ -140,7 +148,7 @@ export default function PaymentMethodSelector({
       )}
 
       {/* COD Info */}
-      {selectedMethod === "cod" && (
+      {showCod && selectedMethod === "cod" && (
         <Card className="mt-4 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -152,7 +160,7 @@ export default function PaymentMethodSelector({
                   Cash on Delivery Selected
                 </p>
                 <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  Pay with cash when your order arrives. Please keep exact change ready.
+                  Pay with cash when your order arrives. Cash Handling &amp; Logistics Fee: ₹{COD_FEE}.
                 </p>
               </div>
             </div>
