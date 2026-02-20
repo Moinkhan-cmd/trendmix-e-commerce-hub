@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Twitter, Mail, MapPin, Phone, ArrowRight } from "lucide-react";
+import { Facebook, Instagram, Twitter, Mail, MapPin, Phone, ArrowRight, ArrowUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoImg from "@/assets/logo.webp";
 
@@ -117,20 +117,29 @@ const Footer = () => {
         <div className="mt-14 border-t border-border/50 pt-8">
           <div className="flex flex-col items-center justify-between gap-4 text-center text-sm text-muted-foreground sm:flex-row">
             <p>&copy; 2026 TrendMix Store. All rights reserved.</p>
-            <p className="inline-flex items-center gap-1.5">
-              Made with
-              <span className="inline-flex items-center" aria-label="love" title="love">
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 text-destructive motion-reduce:animate-none animate-heartbeat"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M12 21s-7.2-4.6-9.6-8.6C.7 9.6 2.1 6.8 4.9 5.9c1.8-.6 3.8 0 5.1 1.5L12 9.6l2-2.2c1.3-1.5 3.3-2.1 5.1-1.5 2.8.9 4.2 3.7 2.5 6.5C19.2 16.4 12 21 12 21z" />
-                </svg>
-              </span>
-              by <span className="font-medium text-foreground">Moinkhan</span>
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="inline-flex items-center gap-1.5">
+                Made with
+                <span className="inline-flex items-center" aria-label="love" title="love">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 text-destructive motion-reduce:animate-none animate-heartbeat"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 21s-7.2-4.6-9.6-8.6C.7 9.6 2.1 6.8 4.9 5.9c1.8-.6 3.8 0 5.1 1.5L12 9.6l2-2.2c1.3-1.5 3.3-2.1 5.1-1.5 2.8.9 4.2 3.7 2.5 6.5C19.2 16.4 12 21 12 21z" />
+                  </svg>
+                </span>
+                by <span className="font-medium text-foreground">Moinkhan</span>
+              </p>
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-background/50 text-muted-foreground transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:border-primary hover:scale-110 hover:shadow-lg hover:shadow-primary/20"
+                aria-label="Back to top"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
