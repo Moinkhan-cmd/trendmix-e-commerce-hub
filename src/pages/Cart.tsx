@@ -71,64 +71,74 @@ const Cart = () => {
           </Card>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_360px]">
-            <div className="space-y-4">
+            <div className="space-y-3">
               {cartItems.map((item) => (
-                <Card key={item.product.id} className="border-border/70 shadow-sm">
+                <Card key={item.product.id} className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                    {item.product.image ? (
-                      <img
-                        src={item.product.image}
-                        alt={item.product.name}
-                        className="h-14 w-14 sm:h-16 sm:w-16 rounded-md object-cover border"
-                      />
-                    ) : (
-                      <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-md bg-muted" />
-                    )}
+                    <div className="flex gap-3 sm:gap-4">
+                      {/* Product Image */}
+                      {item.product.image ? (
+                        <img
+                          src={item.product.image}
+                          alt={item.product.name}
+                          className="h-[72px] w-[72px] sm:h-20 sm:w-20 flex-shrink-0 rounded-lg object-cover border border-border/40"
+                        />
+                      ) : (
+                        <div className="h-[72px] w-[72px] sm:h-20 sm:w-20 flex-shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
 
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm sm:text-base truncate leading-tight">{item.product.name}</p>
-                      <div className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                        <span>Rs.{item.product.price}</span>
-                        <span>•</span>
-                        <span>Qty {item.qty}</span>
+                      {/* Info column */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-2">
+                        {/* Name + remove button */}
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-medium text-sm sm:text-base leading-snug line-clamp-2 flex-1">{item.product.name}</p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0 -mt-0.5 -mr-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                            onClick={() => removeFromCart(item.product.id)}
+                            aria-label={`Remove ${item.product.name} from cart`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+
+                        {/* Price · qty · total row */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/40 px-2 py-1">
+                            <label className="sr-only" htmlFor={`qty-${item.product.id}`}>Quantity</label>
+                            <span className="text-xs text-muted-foreground select-none">Qty</span>
+                            <Input
+                              id={`qty-${item.product.id}`}
+                              type="number"
+                              className="w-11 h-7 text-center border-0 bg-transparent p-0 text-sm font-semibold focus-visible:ring-1 focus-visible:ring-primary/50 rounded"
+                              min={1}
+                              value={item.qty}
+                              onChange={(e) => setQty(item.product.id, Number(e.target.value))}
+                            />
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[11px] text-muted-foreground leading-none mb-0.5">
+                              Rs.{item.product.price} × {item.qty}
+                            </p>
+                            <p className="text-sm font-bold text-foreground">Rs.{item.product.price * item.qty}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 rounded-md bg-muted/40 p-1">
-                      <label className="sr-only" htmlFor={`qty-${item.product.id}`}>
-                        Quantity
-                      </label>
-                      <Input
-                        id={`qty-${item.product.id}`}
-                        type="number"
-                        className="w-14 sm:w-16 h-8"
-                        min={1}
-                        value={item.qty}
-                        onChange={(e) => setQty(item.product.id, Number(e.target.value))}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => removeFromCart(item.product.id)}
-                        aria-label={`Remove ${item.product.name} from cart`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            <Card className="h-fit lg:sticky lg:top-4 border-border/70 shadow-sm bg-gradient-to-b from-background to-muted/25">
-              <CardHeader className="pb-1 pt-4 px-4">
-                <CardTitle className="text-base tracking-tight">Order Summary</CardTitle>
+            <Card className="h-fit lg:sticky lg:top-4 border-border/60 shadow-sm rounded-xl overflow-hidden">
+              <CardHeader className="pb-1 pt-4 px-4 bg-muted/20">
+                <CardTitle className="text-base font-semibold tracking-tight">Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="pt-1 pb-4 px-4">
-                <div className="rounded-lg border border-border/70 bg-background/80 p-2.5 space-y-1.5">
+              <CardContent className="pt-3 pb-4 px-4">
+                <div className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal ({cartCount} items)</span>
                     <span className="font-medium">Rs.{subtotal}</span>
@@ -144,11 +154,11 @@ const Cart = () => {
                     </span>
                   </div>
                 </div>
-                <div className="mt-2.5 mb-2 flex items-center justify-between rounded-lg border border-border/70 bg-background px-3 py-2">
-                  <span className="font-medium">Total</span>
-                  <span className="text-base font-semibold">Rs.{total}</span>
+                <div className="mt-3 flex items-center justify-between rounded-lg bg-primary/5 border border-primary/10 px-3 py-2.5">
+                  <span className="font-semibold">Total</span>
+                  <span className="text-lg font-bold">Rs.{total}</span>
                 </div>
-                <Button className="w-full h-10 rounded-md" onClick={handleProceedToCheckout}>
+                <Button className="w-full h-10 mt-3 rounded-lg font-medium" onClick={handleProceedToCheckout}>
                   Proceed to Checkout
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

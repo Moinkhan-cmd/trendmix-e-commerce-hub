@@ -732,42 +732,46 @@ export default function Checkout() {
           </Card>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_380px]">
           {/* Main Content */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ShoppingBag className="h-4 w-4" />
+          <div className="space-y-5">
+            <Card className="border-border/60 shadow-sm rounded-xl overflow-hidden">
+              <CardHeader className="pb-3 bg-muted/15">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                  <ShoppingBag className="h-4 w-4 text-primary" />
                   Cart Items
                 </CardTitle>
-                <CardDescription>
-                  Update quantity or remove items before placing your order.
+                <CardDescription className="text-xs">
+                  Review or update items before placing your order
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="p-3 space-y-2.5">
                 {cartItems.map((item) => (
-                  <div key={item.product.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+                  <div key={item.product.id} className="rounded-xl border border-border/50 bg-background p-3 hover:shadow-sm transition-shadow">
+                    <div className="flex items-start gap-3">
                     <img
                       src={item.product.image || "/placeholder.svg"}
                       alt={item.product.name}
-                      className="h-14 w-14 object-cover rounded-md"
+                      className="h-14 w-14 sm:h-16 sm:w-16 object-cover rounded-lg border border-border/40"
                     />
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.product.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrency(item.product.price)} each</p>
-                      <p className="text-sm font-semibold mt-0.5">
+                      <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
+                        {item.product.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(item.product.price)} each</p>
+                      <p className="text-sm font-bold mt-1 text-foreground">
                         {formatCurrency(item.product.price * item.qty)}
                       </p>
                     </div>
+                    </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="mt-2.5 flex items-center justify-end gap-1 rounded-lg bg-muted/30 p-1">
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-8 w-8 rounded-md"
                         disabled={loading || item.qty <= 1}
                         onClick={() => setQty(item.product.id, Math.max(1, item.qty - 1))}
                         aria-label={`Decrease quantity of ${item.product.name}`}
@@ -779,7 +783,7 @@ export default function Checkout() {
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-8 w-8 rounded-md"
                         disabled={loading}
                         onClick={() => setQty(item.product.id, item.qty + 1)}
                         aria-label={`Increase quantity of ${item.product.name}`}
@@ -790,7 +794,7 @@ export default function Checkout() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 rounded-md text-muted-foreground hover:text-destructive"
                         disabled={loading}
                         onClick={() => removeFromCart(item.product.id)}
                         aria-label={`Remove ${item.product.name} from cart`}
@@ -808,14 +812,14 @@ export default function Checkout() {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleAddressSubmit)} className="space-y-6">
                   {/* Contact Information */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5" />
+                  <Card className="border-border/60 shadow-sm rounded-xl overflow-hidden">
+                    <CardHeader className="bg-muted/15 pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                        <User className="h-4 w-4 text-primary" />
                         Contact Information
                       </CardTitle>
-                      <CardDescription>
-                        We'll use this to send order updates
+                      <CardDescription className="text-xs">
+                        We’ll use this to send order updates
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -883,13 +887,13 @@ export default function Checkout() {
                   </Card>
 
                   {/* Shipping Address */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
+                  <Card className="border-border/60 shadow-sm rounded-xl overflow-hidden">
+                    <CardHeader className="bg-muted/15 pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                        <MapPin className="h-4 w-4 text-primary" />
                         Shipping Address
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-xs">
                         Where should we deliver your order?
                       </CardDescription>
                     </CardHeader>
@@ -1002,14 +1006,14 @@ export default function Checkout() {
             {/* Payment Step */}
             {currentStep === "payment" && (
               <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
+                <Card className="border-border/60 shadow-sm rounded-xl overflow-hidden">
+                  <CardHeader className="bg-muted/15 pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                      <CreditCard className="h-4 w-4 text-primary" />
                       Payment Method
                     </CardTitle>
-                    <CardDescription>
-                      Choose how you'd like to pay
+                    <CardDescription className="text-xs">
+                      Choose how you’d like to pay
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1028,10 +1032,10 @@ export default function Checkout() {
                 </Card>
 
                 {/* Shipping Summary */}
-                <Card className="bg-muted/30">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <MapPin className="h-4 w-4" />
+                <Card className="border-border/60 shadow-sm rounded-xl overflow-hidden bg-muted/10">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                      <MapPin className="h-3.5 w-3.5 text-primary" />
                       Shipping To
                     </CardTitle>
                   </CardHeader>
@@ -1084,22 +1088,22 @@ export default function Checkout() {
 
           {/* Order Summary Sidebar */}
           <div className="lg:sticky lg:top-4 lg:self-start">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-                <CardDescription>
+            <Card className="border-border/60 shadow-sm rounded-xl overflow-hidden">
+              <CardHeader className="bg-muted/15 pb-3">
+                <CardTitle className="text-base font-semibold tracking-tight">Order Summary</CardTitle>
+                <CardDescription className="text-xs">
                   {summaryCartCount} item{summaryCartCount !== 1 ? "s" : ""} in your cart
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-4 space-y-4">
                 {/* Cart Snapshot (desktop only) */}
-                <div className="hidden lg:block space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                <div className="hidden lg:block space-y-2 max-h-[200px] overflow-y-auto rounded-lg border border-border/50 bg-muted/10 p-3">
                   {summaryItems.slice(0, 4).map((item) => (
-                    <div key={item.product.id} className="flex items-center justify-between text-sm">
-                      <p className="truncate pr-3 text-muted-foreground">
-                        {item.product.name} × {item.qty}
+                    <div key={item.product.id} className="flex items-start justify-between text-sm gap-3">
+                      <p className="text-foreground leading-snug line-clamp-1 flex-1">
+                        {item.product.name} <span className="text-muted-foreground">× {item.qty}</span>
                       </p>
-                      <span className="font-medium">{formatCurrency(item.product.price * item.qty)}</span>
+                      <span className="font-semibold whitespace-nowrap text-foreground">{formatCurrency(item.product.price * item.qty)}</span>
                     </div>
                   ))}
                   {summaryItems.length > 4 && (
@@ -1107,8 +1111,8 @@ export default function Checkout() {
                       +{summaryItems.length - 4} more item{summaryItems.length - 4 > 1 ? "s" : ""}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    Update items from the left-side Cart Items section.
+                  <p className="text-[10px] text-muted-foreground/60 border-t border-border/40 pt-2">
+                    Edit items from the Cart Items section on the left
                   </p>
                 </div>
 
@@ -1160,16 +1164,16 @@ export default function Checkout() {
                 )}
 
                 {/* Totals */}
-                <div className="space-y-2">
+                <div className="space-y-2 rounded-lg border border-border/50 bg-muted/10 p-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(summarySubtotal)}</span>
+                    <span className="font-medium">{formatCurrency(summarySubtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span>
+                    <span className="font-medium">
                       {summaryShipping === 0 ? (
-                        <span className="text-green-600">Free</span>
+                        <span className="text-green-600 dark:text-green-400">Free</span>
                       ) : (
                         formatCurrency(summaryShipping)
                       )}
@@ -1178,33 +1182,32 @@ export default function Checkout() {
                   {summaryDiscount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Discount</span>
-                      <span className="text-green-600">-{formatCurrency(summaryDiscount)}</span>
+                      <span className="text-green-600 dark:text-green-400 font-medium">-{formatCurrency(summaryDiscount)}</span>
                     </div>
                   )}
                   {summaryCodFee > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Cash Handling &amp; Logistics Fee</span>
-                      <span>{formatCurrency(summaryCodFee)}</span>
+                      <span className="text-muted-foreground">COD Fee</span>
+                      <span className="font-medium">{formatCurrency(summaryCodFee)}</span>
                     </div>
                   )}
                   {summarySubtotal < SHIPPING_THRESHOLD && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground/70 pt-0.5">
                       Add {formatCurrency(SHIPPING_THRESHOLD - summarySubtotal)} more for free shipping
                     </p>
                   )}
-                  <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>{formatCurrency(summaryFinalTotal)}</span>
-                  </div>
+                </div>
+                <div className="flex justify-between items-center rounded-lg bg-primary/5 border border-primary/10 px-3 py-2.5">
+                  <span className="font-semibold">Total</span>
+                  <span className="text-lg font-bold">{formatCurrency(summaryFinalTotal)}</span>
                 </div>
               </CardContent>
-              <CardFooter className="hidden lg:flex flex-col gap-3">
+              <CardFooter className="hidden lg:flex flex-col gap-3 p-4 pt-0">
                 {currentStep === "address" ? (
                   <Button
                     type="submit"
                     size="lg"
-                    className="w-full"
+                    className="w-full rounded-lg font-medium"
                     disabled={loading}
                     onClick={form.handleSubmit(handleAddressSubmit)}
                   >
@@ -1224,7 +1227,7 @@ export default function Checkout() {
                   <>
                     <Button
                       size="lg"
-                      className="w-full"
+                      className="w-full rounded-lg font-medium"
                       onClick={handlePaymentSubmit}
                       disabled={disableCheckoutActions || isPaymentBlocked}
                     >
@@ -1246,15 +1249,15 @@ export default function Checkout() {
             </Card>
 
             {/* Trust Badges */}
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4 text-center text-xs">
-                <div>
-                  <Truck className="h-5 w-5 mx-auto mb-1 text-primary" />
-                  <span className="text-muted-foreground">Free shipping over ₹999</span>
+            <div className="mt-3 rounded-xl border border-border/40 bg-muted/20 p-3">
+              <div className="flex items-center justify-center gap-6 text-center text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5 text-primary" />
+                  <span>Free shipping over ₹999</span>
                 </div>
-                <div>
-                  <CheckCircle className="h-5 w-5 mx-auto mb-1 text-primary" />
-                  <span className="text-muted-foreground">Secure checkout</span>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                  <span>Secure checkout</span>
                 </div>
               </div>
             </div>

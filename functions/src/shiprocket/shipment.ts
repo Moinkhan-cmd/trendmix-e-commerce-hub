@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import { getShiprocketBearerToken } from "./auth";
+import { schedulePickup } from "./pickup";
 
 const SHIPROCKET_CREATE_ADHOC_ORDER_URL = "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc";
 
@@ -7,10 +8,12 @@ type GenericRecord = Record<string, unknown>;
 
 export type ShiprocketShipmentFields = {
   shiprocket_order_id: string;
+  /** Internal Shiprocket shipment ID – used for pickup scheduling */
+  shipment_id: string;
   awb_code: string;
   courier_name: string;
   tracking_url: string;
-  shipment_status: "created" | "creation_failed";
+  shipment_status: "created" | "pickup_scheduled" | "pickup_failed" | "creation_failed";
   payment_status: string;
 };
 
@@ -149,14 +152,22 @@ function getShiprocketPayload(orderId: string, orderData: GenericRecord): Generi
 
 function extractShiprocketData(response: GenericRecord): {
   shiprocketOrderId: string;
+  shipmentId: string;
   awbCode: string;
   courierName: string;
   trackingUrl: string;
 } {
+  // Shiprocket's order_id is their order identifier; shipment_id may be an array or scalar
   const shiprocketOrderId =
     asString(response.order_id) ||
-    asString(response.shipment_id) ||
-    asString(response.orderId);
+    asString(response.orderId) ||
+    "";
+
+  // shipment_id can be an array like [12345] or a plain number/string
+  const rawShipmentId = Array.isArray(response.shipment_id)
+    ? response.shipment_id[0]
+    : response.shipment_id;
+  const shipmentId = asString(rawShipmentId);
 
   const awbCode = asString(response.awb_code);
   const courierName = asString(response.courier_name || response.courier_company_name);
@@ -164,6 +175,7 @@ function extractShiprocketData(response: GenericRecord): {
 
   return {
     shiprocketOrderId,
+    shipmentId,
     awbCode,
     courierName,
     trackingUrl,
@@ -199,18 +211,45 @@ async function createShiprocketAdhocOrder(orderId: string, orderData: GenericRec
   }
 
   const extracted = extractShiprocketData(parsedResponse);
-  if (!extracted.shiprocketOrderId) {
+  if (!extracted.shiprocketOrderId && !extracted.shipmentId) {
     throw new Error("Shiprocket response did not include order/shipment identifier.");
+  }
+
+  // ── Attempt automatic pickup scheduling ─────────────────
+  // schedulePickup never throws – failures are captured in the result.
+  let pickupStatus: "created" | "pickup_scheduled" | "pickup_failed" = "created";
+  const pickupFields: GenericRecord = {};
+
+  if (extracted.shipmentId) {
+    const pickupResult = await schedulePickup(extracted.shipmentId);
+    if (pickupResult.success) {
+      pickupStatus = "pickup_scheduled";
+      pickupFields.pickup_scheduled_date = pickupResult.pickup_scheduled_date ?? null;
+      pickupFields.pickup_token = pickupResult.pickup_token ?? null;
+      console.info("Shiprocket pickup scheduled", {
+        shipmentId: extracted.shipmentId,
+        date: pickupResult.pickup_scheduled_date,
+      });
+    } else {
+      pickupStatus = "pickup_failed";
+      pickupFields.pickup_error = pickupResult.error ?? "Pickup scheduling failed";
+      console.error("Shiprocket pickup scheduling failed (non-fatal)", {
+        shipmentId: extracted.shipmentId,
+        error: pickupResult.error,
+      });
+    }
   }
 
   return {
     shiprocket_order_id: extracted.shiprocketOrderId,
+    shipment_id: extracted.shipmentId,
     awb_code: extracted.awbCode,
     courier_name: extracted.courierName,
     tracking_url: extracted.trackingUrl,
-    shipment_status: "created",
+    shipment_status: pickupStatus,
     payment_status: paymentStatus,
-  };
+    ...pickupFields,
+  } as ShiprocketShipmentFields & GenericRecord;
 }
 
 export async function syncShiprocketShipmentForOrder(

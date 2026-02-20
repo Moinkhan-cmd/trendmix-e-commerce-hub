@@ -1,6 +1,8 @@
 import { Check, ChevronDown, Heart, LayoutGrid, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@/auth/AuthProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +51,7 @@ type NavItem = {
 
 const Navbar = () => {
   const { cartCount, wishlistCount } = useShop();
+  const { isAuthenticated } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const lastScrollY = useRef(0);
@@ -577,7 +580,7 @@ const Navbar = () => {
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2">
+        <div className="flex items-center gap-0.5 sm:gap-1 lg:gap-1.5">
           <Button
             variant="ghost"
             size="icon"
@@ -706,29 +709,14 @@ const Navbar = () => {
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-                {/* Quick Links */}
+                {/* Quick Links — Wishlist + Theme (Cart/Account are always in the top navbar) */}
                 <div className="mb-4 pb-4 border-b">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Links</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Link
-                      to="/cart"
-                      onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
-                    >
-                      <div className="relative">
-                        <ShoppingCart className="h-5 w-5" />
-                        {cartCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center">
-                            {cartCount}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs font-medium">Cart</span>
-                    </Link>
+                  <div className="flex gap-2">
                     <Link
                       to="/wishlist"
                       onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
+                      className="flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
                     >
                       <div className="relative">
                         <Heart className="h-5 w-5" />
@@ -743,10 +731,15 @@ const Navbar = () => {
                     <Link
                       to="/account"
                       onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
+                      className="flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
                     >
-                      <User className="h-5 w-5" />
-                      <span className="text-xs font-medium">Account</span>
+                      <div className="relative">
+                        <User className={cn("h-5 w-5", isAuthenticated && "text-primary")} />
+                        {isAuthenticated && (
+                          <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
+                        )}
+                      </div>
+                      <span className="text-xs font-medium">{isAuthenticated ? 'My Account' : 'Sign In'}</span>
                     </Link>
                   </div>
                 </div>
@@ -813,49 +806,70 @@ const Navbar = () => {
             </SheetContent>
           </Sheet>
 
+          {/* Vertical divider before action icons (desktop only) */}
+          <div className="hidden lg:block w-px h-5 bg-border/50 mx-1" aria-hidden="true" />
+
+          {/* Cart — always visible */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
-            aria-label="Cart"
+            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 inline-flex group"
+            aria-label={`Cart${cartCount > 0 ? ` (${cartCount} items)` : ''}`}
             asChild
           >
             <Link to="/cart">
-              <ShoppingCart className="h-5 w-5 transition-all duration-300 group-hover:rotate-[-8deg] group-hover:text-primary" />
+              <ShoppingCart className="h-[18px] w-[18px] sm:h-5 sm:w-5 transition-all duration-300 group-hover:rotate-[-8deg] group-hover:text-primary" />
               {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[10px] sm:text-xs font-semibold flex items-center justify-center shadow-lg shadow-primary/30 animate-in zoom-in duration-200">
-                  {cartCount}
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[9px] sm:text-[10px] font-bold flex items-center justify-center shadow-md shadow-primary/40 animate-in zoom-in duration-200">
+                  {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
             </Link>
           </Button>
 
+          {/* Wishlist — visible on sm+ */}
           <Button
             variant="ghost"
             size="icon"
             className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
-            aria-label="Wishlist"
+            aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} saved)` : ''}`}
             asChild
           >
             <Link to="/wishlist">
-              <Heart className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary group-hover:fill-primary/20" />
+              <Heart className="h-[18px] w-[18px] sm:h-5 sm:w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary group-hover:fill-primary/20" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-4 min-w-4 sm:h-5 sm:min-w-5 px-0.5 sm:px-1 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[10px] sm:text-xs font-semibold flex items-center justify-center shadow-lg shadow-primary/30 animate-in zoom-in duration-200">
-                  {wishlistCount}
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[9px] sm:text-[10px] font-bold flex items-center justify-center shadow-md shadow-primary/40 animate-in zoom-in duration-200">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
                 </span>
               )}
             </Link>
           </Button>
 
+          {/* Theme toggle — visible on sm+ */}
+          <div className="hidden sm:block flex-shrink-0">
+            <ThemeToggle />
+          </div>
+
+          {/* Account — always visible; ring when logged in */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
-            aria-label="Profile"
+            className={cn(
+              "relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 inline-flex group",
+              isAuthenticated && "ring-2 ring-primary/30 hover:ring-primary/50"
+            )}
+            aria-label="My Account"
             asChild
           >
             <Link to="/account">
-              <User className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary" />
+              <User className={cn(
+                "h-[18px] w-[18px] sm:h-5 sm:w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary",
+                isAuthenticated && "text-primary"
+              )} />
+              {/* Online indicator when logged in */}
+              {isAuthenticated && (
+                <span className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
+              )}
             </Link>
           </Button>
         </div>

@@ -6,6 +6,9 @@ import cors from "cors";
 import sgMail from "@sendgrid/mail";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { syncShiprocketShipmentForOrder } from "./shiprocket/shipment";
+import { checkServiceability } from "./shiprocket/serviceability";
+import { cancelShiprocketShipment } from "./shiprocket/cancellation";
+import { handleShiprocketWebhook, validateWebhookSecret } from "./shiprocket/webhook";
 
 // ─── Firebase Admin Init ────────────────────────────────────
 admin.initializeApp();
@@ -1242,3 +1245,177 @@ export const onOrderCreatedCreateShiprocketShipment = functions.firestore
     await syncShiprocketShipmentForOrder(snapshot.ref, orderId, orderData);
     return null;
   });
+
+// ═════════════════════════════════════════════════════════════
+// Cloud Function: checkShiprocketServiceability
+// ═════════════════════════════════════════════════════════════
+// Called from the checkout page to determine whether Shiprocket
+// can deliver to the customer's pincode before the order is placed.
+//
+// Request body (POST JSON):
+//   delivery_pincode  string  – 6-digit delivery pincode
+//   weight            number  – package weight in kg (optional, defaults to 0.5)
+//   cod               0 | 1   – whether to check COD availability (optional)
+//
+// Response JSON:
+//   { success, is_serviceable, estimated_delivery_days, cod_available,
+//     courier_options[] }
+//
+// The Shiprocket bearer token is NEVER included in the response.
+// ═════════════════════════════════════════════════════════════
+export const checkShiprocketServiceability = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        res.status(405).json({ success: false, error: "Method not allowed" });
+        return;
+      }
+
+      const body = req.body as {
+        delivery_pincode?: unknown;
+        weight?: unknown;
+        cod?: unknown;
+      };
+
+      // ── Validate delivery pincode ──────────────────────────
+      const rawPincode = normalizeText(body.delivery_pincode, 10).replace(/\D/g, "");
+      if (rawPincode.length !== 6) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "A valid 6-digit delivery pincode is required."
+        );
+      }
+
+      const weight =
+        Number.isFinite(Number(body.weight)) && Number(body.weight) > 0
+          ? Number(body.weight)
+          : 0.5;
+
+      const cod: 0 | 1 = body.cod === 1 || body.cod === "1" ? 1 : 0;
+
+      // ── Call serviceability check (token never leaves server) ─
+      const result = await checkServiceability(rawPincode, weight, cod);
+
+      res.status(200).json({ success: true, ...result });
+    } catch (error: unknown) {
+      console.error("checkShiprocketServiceability error:", error);
+      sendError(res, error);
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+// Cloud Function: cancelShiprocketOrder
+// ═════════════════════════════════════════════════════════════
+// Cancels a Shiprocket shipment for a given order.
+// Requires authenticated user (must own the order).
+//
+// Request body (POST JSON):
+//   order_id  string  – Firestore order document ID
+//
+// Response JSON:
+//   { success, message }
+// ═════════════════════════════════════════════════════════════
+export const cancelShiprocketOrder = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        res.status(405).json({ success: false, error: "Method not allowed" });
+        return;
+      }
+
+      // ── Auth check ────────────────────────────────────────
+      const decodedToken = await verifyAuthenticatedUser(req);
+      const userId = decodedToken.uid;
+
+      const body = req.body as { order_id?: unknown };
+      const orderId = normalizeText(body.order_id, 120);
+
+      if (!orderId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "order_id is required."
+        );
+      }
+
+      // ── Verify ownership ──────────────────────────────────
+      const orderSnap = await db.collection("orders").doc(orderId).get();
+      if (!orderSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "Order not found.");
+      }
+
+      const orderData = orderSnap.data() as Record<string, unknown>;
+      if (orderData.userId !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "You are not authorised to cancel this order."
+        );
+      }
+
+      // ── Cancel via Shiprocket ─────────────────────────────
+      const result = await cancelShiprocketShipment(orderId);
+
+      res.status(result.success ? 200 : 400).json({ success: result.success, message: result.message });
+    } catch (error: unknown) {
+      console.error("cancelShiprocketOrder error:", error);
+      sendError(res, error);
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+// Cloud Function: shiprocketWebhook
+// ═════════════════════════════════════════════════════════════
+// Receives real-time shipment tracking updates pushed by Shiprocket.
+//
+// Configure in Shiprocket dashboard:
+//   Settings → API → Webhook URL
+//   → https://<region>-<project-id>.cloudfunctions.net/shiprocketWebhook
+//     ?secret=<SHIPROCKET_WEBHOOK_SECRET>
+//
+// Security:
+//   The optional ?secret= query param is validated against
+//   process.env.SHIPROCKET_WEBHOOK_SECRET. If that env var is not set,
+//   the check is skipped (not recommended for production).
+//
+// Firestore fields updated per event:
+//   shipment_status, status, raw_shiprocket_status,
+//   last_tracking_update, delivery_date, last_location, trackingNumber
+// ═════════════════════════════════════════════════════════════
+export const shiprocketWebhook = functions.https.onRequest(async (req, res) => {
+  try {
+    if (req.method !== "POST") {
+      res.status(405).json({ success: false, error: "Method not allowed" });
+      return;
+    }
+
+    // ── Validate shared secret (if configured) ─────────────
+    const querySecret = normalizeText(
+      (req.query as Record<string, unknown>).secret,
+      256
+    ) || undefined;
+
+    if (!validateWebhookSecret(querySecret)) {
+      console.warn("Shiprocket webhook: invalid secret");
+      res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    // ── Process the payload ───────────────────────────────
+    const result = await handleShiprocketWebhook(req.body);
+
+    if (!result.success) {
+      // Return 200 even on logic errors so Shiprocket doesn't keep retrying
+      // for missing orders or unexpected payloads.
+      res.status(200).json({ success: false, message: result.message });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: result.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("shiprocketWebhook error:", error);
+    // Always return 200 to Shiprocket to prevent infinite retries
+    res.status(200).json({ success: false, error: message });
+  }
+});
