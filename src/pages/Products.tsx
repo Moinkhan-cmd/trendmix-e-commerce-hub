@@ -398,12 +398,20 @@ const Products = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1">
-        <div className="container px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12">
+      <main className="flex-1 relative overflow-hidden">
+        {/* Decorative background orbs */}
+        <div className="pointer-events-none absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
+        <div className="pointer-events-none absolute top-1/3 -left-32 h-64 w-64 rounded-full bg-secondary/5 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-20 right-10 h-48 w-48 rounded-full bg-accent/5 blur-3xl" />
+
+        <div className="container px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12 relative z-10">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col gap-2.5 xs:gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between mb-5 sm:mb-6 md:mb-8">
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight truncate">{pageTitle}</h1>
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-2 sm:mb-3">
+                  <span className="text-[10px] xs:text-xs font-medium text-primary">🛍️ Shop Collection</span>
+                </div>
+                <h1 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">{pageTitle}</h1>
                 <p className="mt-0.5 xs:mt-1 sm:mt-1.5 text-[11px] xs:text-xs sm:text-sm text-muted-foreground">
                   {loading
                     ? "Loading..."
@@ -435,7 +443,7 @@ const Products = () => {
               </div>
             </div>
 
-            <div className="mb-4 sm:mb-5 md:mb-6 rounded-xl border border-border bg-card p-2.5 sm:p-3 shadow-sm">
+            <div className="mb-4 sm:mb-5 md:mb-6 rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow duration-300">
               <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 min-w-0">
                   <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -537,7 +545,7 @@ const Products = () => {
               <section aria-label="Recently viewed" className="mb-5 sm:mb-6 md:mb-8 lg:mb-10">
                 <div className="flex items-end justify-between gap-2 sm:gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-sm xs:text-base sm:text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <h2 className="text-sm xs:text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Recently viewed</h2>
                     <p className="mt-0.5 text-[10px] xs:text-xs sm:text-sm text-muted-foreground">Quick access to products you opened</p>
                   </div>
                 </div>
@@ -581,10 +589,10 @@ const Products = () => {
                     ✕ Close
                   </Button>
                 </div>
-                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold">Categories</h3>
-                    <span className="text-[11px] text-muted-foreground">{visibleCategories.length}</span>
+                    <h3 className="text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Categories</h3>
+                    <span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{visibleCategories.length}</span>
                   </div>
                   <div className="mt-4 space-y-3">
                     <div className="space-y-3">
@@ -663,8 +671,8 @@ const Products = () => {
                   </div>
                 </div>
 
-                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
-                  <h3 className="text-xs sm:text-sm font-semibold">Gender</h3>
+                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
+                  <h3 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Gender</h3>
                   <div className="mt-3">
                     <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v as typeof genderFilter)}>
                       <SelectTrigger className="h-9 text-xs sm:text-sm">
@@ -680,9 +688,9 @@ const Products = () => {
                   </div>
                 </div>
 
-                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs sm:text-sm font-semibold">Price Range</h3>
+                    <h3 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Price Range</h3>
                     {!isDefaultPriceRange ? (
                       <Button
                         variant="ghost"
@@ -757,8 +765,8 @@ const Products = () => {
                   </div>
                 </div>
 
-                <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
-                  <h3 className="text-xs sm:text-sm font-semibold">Rating</h3>
+                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
+                  <h3 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Rating</h3>
                   <div className="space-y-2 sm:space-y-3">
                     {[4, 3, 2, 1].map((rating) => {
                       const id = `rating-${rating}`;
@@ -778,12 +786,12 @@ const Products = () => {
                     })}
                   </div>
                 </div>
-                <Button variant="outline" className="w-full h-9 sm:h-10 text-sm" onClick={clearFilters}>
+                <Button variant="outline" className="w-full h-9 sm:h-10 text-sm rounded-xl border-border/50 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-300" onClick={clearFilters}>
                   Clear Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
                 </Button>
                 {/* Mobile apply filters button */}
                 <Button 
-                  className="w-full lg:hidden h-10 text-sm" 
+                  className="w-full lg:hidden h-10 text-sm rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-md shadow-primary/20" 
                   onClick={() => setShowFilters(false)}
                 >
                   Apply Filters ({filteredProducts.length} products)
@@ -791,35 +799,34 @@ const Products = () => {
               </aside>
 
               {loading ? (
-                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border bg-background p-5 sm:p-8 md:p-10 text-center">
-                  <h2 className="text-base sm:text-lg font-semibold">Loading products…</h2>
+                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border/50 bg-card/50 backdrop-blur-sm p-5 sm:p-8 md:p-10 text-center">
+                  <h2 className="text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Loading products…</h2>
                   <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">Fetching published products from the admin catalog.</p>
-                  {/* Loading skeleton grid */}
                   <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4">
                     {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="aspect-[3/4] rounded-lg sm:rounded-xl bg-muted animate-pulse" />
+                      <div key={i} className="aspect-[3/4] rounded-xl sm:rounded-2xl bg-gradient-to-br from-muted to-muted/50 animate-pulse" />
                     ))}
                   </div>
                 </div>
               ) : loadError ? (
-                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border bg-background p-5 sm:p-8 md:p-10 text-center">
-                  <h2 className="text-base sm:text-lg font-semibold">Couldn't load products</h2>
+                <div className="rounded-xl sm:rounded-2xl border border-dashed border-destructive/30 bg-destructive/5 backdrop-blur-sm p-5 sm:p-8 md:p-10 text-center">
+                  <h2 className="text-base sm:text-lg font-bold">Couldn't load products</h2>
                   <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{loadError}</p>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border bg-background p-5 sm:p-8 md:p-10 text-center">
-                  <h2 className="text-base sm:text-lg font-semibold">
+                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border/50 bg-card/50 backdrop-blur-sm p-5 sm:p-8 md:p-10 text-center">
+                  <h2 className="text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                     {products.length === 0 || !hasAnyPublishedProduct ? "Coming soon" : "No products found"}
                   </h2>
                   <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
                     {products.length === 0
-                      ? "We’re setting things up. Check back soon for new arrivals."
+                      ? "We're setting things up. Check back soon for new arrivals."
                       : !hasAnyPublishedProduct
-                        ? "We’re stocking the store right now. New products will be available soon."
+                        ? "We're stocking the store right now. New products will be available soon."
                         : "Nothing matches your filters right now. Try clearing filters or selecting a different category."}
                   </p>
                   {activeFiltersCount > 0 ? (
-                    <Button variant="outline" className="mt-4 h-9 text-sm" onClick={clearFilters}>
+                    <Button variant="outline" className="mt-4 h-9 text-sm rounded-xl" onClick={clearFilters}>
                       Reset filters
                     </Button>
                   ) : null}
