@@ -576,226 +576,273 @@ const Products = () => {
                 />
               )}
               <aside className={`
-                ${showFilters 
-                  ? "fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-background p-4 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 lg:relative lg:inset-auto lg:z-auto lg:max-h-none lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none lg:animate-none" 
-                  : "hidden lg:block"
+                ${showFilters
+                  ? "fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-background p-4 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 lg:sticky lg:top-24 lg:inset-auto lg:z-20 lg:max-h-[calc(100vh-7.5rem)] lg:rounded-2xl lg:bg-transparent lg:p-0 lg:shadow-none lg:animate-none"
+                  : "hidden lg:block lg:sticky lg:top-24 lg:self-start"
                 }
-                space-y-3 sm:space-y-4 lg:space-y-5
               `}>
-                {/* Mobile filter header */}
-                <div className="flex items-center justify-between lg:hidden mb-2">
-                  <h2 className="text-base font-semibold">Filters</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 px-2">
-                    ✕ Close
-                  </Button>
-                </div>
-                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Categories</h3>
-                    <span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{visibleCategories.length}</span>
+                <div className="rounded-2xl border border-border/60 bg-card/85 backdrop-blur-md p-3 sm:p-4 lg:p-4 shadow-lg shadow-primary/5">
+                  <div className="flex items-center justify-between lg:hidden mb-3">
+                    <h2 className="text-base font-semibold">Filters</h2>
+                    <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 px-2">
+                      ✕ Close
+                    </Button>
                   </div>
-                  <div className="mt-4 space-y-3">
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="category-all"
-                          checked={!activeCategory}
-                          onCheckedChange={(v) => {
-                            if (v) setCategoryParam(null);
-                          }}
-                        />
-                        <label
-                          htmlFor="category-all"
-                          className="flex w-full items-center justify-between gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                        >
-                          <span>All</span>
-                          <span className="text-xs text-muted-foreground">{publishedProducts.length}</span>
-                        </label>
+
+                  <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background via-background to-muted/30 px-3 py-3 sm:px-4 sm:py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold tracking-tight">Refine products</h3>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">Narrow results with smart filters</p>
                       </div>
-                      {visibleCategories.map((category) => {
-                        const slug = getCategorySlug(category.name, category.slug);
-                        const checked = activeCategory === slug;
-                        const id = `category-${slug}`;
-
-                        return (
-                          <div key={category.id} className="flex items-center space-x-3">
-                            <Checkbox
-                              id={id}
-                              checked={checked}
-                              onCheckedChange={(v) => {
-                                if (v) {
-                                  setCategoryParam(slug);
-                                } else {
-                                  setCategoryParam(null);
-                                }
-                              }}
-                            />
-                            <label
-                              htmlFor={id}
-                              className="flex items-center justify-between text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                            >
-                              <span className="flex items-center min-w-0">
-                                {(() => {
-                                  const image = getCategoryImage(slug) || category.imageUrl;
-
-                                  return image ? (
-                                    <img
-                                      src={image}
-                                      alt={category.name}
-                                      className="h-8 w-8 rounded object-cover mr-2 border border-border"
-                                    />
-                                  ) : (
-                                    <div className="h-8 w-8 rounded bg-muted flex items-center justify-center mr-2 border border-border">
-                                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                  );
-                                })()}
-                                <span className="truncate">
-                                  {(() => {
-                                    // Handle legacy "Beauty" category - display as "Cosmetics"
-                                    const nameLower = String(category.name ?? "").toLowerCase().trim();
-                                    const slugLower = String(category.slug ?? "").toLowerCase().trim();
-                                    if (nameLower === "beauty" || slugLower === "beauty") {
-                                      return "Cosmetics";
-                                    }
-                                    return category.name;
-                                  })()}
-                                </span>
-                              </span>
-                              <span className="ml-2 text-xs text-muted-foreground">{categoryProductCounts.get(slug) ?? 0}</span>
-                            </label>
-                          </div>
-                        );
-                      })}
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {activeFiltersCount} active
+                      </span>
                     </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Gender</h3>
-                  <div className="mt-3">
-                    <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v as typeof genderFilter)}>
-                      <SelectTrigger className="h-9 text-xs sm:text-sm">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="unisex">Unisex</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Price Range</h3>
-                    {!isDefaultPriceRange ? (
+                    {activeFiltersCount > 0 ? (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-[10px] xs:text-xs"
-                        onClick={() => setPriceRange([0, priceSliderMax])}
+                        className="mt-2.5 h-7 px-2 text-[11px]"
+                        onClick={clearFilters}
                       >
-                        Reset
+                        Clear all filters
                       </Button>
                     ) : null}
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label htmlFor="price-min" className="text-[10px] xs:text-xs text-muted-foreground">
-                        Min
-                      </label>
-                      <Input
-                        id="price-min"
-                        type="number"
-                        min={0}
-                        max={priceRange[1]}
-                        step={priceStep}
-                        inputMode="numeric"
-                        value={priceInputMin}
-                        onChange={(e) => setPriceInputMin(e.target.value)}
-                        onBlur={commitMinPriceInput}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            (e.currentTarget as HTMLInputElement).blur();
-                          }
-                        }}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="price-max" className="text-[10px] xs:text-xs text-muted-foreground">
-                        Max
-                      </label>
-                      <Input
-                        id="price-max"
-                        type="number"
-                        min={priceRange[0]}
-                        max={priceSliderMax}
-                        step={priceStep}
-                        inputMode="numeric"
-                        value={priceInputMax}
-                        onChange={(e) => setPriceInputMax(e.target.value)}
-                        onBlur={commitMaxPriceInput}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            (e.currentTarget as HTMLInputElement).blur();
-                          }
-                        }}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
+                  <div className="mt-3 space-y-3 sm:space-y-4">
+                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h4>
+                        <span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{visibleCategories.length}</span>
+                      </div>
 
-                  <Slider
-                    value={priceRange}
-                    onValueChange={updatePriceFromSlider}
-                    max={priceSliderMax}
-                    step={priceStep}
-                    className="mt-3 sm:mt-4 mb-3 sm:mb-4"
-                  />
-
-                  <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2 text-[11px] xs:text-xs sm:text-sm">
-                    <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[0])}</span>
-                    <span className="font-medium text-foreground">to</span>
-                    <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[1])}</span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-xs sm:text-sm font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Rating</h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    {[4, 3, 2, 1].map((rating) => {
-                      const id = `rating-${rating}`;
-                      const checked = minRating === rating;
-
-                      return (
-                        <div key={id} className="flex items-center space-x-2">
-                          <Checkbox id={id} checked={checked} onCheckedChange={() => toggleMinRating(rating)} />
+                      <div className="mt-2.5 space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                        <div className={`flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors ${
+                          !activeCategory
+                            ? "border-primary/40 bg-primary/10"
+                            : "border-border/60 bg-background hover:bg-muted/30"
+                        }`}>
+                          <Checkbox
+                            id="category-all"
+                            checked={!activeCategory}
+                            onCheckedChange={(v) => {
+                              if (v) setCategoryParam(null);
+                            }}
+                          />
                           <label
-                            htmlFor={id}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            htmlFor="category-all"
+                            className="flex w-full items-center justify-between gap-2 text-xs sm:text-sm font-medium cursor-pointer"
                           >
-                            {rating}★ & above
+                            <span>All Products</span>
+                            <span className="text-[11px] text-muted-foreground">{publishedProducts.length}</span>
                           </label>
                         </div>
-                      );
-                    })}
+
+                        {visibleCategories.map((category) => {
+                          const slug = getCategorySlug(category.name, category.slug);
+                          const checked = activeCategory === slug;
+                          const id = `category-${slug}`;
+
+                          return (
+                            <div
+                              key={category.id}
+                              className={`flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors ${
+                                checked
+                                  ? "border-primary/40 bg-primary/10"
+                                  : "border-border/60 bg-background hover:bg-muted/30"
+                              }`}
+                            >
+                              <Checkbox
+                                id={id}
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  if (v) {
+                                    setCategoryParam(slug);
+                                  } else {
+                                    setCategoryParam(null);
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor={id}
+                                className="flex items-center justify-between text-xs sm:text-sm font-medium cursor-pointer flex-1 min-w-0"
+                              >
+                                <span className="flex items-center min-w-0">
+                                  {(() => {
+                                    const image = getCategoryImage(slug) || category.imageUrl;
+
+                                    return image ? (
+                                      <img
+                                        src={image}
+                                        alt={category.name}
+                                        className="h-8 w-8 rounded object-cover mr-2 border border-border"
+                                      />
+                                    ) : (
+                                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center mr-2 border border-border">
+                                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                    );
+                                  })()}
+                                  <span className="truncate">
+                                    {(() => {
+                                      const nameLower = String(category.name ?? "").toLowerCase().trim();
+                                      const slugLower = String(category.slug ?? "").toLowerCase().trim();
+                                      if (nameLower === "beauty" || slugLower === "beauty") {
+                                        return "Cosmetics";
+                                      }
+                                      return category.name;
+                                    })()}
+                                  </span>
+                                </span>
+                                <span className="ml-2 text-[11px] text-muted-foreground">{categoryProductCounts.get(slug) ?? 0}</span>
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gender</h4>
+                      <div className="mt-2.5 grid grid-cols-2 gap-2">
+                        {([
+                          { key: "all", label: "All" },
+                          { key: "male", label: "Male" },
+                          { key: "female", label: "Female" },
+                          { key: "unisex", label: "Unisex" },
+                        ] as const).map((option) => {
+                          const selected = genderFilter === option.key;
+                          return (
+                            <Button
+                              key={option.key}
+                              type="button"
+                              variant={selected ? "default" : "outline"}
+                              className={`h-8 text-xs rounded-lg ${selected ? "shadow-sm" : ""}`}
+                              onClick={() => setGenderFilter(option.key)}
+                            >
+                              {option.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Price</h4>
+                        {!isDefaultPriceRange ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[10px]"
+                            onClick={() => setPriceRange([0, priceSliderMax])}
+                          >
+                            Reset
+                          </Button>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-2.5 grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label htmlFor="price-min" className="text-[10px] text-muted-foreground">
+                            Min
+                          </label>
+                          <Input
+                            id="price-min"
+                            type="number"
+                            min={0}
+                            max={priceRange[1]}
+                            step={priceStep}
+                            inputMode="numeric"
+                            value={priceInputMin}
+                            onChange={(e) => setPriceInputMin(e.target.value)}
+                            onBlur={commitMinPriceInput}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.currentTarget as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label htmlFor="price-max" className="text-[10px] text-muted-foreground">
+                            Max
+                          </label>
+                          <Input
+                            id="price-max"
+                            type="number"
+                            min={priceRange[0]}
+                            max={priceSliderMax}
+                            step={priceStep}
+                            inputMode="numeric"
+                            value={priceInputMax}
+                            onChange={(e) => setPriceInputMax(e.target.value)}
+                            onBlur={commitMaxPriceInput}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.currentTarget as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <Slider
+                        value={priceRange}
+                        onValueChange={updatePriceFromSlider}
+                        max={priceSliderMax}
+                        step={priceStep}
+                        className="mt-3 mb-3"
+                      />
+
+                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2 text-[11px] xs:text-xs sm:text-sm">
+                        <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[0])}</span>
+                        <span className="font-medium text-foreground">to</span>
+                        <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[1])}</span>
+                      </div>
+                    </section>
+
+                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rating</h4>
+                      <div className="mt-2.5 grid grid-cols-2 gap-2">
+                        {[4, 3, 2, 1].map((rating) => {
+                          const active = minRating === rating;
+                          return (
+                            <Button
+                              key={rating}
+                              type="button"
+                              variant={active ? "default" : "outline"}
+                              className="h-8 text-xs rounded-lg"
+                              onClick={() => toggleMinRating(rating)}
+                            >
+                              {rating}★+
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-full h-9 text-sm rounded-xl border-border/50 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-300"
+                      onClick={clearFilters}
+                    >
+                      Clear Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
+                    </Button>
+                    <Button
+                      className="w-full lg:hidden h-10 text-sm rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-md shadow-primary/20"
+                      onClick={() => setShowFilters(false)}
+                    >
+                      Apply Filters ({filteredProducts.length} products)
+                    </Button>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full h-9 sm:h-10 text-sm rounded-xl border-border/50 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-300" onClick={clearFilters}>
-                  Clear Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
-                </Button>
-                {/* Mobile apply filters button */}
-                <Button 
-                  className="w-full lg:hidden h-10 text-sm rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-md shadow-primary/20" 
-                  onClick={() => setShowFilters(false)}
-                >
-                  Apply Filters ({filteredProducts.length} products)
-                </Button>
               </aside>
 
               {loading ? (

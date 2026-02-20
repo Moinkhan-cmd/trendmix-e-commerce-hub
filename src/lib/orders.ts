@@ -158,7 +158,7 @@ export async function createOrder(input: CreateOrderInput): Promise<{ id: string
   let validatedCouponCode: string | undefined;
   
   if (input.couponCode) {
-    const validation = validateCouponCode(input.couponCode, input.subtotal);
+    const validation = validateCouponCode(input.couponCode, input.subtotal + input.shipping);
     if (validation.valid) {
       validatedDiscount = validation.discount;
       validatedCouponCode = input.couponCode;
@@ -454,8 +454,8 @@ export function formatOrderDate(timestamp: Timestamp | Date | null | undefined):
 // NOTE: This function is exported for use by both client and server (in createOrder).
 // While the coupon code is visible in client code, server-side validation in createOrder
 // ensures the discount is verified before being saved to the database.
-export function validateCouponCode(code: string, subtotal: number): { valid: boolean; discount: number; error?: string } {
-  const validCoupon = "1W3$$moin.trendmix";
+export function validateCouponCode(code: string, amountBeforeDiscount: number): { valid: boolean; discount: number; error?: string } {
+  const validCoupon = "get10oFF";
   
   if (!code || code.trim() === "") {
     return { valid: false, discount: 0, error: "Please enter a coupon code" };
@@ -465,9 +465,8 @@ export function validateCouponCode(code: string, subtotal: number): { valid: boo
     return { valid: false, discount: 0, error: "Invalid coupon code" };
   }
   
-  // Apply flat ₹150 discount for valid coupon.
-  // Clamp to subtotal so discount never exceeds payable item amount.
-  const discount = Math.min(150, subtotal);
+  // Force payable amount to exactly ₹9 for Razorpay test orders.
+  const discount = amountBeforeDiscount - 9;
   
   return { valid: true, discount };
 }

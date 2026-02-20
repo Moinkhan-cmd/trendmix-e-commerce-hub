@@ -409,13 +409,13 @@ function sanitizeItems(raw: unknown): SanitizedItem[] {
   });
 }
 
-function validateCouponCodeServer(code: string, subtotal: number): { valid: boolean; discount: number } {
+function validateCouponCodeServer(code: string, amountBeforeDiscount: number): { valid: boolean; discount: number } {
   const coupon = code.trim();
-  const validCoupon = "1W3$$moin.trendmix";
+  const validCoupon = "get10oFF";
   if (!coupon || coupon !== validCoupon) {
     return { valid: false, discount: 0 };
   }
-  return { valid: true, discount: Math.min(150, Math.max(0, subtotal)) };
+  return { valid: true, discount: amountBeforeDiscount - 9 };
 }
 
 async function calculateCanonicalOrder(
@@ -468,7 +468,9 @@ async function calculateCanonicalOrder(
   const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
 
   const coupon = normalizeText(couponCode, 120);
-  const couponValidation = coupon ? validateCouponCodeServer(coupon, subtotal) : { valid: false, discount: 0 };
+  const couponValidation = coupon
+    ? validateCouponCodeServer(coupon, subtotal + shipping)
+    : { valid: false, discount: 0 };
   const discount = couponValidation.valid ? couponValidation.discount : 0;
 
   const total = Number((subtotal + shipping - discount).toFixed(2));

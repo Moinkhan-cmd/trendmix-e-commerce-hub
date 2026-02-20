@@ -114,10 +114,9 @@ const ProductCard = ({
 
   return (
     <div
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl xs:rounded-2xl border border-border/50 bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl xs:rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 focus-within:-translate-y-0.5 focus-within:shadow-lg focus-within:shadow-primary/10 focus-within:border-primary/30"
     >
-      {/* Subtle gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 pointer-events-none z-10 group-hover:opacity-100 group-focus-within:opacity-100" />
       
       <div className="relative">
         <Link to={`/product/${id}`} aria-label={`View ${name}`}>
@@ -126,7 +125,7 @@ const ProductCard = ({
               <img
                 src={image}
                 alt={name}
-                className="h-full w-full object-cover transition-all duration-700 group-hover:scale-110"
+                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-focus-within:scale-105"
                 loading="lazy"
                 decoding="async"
               />
@@ -166,7 +165,7 @@ const ProductCard = ({
         <Button
           size="icon"
           variant="ghost"
-          className="absolute right-1.5 top-8 xs:right-2 xs:top-10 sm:right-3 sm:top-12 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/80 backdrop-blur-sm hover:bg-background hover:scale-110 h-7 w-7 xs:h-8 xs:w-8 sm:h-10 sm:w-10 rounded-full shadow-md border border-border/50"
+          className="absolute right-1.5 top-8 xs:right-2 xs:top-10 sm:right-3 sm:top-12 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-[opacity,transform,background-color] duration-300 bg-background/85 backdrop-blur-sm hover:bg-background hover:scale-105 h-7 w-7 xs:h-8 xs:w-8 sm:h-10 sm:w-10 rounded-full shadow-sm border border-border/60"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -174,13 +173,13 @@ const ProductCard = ({
           }}
           aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart className={wished ? "h-3.5 w-3.5 xs:h-4 xs:w-4 fill-primary text-primary animate-heartbeat" : "h-3.5 w-3.5 xs:h-4 xs:w-4 transition-colors"} />
+          <Heart className={wished ? "h-3.5 w-3.5 xs:h-4 xs:w-4 fill-primary text-primary" : "h-3.5 w-3.5 xs:h-4 xs:w-4 transition-colors"} />
         </Button>
       </div>
 
       <div className="relative flex flex-1 flex-col p-2.5 xs:p-3 sm:p-3.5">
-        <Link to={`/product/${id}`} className="group/title">
-          <h3 className="min-h-[2rem] xs:min-h-[2.25rem] sm:min-h-[2.5rem] text-[11px] xs:text-xs sm:text-[13px] font-medium leading-snug line-clamp-2 transition-colors duration-300 group-hover/title:text-primary">
+        <Link to={`/product/${id}`} className="group/title rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+          <h3 className="min-h-[2rem] xs:min-h-[2.25rem] sm:min-h-[2.5rem] text-[11px] xs:text-xs sm:text-[13px] font-medium leading-snug line-clamp-2 transition-colors duration-300 group-hover/title:text-primary group-focus-within/title:text-primary">
             {name}
           </h3>
         </Link>
@@ -212,7 +211,7 @@ const ProductCard = ({
           </div>
         </div>
 
-        <div className="mt-2 hidden sm:flex items-center justify-between rounded-md border border-border/70 bg-muted/30 px-2 py-1 opacity-0 translate-y-1 pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">
+        <div className="mt-2 hidden sm:flex items-center justify-between rounded-md border border-border/70 bg-muted/30 px-2 py-1 opacity-0 translate-y-1 pointer-events-none transition-[opacity,transform] duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto">
           <span className="text-[11px] text-muted-foreground">Quick qty</span>
           <div className="inline-flex items-center rounded-md border border-border bg-background">
             <Button
@@ -240,7 +239,7 @@ const ProductCard = ({
         </div>
 
         <Button
-          className="mt-auto pt-2.5 xs:pt-3 sm:pt-3 w-full h-8 xs:h-9 sm:h-9.5 text-[10px] xs:text-xs sm:text-[13px] font-medium rounded-lg bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
+          className="mt-auto pt-2.5 xs:pt-3 sm:pt-3 w-full h-8 xs:h-9 sm:h-9.5 text-[10px] xs:text-xs sm:text-[13px] font-medium rounded-lg bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-[transform,box-shadow,background] duration-300 hover:-translate-y-px"
           size="sm"
           onClick={() => addToCart({ id, name, price, image }, quickQty)}
         >

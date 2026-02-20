@@ -8,25 +8,58 @@ import {
   ArrowLeft,
   CreditCard,
   Loader2,
-                {/* Cart Snapshot */}
-                <div className="space-y-2">
-                  {cartItems.slice(0, 3).map((item) => (
-                    <div key={item.product.id} className="flex items-center justify-between text-sm">
-                      <p className="truncate text-muted-foreground pr-3">
-                        {item.product.name} × {item.qty}
-                      </p>
-                      <span className="font-medium">{formatCurrency(item.product.price * item.qty)}</span>
-                    </div>
-                  ))}
-                  {cartItems.length > 3 && (
-                    <p className="text-xs text-muted-foreground">
-                      +{cartItems.length - 3} more item{cartItems.length - 3 > 1 ? "s" : ""}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Edit quantities from the left-side Cart Items section.
-                  </p>
-                </div>
+  MapPin,
+  ShoppingBag,
+  Truck,
+  CheckCircle,
+  User,
+  Phone,
+  Mail,
+  Home,
+  FileText,
+  ArrowRight,
+  Minus,
+  Plus,
+  Trash2,
+} from "lucide-react";
+
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import CheckoutSteps from "@/components/CheckoutSteps";
+import PaymentMethodSelector from "@/components/PaymentMethodSelector";
+import PaymentProcessingModal from "@/components/PaymentProcessingModal";
+import CheckoutAuthModal from "@/components/CheckoutAuthModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import { toast } from "@/components/ui/sonner";
+
+import { useShop } from "@/store/shop";
+import { createOrder, formatCurrency, validateOrderItems, validateCouponCode } from "@/lib/orders";
+import {
+  processPayment,
+  validateCardNumber,
+  validateExpiryDate,
+  validateCVV,
+  validateUpiId,
+  type PaymentMethod,
+  type CardDetails,
+  type UpiDetails,
+} from "@/lib/payment";
+import { initiateRazorpayPayment } from "@/lib/razorpay";
+import { getRecaptchaToken, isRecaptchaConfigured } from "@/lib/recaptcha";
+import { disableGuestCheckout, enableGuestCheckout, isGuestCheckoutEnabled } from "@/lib/checkout-session";
 import { validateCheckoutCoupon } from "@/lib/coupon";
 
 const checkoutSchema = z.object({
@@ -199,12 +232,12 @@ export default function Checkout() {
       return;
     }
 
-    const validation = validateCouponCode(couponCode.trim(), subtotal);
+    const validation = validateCouponCode(couponCode.trim(), subtotal + shipping);
     
     if (validation.valid) {
       setDiscount(validation.discount);
       setCouponApplied(true);
-      toast.success(`Coupon applied! You saved ${formatCurrency(validation.discount)}`);
+      toast.success("Coupon applied! Payable amount set to ₹9");
     } else {
       setDiscount(0);
       setCouponApplied(false);
@@ -1059,63 +1092,24 @@ export default function Checkout() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Cart Items */}
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                  {summaryItems.map((item) => (
-                    <div key={item.product.id} className="flex gap-3">
-                      <img
-                        src={item.product.image || "/placeholder.svg"}
-                        alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{item.product.name}</p>
-                        {lockSummaryToSnapshot ? (
-                          <div className="mt-1">
-                            <span className="text-xs text-muted-foreground">Qty {item.qty}</span>
-                          </div>
-                        ) : (
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="h-6 w-6"
-                              disabled={loading || isPaymentInFlight || item.qty <= 1}
-                              onClick={() => setQty(item.product.id, Math.max(1, item.qty - 1))}
-                              aria-label={`Decrease quantity of ${item.product.name}`}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="text-xs text-muted-foreground min-w-12 text-center">Qty {item.qty}</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="h-6 w-6"
-                              disabled={loading || isPaymentInFlight}
-                              onClick={() => setQty(item.product.id, item.qty + 1)}
-                              aria-label={`Increase quantity of ${item.product.name}`}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              disabled={loading || isPaymentInFlight}
-                              onClick={() => removeFromCart(item.product.id)}
-                              aria-label={`Remove ${item.product.name} from cart`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                        <p className="text-sm font-medium">{formatCurrency(item.product.price * item.qty)}</p>
-                      </div>
+                {/* Cart Snapshot (desktop only) */}
+                <div className="hidden lg:block space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {summaryItems.slice(0, 4).map((item) => (
+                    <div key={item.product.id} className="flex items-center justify-between text-sm">
+                      <p className="truncate pr-3 text-muted-foreground">
+                        {item.product.name} × {item.qty}
+                      </p>
+                      <span className="font-medium">{formatCurrency(item.product.price * item.qty)}</span>
                     </div>
                   ))}
+                  {summaryItems.length > 4 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{summaryItems.length - 4} more item{summaryItems.length - 4 > 1 ? "s" : ""}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Update items from the left-side Cart Items section.
+                  </p>
                 </div>
 
                 {!hideCouponSection ? (

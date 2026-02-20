@@ -3,8 +3,8 @@ const FUNCTIONS_BASE_URL =
   "https://us-central1-trendmix-admin.cloudfunctions.net";
 
 const VALIDATE_CHECKOUT_COUPON_URL = `${FUNCTIONS_BASE_URL}/validateCheckoutCoupon`;
-const CHECKOUT_TEST_COUPON_SHA256 = "b3e09d59be820d5d724e8ba9fe26937a0045a603b50698218638753d98330208";
-const CHECKOUT_TEST_COUPON_DISCOUNT = 120;
+const CHECKOUT_TEST_COUPON_SHA256 = "abef9d2f4440b147f55d1c5e9d4d2bc718c97e500115a1d16666acf817374417";
+const CHECKOUT_TEST_COUPON_DISCOUNT = 0;
 
 export type ValidateCheckoutCouponResult = {
   valid: boolean;
