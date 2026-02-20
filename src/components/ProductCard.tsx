@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ImageIcon, Minus, Plus, ShoppingCart, Star } from "lucide-react";
@@ -32,6 +32,16 @@ const ProductCard = ({
   badges,
 }: ProductCardProps) => {
   const { addToCart, toggleWishlist, isWishlisted } = useShop();
+  const quickQtyStorageKey = `trendmix:productQuickQty:${id}`;
+  const clampQty = (value: number) => Math.max(1, Math.min(10, Math.round(value)));
+
+  const getInitialQty = () => {
+    if (typeof window === "undefined") return 1;
+    const raw = window.localStorage.getItem(quickQtyStorageKey);
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? clampQty(parsed) : 1;
+  };
+
   const [quickQty, setQuickQty] = useState(1);
   const discount = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const wished = isWishlisted(id);
@@ -84,12 +94,22 @@ const ProductCard = ({
     ? `₹${Number(originalPrice).toLocaleString("en-IN")}`
     : null;
 
+  useEffect(() => {
+    setQuickQty(getInitialQty());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickQtyStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(quickQtyStorageKey, String(clampQty(quickQty)));
+  }, [quickQty, quickQtyStorageKey]);
+
   const decreaseQty = () => {
-    setQuickQty((prev) => Math.max(1, prev - 1));
+    setQuickQty((prev) => clampQty(prev - 1));
   };
 
   const increaseQty = () => {
-    setQuickQty((prev) => Math.min(10, prev + 1));
+    setQuickQty((prev) => clampQty(prev + 1));
   };
 
   return (

@@ -5,6 +5,7 @@ import * as crypto from "crypto";
 import cors from "cors";
 import sgMail from "@sendgrid/mail";
 import { defineSecret, defineString } from "firebase-functions/params";
+import { syncShiprocketShipmentForOrder } from "./shiprocket/shipment";
 
 // ─── Firebase Admin Init ────────────────────────────────────
 admin.initializeApp();
@@ -225,6 +226,363 @@ function getRazorpayInstance(): Razorpay {
     key_id: keyId,
     key_secret: keySecret,
   });
+}
+
+type SanitizedCustomer = {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
+
+type SanitizedItem = {
+  productId: string;
+  qty: number;
+};
+
+type CalculatedOrderItem = {
+  productId: string;
+  name: string;
+  qty: number;
+  price: number;
+  imageUrl: string;
+};
+
+type CalculatedOrder = {
+  items: CalculatedOrderItem[];
+  customer: SanitizedCustomer;
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  total: number;
+};
+
+type RecaptchaVerifyResult = {
+  success: boolean;
+  score: number;
+  action: string;
+};
+
+function getClientIp(req: functions.https.Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    return String(forwarded[0]).trim();
+  }
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+function normalizePhone(value: unknown): string {
+  return normalizeText(value, 20).replace(/\D/g, "").slice(0, 13);
+}
+
+function ensureValidEmail(value: unknown, message: string): string {
+  const email = normalizeEmail(value);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new functions.https.HttpsError("invalid-argument", message);
+  }
+  return email;
+}
+
+async function verifyAuthenticatedUser(req: functions.https.Request): Promise<admin.auth.DecodedIdToken> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    throw new functions.https.HttpsError("unauthenticated", "Missing authentication token.");
+  }
+
+  const idToken = authHeader.slice(7).trim();
+  if (!idToken) {
+    throw new functions.https.HttpsError("unauthenticated", "Missing authentication token.");
+  }
+
+  try {
+    return await admin.auth().verifyIdToken(idToken);
+  } catch {
+    throw new functions.https.HttpsError("unauthenticated", "Invalid authentication token.");
+  }
+}
+
+function shouldBypassRecaptcha(req: functions.https.Request, token: string, action: string): boolean {
+  const allowBypass = String(process.env.ALLOW_RECAPTCHA_BYPASS_LOCALHOST || "false").toLowerCase() === "true";
+  if (!allowBypass) return false;
+
+  const host = normalizeText(req.headers.host, 200).toLowerCase();
+  const isLocalHost = host.includes("localhost") || host.includes("127.0.0.1");
+  if (!isLocalHost) return false;
+
+  return token === `local_dev_bypass_token_${action}`;
+}
+
+async function verifyRecaptchaToken(
+  token: string,
+  expectedAction: string,
+  remoteIp?: string
+): Promise<RecaptchaVerifyResult> {
+  const secret = process.env.RECAPTCHA_SECRET_KEY?.trim().replace(/^"|"$/g, "");
+  const minScore = Number(process.env.RECAPTCHA_MIN_SCORE ?? "0.5");
+
+  if (!secret) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Security challenge is not configured. Please contact support."
+    );
+  }
+
+  const params = new URLSearchParams();
+  params.set("secret", secret);
+  params.set("response", token);
+  if (remoteIp && remoteIp !== "unknown") {
+    params.set("remoteip", remoteIp);
+  }
+
+  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    return { success: false, score: 0, action: "" };
+  }
+
+  const data = (await response.json()) as {
+    success?: boolean;
+    score?: number;
+    action?: string;
+  };
+
+  const success = Boolean(data.success);
+  const score = Number.isFinite(Number(data.score)) ? Number(data.score) : 0;
+  const action = normalizeText(data.action, 64);
+
+  if (!success || action !== expectedAction || score < minScore) {
+    return { success: false, score, action };
+  }
+
+  return { success: true, score, action };
+}
+
+function sanitizeCustomer(raw: unknown): SanitizedCustomer {
+  const source = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+
+  const customer: SanitizedCustomer = {
+    name: normalizeText(source.name, 120),
+    email: ensureValidEmail(source.email, "A valid customer email is required."),
+    phone: normalizePhone(source.phone),
+    address: normalizeText(source.address, 220),
+    city: normalizeText(source.city, 90),
+    state: normalizeText(source.state, 90),
+    pincode: normalizeText(source.pincode, 12).replace(/\D/g, "").slice(0, 6),
+  };
+
+  if (!customer.name || !customer.address || !customer.city || !customer.state || customer.pincode.length !== 6) {
+    throw new functions.https.HttpsError("invalid-argument", "Incomplete shipping address details.");
+  }
+
+  if (customer.phone.length < 10) {
+    throw new functions.https.HttpsError("invalid-argument", "A valid customer phone number is required.");
+  }
+
+  return customer;
+}
+
+function sanitizeItems(raw: unknown): SanitizedItem[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new functions.https.HttpsError("invalid-argument", "Order items are required.");
+  }
+
+  return raw.map((entry) => {
+    const item = (typeof entry === "object" && entry !== null ? entry : {}) as Record<string, unknown>;
+    const productId = normalizeText(item.productId, 120);
+    const qty = Math.max(1, Math.round(Number(item.qty ?? 1)));
+
+    if (!productId) {
+      throw new functions.https.HttpsError("invalid-argument", "Each order item must include a productId.");
+    }
+
+    return { productId, qty };
+  });
+}
+
+function validateCouponCodeServer(code: string, subtotal: number): { valid: boolean; discount: number } {
+  const coupon = code.trim();
+  const validCoupon = "1W3$$moin.trendmix";
+  if (!coupon || coupon !== validCoupon) {
+    return { valid: false, discount: 0 };
+  }
+  return { valid: true, discount: Math.min(150, Math.max(0, subtotal)) };
+}
+
+async function calculateCanonicalOrder(
+  items: SanitizedItem[],
+  customer: SanitizedCustomer,
+  couponCode?: unknown
+): Promise<CalculatedOrder> {
+  const SHIPPING_THRESHOLD = 999;
+  const SHIPPING_COST = 49;
+
+  const calculatedItems: CalculatedOrderItem[] = [];
+
+  for (const item of items) {
+    const productSnap = await db.collection("products").doc(item.productId).get();
+    if (!productSnap.exists) {
+      throw new functions.https.HttpsError("not-found", `Product not found: ${item.productId}`);
+    }
+
+    const product = productSnap.data() as Record<string, unknown>;
+    const name = normalizeText(product.name, 160) || "Product";
+    const price = Number(product.price);
+    const imageUrl = normalizeText(product.image, 500);
+    const stock = Number(product.stock ?? 0);
+    const published = product.published !== false;
+
+    if (!published) {
+      throw new functions.https.HttpsError("failed-precondition", `${name} is not available.`);
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      throw new functions.https.HttpsError("failed-precondition", `Invalid price configured for ${name}.`);
+    }
+
+    if (Number.isFinite(stock) && stock >= 0 && item.qty > stock) {
+      throw new functions.https.HttpsError("failed-precondition", `Insufficient stock for ${name}.`);
+    }
+
+    calculatedItems.push({
+      productId: item.productId,
+      name,
+      qty: item.qty,
+      price,
+      imageUrl,
+    });
+  }
+
+  const subtotal = Number(
+    calculatedItems.reduce((sum, item) => sum + item.price * item.qty, 0).toFixed(2)
+  );
+  const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+
+  const coupon = normalizeText(couponCode, 120);
+  const couponValidation = coupon ? validateCouponCodeServer(coupon, subtotal) : { valid: false, discount: 0 };
+  const discount = couponValidation.valid ? couponValidation.discount : 0;
+
+  const total = Number((subtotal + shipping - discount).toFixed(2));
+
+  return {
+    items: calculatedItems,
+    customer,
+    subtotal,
+    shipping,
+    discount,
+    total,
+  };
+}
+
+function safeCompareHex(expected: string, actual: string): boolean {
+  try {
+    if (typeof expected !== "string" || typeof actual !== "string") return false;
+    if (!/^[a-f0-9]+$/i.test(expected) || !/^[a-f0-9]+$/i.test(actual)) return false;
+    if (expected.length !== actual.length) return false;
+
+    const left = Buffer.from(expected, "hex");
+    const right = Buffer.from(actual, "hex");
+    if (left.length !== right.length) return false;
+
+    return crypto.timingSafeEqual(left, right);
+  } catch {
+    return false;
+  }
+}
+
+function generateOrderNumber(): string {
+  const now = new Date();
+  const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `TM-${datePart}-${randomPart}`;
+}
+
+function createOrderTimelineNote(paymentId: string): Array<{ status: string; timestamp: admin.firestore.Timestamp; note: string }> {
+  return [
+    {
+      status: "Pending",
+      timestamp: admin.firestore.Timestamp.now(),
+      note: `Order placed. Payment transaction: ${paymentId}`,
+    },
+  ];
+}
+
+async function checkRateLimit(key: string, windowSeconds: number, maxRequests: number): Promise<void> {
+  const safeKey = normalizeText(key, 180).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const ref = db.collection("rate_limits").doc(safeKey);
+  const nowMs = Date.now();
+  const windowMs = Math.max(1, windowSeconds) * 1000;
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+
+    if (!snap.exists) {
+      tx.set(ref, {
+        count: 1,
+        windowStartMs: nowMs,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    const data = snap.data() as { count?: number; windowStartMs?: number };
+    const count = Number(data.count ?? 0);
+    const windowStartMs = Number(data.windowStartMs ?? nowMs);
+
+    if (nowMs - windowStartMs >= windowMs) {
+      tx.set(ref, {
+        count: 1,
+        windowStartMs: nowMs,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      return;
+    }
+
+    if (count >= maxRequests) {
+      throw new functions.https.HttpsError("resource-exhausted", "Too many attempts. Please try again shortly.");
+    }
+
+    tx.set(ref, {
+      count: count + 1,
+      windowStartMs,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
+function sendError(res: functions.Response, error: unknown): void {
+  if (error instanceof functions.https.HttpsError) {
+    const statusMap: Record<string, number> = {
+      "invalid-argument": 400,
+      unauthenticated: 401,
+      "permission-denied": 403,
+      "not-found": 404,
+      "already-exists": 409,
+      "resource-exhausted": 429,
+      "failed-precondition": 412,
+      internal: 500,
+    };
+
+    const status = statusMap[error.code] ?? 500;
+    res.status(status).json({
+      success: false,
+      error: error.message || "Request failed",
+      code: error.code,
+    });
+    return;
+  }
+
+  const message = error instanceof Error ? error.message : "Internal server error";
+  res.status(500).json({ success: false, error: message, code: "internal" });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -870,5 +1228,15 @@ export const onOrderStatusChangedSendCustomerEmail = functions
       });
     }
 
+    return null;
+  });
+
+export const onOrderCreatedCreateShiprocketShipment = functions.firestore
+  .document("orders/{orderId}")
+  .onCreate(async (snapshot, context) => {
+    const orderId = String(context.params.orderId ?? snapshot.id);
+    const orderData = snapshot.data() as Record<string, unknown>;
+
+    await syncShiprocketShipmentForOrder(snapshot.ref, orderId, orderData);
     return null;
   });

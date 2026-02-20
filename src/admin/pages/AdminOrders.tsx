@@ -96,12 +96,14 @@ const statusConfig: Record<OrderStatus, { icon: typeof Clock; color: string; bgC
 };
 
 const allStatuses: OrderStatus[] = ["Pending", "Confirmed", "Shipped", "Delivered", "Cancelled"];
+type ShipmentFilter = "all" | "created" | "creation_failed" | "pending";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<OrderWithId[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [shipmentFilter, setShipmentFilter] = useState<ShipmentFilter>("all");
   const [selectedOrder, setSelectedOrder] = useState<OrderWithId | null>(null);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -146,10 +148,12 @@ export default function AdminOrders() {
         order.customer.phone.includes(searchQuery);
       
       const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+      const shipmentState = order.shipment_status ?? "pending";
+      const matchesShipment = shipmentFilter === "all" || shipmentState === shipmentFilter;
       
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesShipment;
     });
-  }, [orders, searchQuery, statusFilter]);
+  }, [orders, searchQuery, statusFilter, shipmentFilter]);
 
   // Stats
   const stats = useMemo(() => {
@@ -354,6 +358,33 @@ export default function AdminOrders() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={shipmentFilter} onValueChange={(v) => setShipmentFilter(v as ShipmentFilter)}>
+              <SelectTrigger className="w-full sm:w-[210px]">
+                <Truck className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter by shipment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Shipments</SelectItem>
+                <SelectItem value="pending">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    Pending ({orders.filter((o) => !o.shipment_status).length})
+                  </span>
+                </SelectItem>
+                <SelectItem value="created">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    Created ({orders.filter((o) => o.shipment_status === "created").length})
+                  </span>
+                </SelectItem>
+                <SelectItem value="creation_failed">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Creation Failed ({orders.filter((o) => o.shipment_status === "creation_failed").length})
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -369,6 +400,9 @@ export default function AdminOrders() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Payment</TableHead>
+                  <TableHead>Shipment</TableHead>
+                  <TableHead>AWB</TableHead>
+                  <TableHead>Courier</TableHead>
                   <TableHead>COD Fee</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Final Amount</TableHead>
@@ -380,7 +414,7 @@ export default function AdminOrders() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-12">
+                    <TableCell colSpan={13} className="text-center py-12">
                       <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <p className="text-muted-foreground">No orders found</p>
                     </TableCell>
@@ -410,6 +444,29 @@ export default function AdminOrders() {
                         </TableCell>
                         <TableCell>
                           <p className="text-sm font-medium">{order.paymentMethod || (order.payment?.method === "cod" ? "COD" : order.payment?.method === "upi" ? "UPI" : "ONLINE")}</p>
+                        </TableCell>
+                        <TableCell>
+                          {order.shipment_status ? (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                order.shipment_status === "created"
+                                  ? "border-green-500/40 text-green-700 dark:text-green-400"
+                                  : "border-red-500/40 text-red-700 dark:text-red-400"
+                              )}
+                            >
+                              {order.shipment_status}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Pending</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm font-mono">{order.awb_code || "N/A"}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{order.courier_name || "N/A"}</p>
                         </TableCell>
                         <TableCell>
                           <p className="text-sm">{formatCurrency(order.codFee ?? 0)}</p>
@@ -590,6 +647,53 @@ export default function AdminOrders() {
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
                         <p><span className="text-muted-foreground">Carrier:</span> {selectedOrder.shippingCarrier || "Standard"}</p>
                         <p><span className="text-muted-foreground">Tracking:</span> <span className="font-mono">{selectedOrder.trackingNumber}</span></p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Shiprocket Shipment */}
+                {(selectedOrder.shipment_status || selectedOrder.shiprocket_order_id || selectedOrder.awb_code) && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-medium mb-2">Shiprocket Shipment</h4>
+                      <div className="p-3 rounded-lg border bg-muted/30 text-sm space-y-1.5">
+                        <p>
+                          <span className="text-muted-foreground">Shipment Status:</span>{" "}
+                          <span className="font-medium">{selectedOrder.shipment_status || "N/A"}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Payment Status:</span>{" "}
+                          <span>{selectedOrder.payment_status || "N/A"}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Shiprocket Order ID:</span>{" "}
+                          <span className="font-mono">{selectedOrder.shiprocket_order_id || "N/A"}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">AWB Code:</span>{" "}
+                          <span className="font-mono">{selectedOrder.awb_code || "N/A"}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Courier:</span>{" "}
+                          <span>{selectedOrder.courier_name || "N/A"}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Tracking URL:</span>{" "}
+                          {selectedOrder.tracking_url ? (
+                            <a
+                              href={selectedOrder.tracking_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline text-primary break-all"
+                            >
+                              {selectedOrder.tracking_url}
+                            </a>
+                          ) : (
+                            <span>N/A</span>
+                          )}
+                        </p>
                       </div>
                     </div>
                   </>

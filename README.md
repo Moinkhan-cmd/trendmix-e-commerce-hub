@@ -107,12 +107,41 @@ RAZORPAY_KEY_SECRET="YOUR_RAZORPAY_KEY_SECRET"
 RECAPTCHA_SECRET_KEY="YOUR_RECAPTCHA_V3_SECRET"
 RECAPTCHA_MIN_SCORE="0.5"
 ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+SHIPROCKET_EMAIL="your-shiprocket-login-email@example.com"
+SHIPROCKET_PASSWORD="your-shiprocket-password"
+SHIPROCKET_PICKUP_LOCATION="Primary"
+SHIPROCKET_DEFAULT_WEIGHT_KG="0.5"
+SHIPROCKET_DEFAULT_LENGTH_CM="20"
+SHIPROCKET_DEFAULT_BREADTH_CM="20"
+SHIPROCKET_DEFAULT_HEIGHT_CM="10"
 ```
 
 Security notes:
 - Never commit `.env`, `.env.local`, or `functions/.env`.
 - Rotate Razorpay keys and reCAPTCHA secret immediately if previously exposed.
 - Firebase Web config is public by design; keep only non-secret identifiers there.
+- Shiprocket credentials are server-only. Do not place them in frontend env files.
+
+### 4.2) Shiprocket Integration Setup (Backend Only)
+
+1. Open [functions/.env.example](functions/.env.example) and copy it to `functions/.env`.
+2. Open [functions/.env](functions/.env) and set:
+  - `SHIPROCKET_EMAIL`
+  - `SHIPROCKET_PASSWORD`
+3. (Optional) adjust package defaults in `functions/.env`:
+  - `SHIPROCKET_PICKUP_LOCATION`
+  - `SHIPROCKET_DEFAULT_WEIGHT_KG`, `SHIPROCKET_DEFAULT_LENGTH_CM`, `SHIPROCKET_DEFAULT_BREADTH_CM`, `SHIPROCKET_DEFAULT_HEIGHT_CM`
+4. Run commands:
+  - `cd functions`
+  - `npm run build`
+  - `cd ..`
+  - `firebase deploy --only functions`
+
+Integration behavior:
+- Shipment is created from backend only after order creation.
+- Prepaid shipments are created only after successful Razorpay verification creates the order.
+- COD shipments use existing COD decision from order data and pass `payment_method = COD` to Shiprocket.
+- On Shiprocket API failure, order document stores `shipment_status = creation_failed`.
 
 ## 5) Create your first admin user (IMPORTANT)
 

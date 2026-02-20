@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, browserSessionPersistence, setPersistence } from "firebase/auth";
+import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -26,6 +26,5 @@ export const auth = getAuth(firebaseApp);
 export const db = getFirestore(firebaseApp);
 export const storage = getStorage(firebaseApp);
 
-// Set session persistence - user will be logged out when browser is closed
-// This clears any previously cached auth state from localStorage/IndexedDB
-setPersistence(auth, browserSessionPersistence).catch(console.error);
+// Keep users signed in across browser restarts until they explicitly sign out
+setPersistence(auth, browserLocalPersistence).catch(console.error);

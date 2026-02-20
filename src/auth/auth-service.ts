@@ -11,7 +11,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   GoogleAuthProvider,
-  browserSessionPersistence,
+  browserLocalPersistence,
   setPersistence,
   reload,
   type User,
@@ -380,8 +380,8 @@ export async function signUp(
   const safeEmail = sanitizeEmail(email);
   const safeDisplayName = sanitizeDisplayName(displayName);
 
-  // Use session persistence so the user is logged out when the browser is closed
-  await setPersistence(auth, browserSessionPersistence);
+  // Use local persistence so auth state survives browser close/reopen
+  await setPersistence(auth, browserLocalPersistence);
   
   // Create Firebase Auth user
   const credential = await createUserWithEmailAndPassword(auth, safeEmail, password);
@@ -404,8 +404,8 @@ export async function signIn(email: string, password: string): Promise<User> {
   const safeEmail = sanitizeEmail(email);
   enforceLoginLockout(safeEmail);
 
-  // Use session persistence so the user is logged out when the browser is closed
-  await setPersistence(auth, browserSessionPersistence);
+  // Use local persistence so auth state survives browser close/reopen
+  await setPersistence(auth, browserLocalPersistence);
 
   let credential;
   try {
@@ -434,7 +434,7 @@ export async function signIn(email: string, password: string): Promise<User> {
 }
 
 export async function signInWithGoogle(): Promise<User> {
-  await setPersistence(auth, browserSessionPersistence);
+  await setPersistence(auth, browserLocalPersistence);
 
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });

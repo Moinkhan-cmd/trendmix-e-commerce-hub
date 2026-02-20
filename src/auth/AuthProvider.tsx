@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { Loader2 } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import {
   signUp,
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [verificationRequired, setVerificationRequired] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [restoringAuthState, setRestoringAuthState] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const authInitSettledRef = useRef(false);
 
@@ -98,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const loadingTimeout = window.setTimeout(() => {
       if (authInitSettledRef.current) return;
       authInitSettledRef.current = true;
+      setRestoringAuthState(false);
       setLoading(false);
     }, 8000);
 
@@ -131,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         authInitSettledRef.current = true;
         window.clearTimeout(loadingTimeout);
+        setRestoringAuthState(false);
         setLoading(false);
       }
     });
@@ -289,6 +293,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearError,
     ]
   );
+
+  if (restoringAuthState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

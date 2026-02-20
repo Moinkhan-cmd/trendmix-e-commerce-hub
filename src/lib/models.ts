@@ -112,6 +112,12 @@ export type OrderDoc = {
   customerEmailSent?: boolean;
   timeline?: OrderTimelineEvent[];
   payment?: Omit<PaymentInfo, 'status'> & { status: "pending" | "completed" | "failed" };
+  shiprocket_order_id?: string;
+  awb_code?: string;
+  courier_name?: string;
+  tracking_url?: string;
+  shipment_status?: "created" | "creation_failed";
+  payment_status?: string;
   trackingNumber?: string;
   shippingCarrier?: string;
   estimatedDelivery?: Timestamp;

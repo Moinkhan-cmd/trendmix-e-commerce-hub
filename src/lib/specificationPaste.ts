@@ -36,7 +36,21 @@ export const parseSpecificationLine = (rawLine: string): SpecificationKV | null 
     }
   }
 
-  // 2) Camel boundary: "PackerSalty ..." -> label="Packer", value="Salty ..."
+  // 2) If the first digit starts the value: "Item Weight25 g" -> label="Item Weight", value="25 g"
+  const digitIdx = line.search(/\d/);
+  if (digitIdx > 0) {
+    const prefix = line.slice(0, digitIdx);
+    // If a comma already appears before the first digit, the line likely already
+    // contains value content (e.g. "PackerSalty ... , 207, ..."). In that case,
+    // prefer other heuristics such as lower->upper boundary.
+    if (!prefix.includes(",")) {
+      const label = normalizeSpaces(prefix);
+      const value = normalizeSpaces(line.slice(digitIdx));
+      if (label && value) return { label, value };
+    }
+  }
+
+  // 3) Camel boundary: "PackerSalty ..." -> label="Packer", value="Salty ..."
   const upperBoundary = findFirstNonSpaceUpperBoundary(line);
   if (upperBoundary && upperBoundary > 0 && upperBoundary <= 40) {
     const label = normalizeSpaces(line.slice(0, upperBoundary));
@@ -44,8 +58,7 @@ export const parseSpecificationLine = (rawLine: string): SpecificationKV | null 
     if (label && value) return { label, value };
   }
 
-  // 3) If the first digit starts the value: "Item Weight25 g" -> label="Item Weight", value="25 g"
-  const digitIdx = line.search(/\d/);
+  // 4) Final digit fallback, useful when no better boundary exists.
   if (digitIdx > 0) {
     const label = normalizeSpaces(line.slice(0, digitIdx));
     const value = normalizeSpaces(line.slice(digitIdx));

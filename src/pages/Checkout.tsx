@@ -8,58 +8,25 @@ import {
   ArrowLeft,
   CreditCard,
   Loader2,
-  MapPin,
-  ShoppingBag,
-  Truck,
-  CheckCircle,
-  User,
-  Phone,
-  Mail,
-  Home,
-  FileText,
-  ArrowRight,
-  Minus,
-  Plus,
-  Trash2,
-} from "lucide-react";
-
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import CheckoutSteps from "@/components/CheckoutSteps";
-import PaymentMethodSelector from "@/components/PaymentMethodSelector";
-import PaymentProcessingModal from "@/components/PaymentProcessingModal";
-import CheckoutAuthModal from "@/components/CheckoutAuthModal";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from "@/components/ui/form";
-import { toast } from "@/components/ui/sonner";
-
-import { useShop } from "@/store/shop";
-import { createOrder, formatCurrency, validateOrderItems, validateCouponCode } from "@/lib/orders";
-import {
-  processPayment,
-  validateCardNumber,
-  validateExpiryDate,
-  validateCVV,
-  validateUpiId,
-  type PaymentMethod,
-  type CardDetails,
-  type UpiDetails,
-} from "@/lib/payment";
-import { initiateRazorpayPayment } from "@/lib/razorpay";
-import { getRecaptchaToken, isRecaptchaConfigured } from "@/lib/recaptcha";
-import { disableGuestCheckout, enableGuestCheckout, isGuestCheckoutEnabled } from "@/lib/checkout-session";
+                {/* Cart Snapshot */}
+                <div className="space-y-2">
+                  {cartItems.slice(0, 3).map((item) => (
+                    <div key={item.product.id} className="flex items-center justify-between text-sm">
+                      <p className="truncate text-muted-foreground pr-3">
+                        {item.product.name} × {item.qty}
+                      </p>
+                      <span className="font-medium">{formatCurrency(item.product.price * item.qty)}</span>
+                    </div>
+                  ))}
+                  {cartItems.length > 3 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{cartItems.length - 3} more item{cartItems.length - 3 > 1 ? "s" : ""}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Edit quantities from the left-side Cart Items section.
+                  </p>
+                </div>
 import { validateCheckoutCoupon } from "@/lib/coupon";
 
 const checkoutSchema = z.object({
@@ -120,6 +87,7 @@ export default function Checkout() {
   
   // Processing state
   const [loading, setLoading] = useState(false);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentModalStatus, setPaymentModalStatus] = useState<PaymentModalStatus>("processing");
   const [paymentResult, setPaymentResult] = useState<{
@@ -128,6 +96,15 @@ export default function Checkout() {
     orderNumber?: string;
     amountPaid?: number;
   }>({});
+  const [checkoutSummarySnapshot, setCheckoutSummarySnapshot] = useState<{
+    items: typeof cartItems;
+    cartCount: number;
+    subtotal: number;
+    shipping: number;
+    discount: number;
+    codFee: number;
+    finalTotal: number;
+  } | null>(null);
   
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -197,6 +174,17 @@ export default function Checkout() {
   const canUseCod = total >= COD_MIN_ORDER_TOTAL;
   const codFee = paymentMethod === "cod" ? COD_FEE : 0;
   const finalTotal = total + codFee;
+  const isPaymentInFlight = paymentModalOpen && paymentModalStatus === "processing";
+  const disableCheckoutActions = loading || isSubmittingPayment || isPaymentInFlight;
+  const lockSummaryToSnapshot = paymentModalStatus === "success" && checkoutSummarySnapshot !== null;
+  const hideCouponSection = isPaymentInFlight || lockSummaryToSnapshot;
+  const summaryItems = lockSummaryToSnapshot ? checkoutSummarySnapshot.items : cartItems;
+  const summaryCartCount = lockSummaryToSnapshot ? checkoutSummarySnapshot.cartCount : cartCount;
+  const summarySubtotal = lockSummaryToSnapshot ? checkoutSummarySnapshot.subtotal : subtotal;
+  const summaryShipping = lockSummaryToSnapshot ? checkoutSummarySnapshot.shipping : shipping;
+  const summaryDiscount = lockSummaryToSnapshot ? checkoutSummarySnapshot.discount : discount;
+  const summaryCodFee = lockSummaryToSnapshot ? checkoutSummarySnapshot.codFee : codFee;
+  const summaryFinalTotal = lockSummaryToSnapshot ? checkoutSummarySnapshot.finalTotal : finalTotal;
 
   useEffect(() => {
     if (!canUseCod && paymentMethod === "cod") {
@@ -305,6 +293,10 @@ export default function Checkout() {
 
   // Handle payment submission
   const handlePaymentSubmit = async () => {
+    if (isSubmittingPayment || isPaymentInFlight) {
+      return;
+    }
+
     if (!isAuthenticated && !guestCheckout) {
       setAuthModalOpen(true);
       return;
@@ -333,6 +325,8 @@ export default function Checkout() {
         return;
       }
     }
+
+    setIsSubmittingPayment(true);
 
     // ── Razorpay Flow ───────────────────────────────────────
     if (paymentMethod === "razorpay") {
@@ -461,6 +455,7 @@ export default function Checkout() {
         }
       } finally {
         setLoading(false);
+        setIsSubmittingPayment(false);
       }
       return;
     }
@@ -470,6 +465,8 @@ export default function Checkout() {
     setPaymentModalOpen(true);
     setPaymentModalStatus("processing");
     setPaymentResult({});
+    setCheckoutSummarySnapshot(null);
+    setIsSubmittingPayment(false);
 
     try {
       // Process payment
@@ -518,6 +515,18 @@ export default function Checkout() {
         });
 
         setPaymentModalStatus("success");
+        setCheckoutSummarySnapshot({
+          items: cartItems.map((item) => ({
+            ...item,
+            product: { ...item.product },
+          })),
+          cartCount,
+          subtotal,
+          shipping,
+          discount,
+          codFee,
+          finalTotal,
+        });
         setPaymentResult({
           transactionId: paymentResponse.transactionId,
           orderNumber: orderResult.orderNumber,
@@ -546,6 +555,7 @@ export default function Checkout() {
     setPaymentModalOpen(false);
     setPaymentModalStatus("processing");
     setPaymentResult({});
+    setCheckoutSummarySnapshot(null);
   };
 
   const handleResendVerification = async () => {
@@ -692,6 +702,74 @@ export default function Checkout() {
         <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
           {/* Main Content */}
           <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ShoppingBag className="h-4 w-4" />
+                  Cart Items
+                </CardTitle>
+                <CardDescription>
+                  Update quantity or remove items before placing your order.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {cartItems.map((item) => (
+                  <div key={item.product.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+                    <img
+                      src={item.product.image || "/placeholder.svg"}
+                      alt={item.product.name}
+                      className="h-14 w-14 object-cover rounded-md"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.product.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrency(item.product.price)} each</p>
+                      <p className="text-sm font-semibold mt-0.5">
+                        {formatCurrency(item.product.price * item.qty)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={loading || item.qty <= 1}
+                        onClick={() => setQty(item.product.id, Math.max(1, item.qty - 1))}
+                        aria-label={`Decrease quantity of ${item.product.name}`}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="w-7 text-center text-sm font-medium">{item.qty}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={loading}
+                        onClick={() => setQty(item.product.id, item.qty + 1)}
+                        aria-label={`Increase quantity of ${item.product.name}`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={loading}
+                        onClick={() => removeFromCart(item.product.id)}
+                        aria-label={`Remove ${item.product.name} from cart`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
             {/* Address Step */}
             {currentStep === "address" && (
               <Form {...form}>
@@ -906,7 +984,7 @@ export default function Checkout() {
                       selectedMethod={paymentMethod}
                       onMethodChange={setPaymentMethod}
                       showCod={canUseCod}
-                      disabled={loading || guestCheckout}
+                      disabled={disableCheckoutActions || guestCheckout}
                     />
                     {!canUseCod && (
                       <p className="mt-3 text-sm text-muted-foreground">
@@ -950,7 +1028,7 @@ export default function Checkout() {
                     size="lg"
                     className="w-full"
                     onClick={handlePaymentSubmit}
-                    disabled={loading || isPaymentBlocked}
+                    disabled={disableCheckoutActions || isPaymentBlocked}
                   >
                     {loading ? (
                       <>
@@ -977,13 +1055,13 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
                 <CardDescription>
-                  {cartCount} item{cartCount !== 1 ? "s" : ""} in your cart
+                  {summaryCartCount} item{summaryCartCount !== 1 ? "s" : ""} in your cart
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Cart Items */}
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                  {cartItems.map((item) => (
+                  {summaryItems.map((item) => (
                     <div key={item.product.id} className="flex gap-3">
                       <img
                         src={item.product.image || "/placeholder.svg"}
@@ -992,126 +1070,138 @@ export default function Checkout() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{item.product.name}</p>
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-6 w-6"
-                            disabled={loading || item.qty <= 1}
-                            onClick={() => setQty(item.product.id, Math.max(1, item.qty - 1))}
-                            aria-label={`Decrease quantity of ${item.product.name}`}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="text-xs text-muted-foreground min-w-12 text-center">Qty {item.qty}</span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-6 w-6"
-                            disabled={loading}
-                            onClick={() => setQty(item.product.id, item.qty + 1)}
-                            aria-label={`Increase quantity of ${item.product.name}`}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            disabled={loading}
-                            onClick={() => removeFromCart(item.product.id)}
-                            aria-label={`Remove ${item.product.name} from cart`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        {lockSummaryToSnapshot ? (
+                          <div className="mt-1">
+                            <span className="text-xs text-muted-foreground">Qty {item.qty}</span>
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-6 w-6"
+                              disabled={loading || isPaymentInFlight || item.qty <= 1}
+                              onClick={() => setQty(item.product.id, Math.max(1, item.qty - 1))}
+                              aria-label={`Decrease quantity of ${item.product.name}`}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="text-xs text-muted-foreground min-w-12 text-center">Qty {item.qty}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-6 w-6"
+                              disabled={loading || isPaymentInFlight}
+                              onClick={() => setQty(item.product.id, item.qty + 1)}
+                              aria-label={`Increase quantity of ${item.product.name}`}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              disabled={loading || isPaymentInFlight}
+                              onClick={() => removeFromCart(item.product.id)}
+                              aria-label={`Remove ${item.product.name} from cart`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
                         <p className="text-sm font-medium">{formatCurrency(item.product.price * item.qty)}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <Separator />
+                {!hideCouponSection ? (
+                  <>
+                    <Separator />
 
-                {/* Coupon Section */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Have a coupon code?</label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter coupon code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      disabled={couponApplied}
-                      className="flex-1"
-                    />
-                    {!couponApplied ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleApplyCoupon}
-                        disabled={!couponCode.trim()}
-                      >
-                        Apply
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleRemoveCoupon}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                  {couponApplied && (
-                    <p className="text-xs text-green-600">
-                      ✓ Coupon applied successfully
-                    </p>
-                  )}
-                </div>
+                    {/* Coupon Section */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Have a coupon code?</label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter coupon code"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          disabled={couponApplied}
+                          className="flex-1"
+                        />
+                        {!couponApplied ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleApplyCoupon}
+                            disabled={!couponCode.trim()}
+                          >
+                            Apply
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleRemoveCoupon}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                      {couponApplied && (
+                        <p className="text-xs text-green-600">
+                          ✓ Coupon applied successfully
+                        </p>
+                      )}
+                    </div>
 
-                <Separator />
+                    <Separator />
+                  </>
+                ) : (
+                  <Separator />
+                )}
 
                 {/* Totals */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
+                    <span>{formatCurrency(summarySubtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
                     <span>
-                      {shipping === 0 ? (
+                      {summaryShipping === 0 ? (
                         <span className="text-green-600">Free</span>
                       ) : (
-                        formatCurrency(shipping)
+                        formatCurrency(summaryShipping)
                       )}
                     </span>
                   </div>
-                  {discount > 0 && (
+                  {summaryDiscount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Discount</span>
-                      <span className="text-green-600">-{formatCurrency(discount)}</span>
+                      <span className="text-green-600">-{formatCurrency(summaryDiscount)}</span>
                     </div>
                   )}
-                  {codFee > 0 && (
+                  {summaryCodFee > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Cash Handling &amp; Logistics Fee</span>
-                      <span>{formatCurrency(codFee)}</span>
+                      <span>{formatCurrency(summaryCodFee)}</span>
                     </div>
                   )}
-                  {subtotal < SHIPPING_THRESHOLD && (
+                  {summarySubtotal < SHIPPING_THRESHOLD && (
                     <p className="text-xs text-muted-foreground">
-                      Add {formatCurrency(SHIPPING_THRESHOLD - subtotal)} more for free shipping
+                      Add {formatCurrency(SHIPPING_THRESHOLD - summarySubtotal)} more for free shipping
                     </p>
                   )}
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>{formatCurrency(finalTotal)}</span>
+                    <span>{formatCurrency(summaryFinalTotal)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -1142,7 +1232,7 @@ export default function Checkout() {
                       size="lg"
                       className="w-full"
                       onClick={handlePaymentSubmit}
-                      disabled={loading || isPaymentBlocked}
+                      disabled={disableCheckoutActions || isPaymentBlocked}
                     >
                       {loading ? (
                         <>
