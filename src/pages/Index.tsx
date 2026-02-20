@@ -5,9 +5,13 @@ import Hero from "@/components/Hero";
 import CategoryCard from "@/components/CategoryCard";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
+import WhyChooseUs from "@/components/WhyChooseUs";
 import { db } from "@/lib/firebase";
 import type { CategoryDoc, ProductDoc } from "@/lib/models";
 import { buildUiCategoriesFromDocs } from "@/lib/ui-categories";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type WithId<T> = T & { id: string };
 
@@ -150,27 +154,40 @@ const Index = () => {
                 </p>
               </div>
             ) : (
-              <div className="mx-auto max-w-7xl">
-                <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6 lg:grid-cols-4">
-                  {homepageProducts.map((product, idx) => (
-                    <div key={product.id} className={`reveal-up stagger-${(idx % 4) + 1}`}>
-                      <ProductCard
-                        id={product.id}
-                        name={product.name}
-                        price={Number(product.price ?? 0)}
-                        originalPrice={typeof product.compareAtPrice === "number" ? product.compareAtPrice : undefined}
-                        image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
-                        badges={Array.isArray(product.badges) ? product.badges : undefined}
-                        rating={0}
-                        reviews={0}
-                      />
-                    </div>
-                  ))}
+              <>
+                <div className="mx-auto max-w-7xl">
+                  <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6 lg:grid-cols-4">
+                    {homepageProducts.map((product, idx) => (
+                      <div key={product.id} className={`reveal-up stagger-${(idx % 4) + 1}`}>
+                        <ProductCard
+                          id={product.id}
+                          name={product.name}
+                          price={Number(product.price ?? 0)}
+                          originalPrice={typeof product.compareAtPrice === "number" ? product.compareAtPrice : undefined}
+                          image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
+                          badges={Array.isArray(product.badges) ? product.badges : undefined}
+                          rating={0}
+                          reviews={0}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+
+                <div className="mt-10 text-center reveal-up">
+                  <Button asChild size="lg" variant="outline" className="group rounded-full px-8 border-primary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+                    <Link to="/products">
+                      View All Products
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </Link>
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </section>
+
+        <WhyChooseUs />
 
         <section className="container py-16 md:py-24">
           <div className="relative rounded-3xl bg-gradient-to-br from-primary/15 via-secondary/10 to-primary/15 p-8 md:p-14 text-center overflow-hidden border border-primary/10 shadow-2xl">
