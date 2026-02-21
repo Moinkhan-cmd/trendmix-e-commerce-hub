@@ -13,10 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { SlidersHorizontal, ImageIcon, Search, X } from "lucide-react";
+import { SlidersHorizontal, ImageIcon, Search, X, Tag, Users2, Star } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { getCategoryImage, getCategorySlug } from "@/lib/category-images";
 import type { ProductDoc, CategoryDoc } from "@/lib/models";
@@ -395,68 +394,75 @@ const Products = () => {
   }, [products]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
-      <main className="flex-1 relative overflow-hidden">
-        {/* Decorative background orbs */}
-        <div className="pointer-events-none absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
-        <div className="pointer-events-none absolute top-1/3 -left-32 h-64 w-64 rounded-full bg-secondary/5 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-20 right-10 h-48 w-48 rounded-full bg-accent/5 blur-3xl" />
+      <main className="flex-1 relative">
+        {/* Decorative background blobs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary/5 blur-3xl" />
+          <div className="absolute top-1/3 -left-48 h-80 w-80 rounded-full bg-violet-500/4 blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-primary/3 blur-3xl" />
+        </div>
 
-        <div className="container px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-12 relative z-10">
+        <div className="container relative z-10 px-3 sm:px-4 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-14 sm:pb-16">
           <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col gap-2.5 xs:gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between mb-5 sm:mb-6 md:mb-8">
-              <div className="min-w-0 flex-1">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-2 sm:mb-3">
-                  <span className="text-[10px] xs:text-xs font-medium text-primary">🛍️ Shop Collection</span>
+
+            {/* ── Page Header ─────────────────────────────────────────── */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
+              <div>
+                <div className="mb-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary tracking-wide">
+                    🛍️ Shop Collection
+                  </span>
                 </div>
-                <h1 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">{pageTitle}</h1>
-                <p className="mt-0.5 xs:mt-1 sm:mt-1.5 text-[11px] xs:text-xs sm:text-sm text-muted-foreground">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+                  {pageTitle}
+                </h1>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
                   {loading
-                    ? "Loading..."
-                    : `Showing ${filteredProducts.length} of ${publishedProducts.length} product${publishedProducts.length !== 1 ? "s" : ""}`}
+                    ? "Loading products…"
+                    : `${filteredProducts.length} of ${publishedProducts.length} product${publishedProducts.length !== 1 ? "s" : ""}`}
                 </p>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden h-8 xs:h-9 text-[11px] xs:text-xs sm:text-sm px-2.5 xs:px-3"
+                  className="lg:hidden h-9 gap-2 border-border/60 text-sm font-medium"
                 >
-                  <SlidersHorizontal className="mr-1 xs:mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}
                 </Button>
                 <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-                  <SelectTrigger className="w-[120px] xs:w-[140px] sm:w-[180px] h-8 xs:h-9 text-[11px] xs:text-xs sm:text-sm">
+                  <SelectTrigger className="w-[155px] sm:w-[190px] h-9 text-xs sm:text-sm border-border/60">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="featured">Featured</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
-                    <SelectItem value="newest">Newest</SelectItem>
-                    <SelectItem value="rating">Rating</SelectItem>
+                    <SelectItem value="featured">⭐ Featured</SelectItem>
+                    <SelectItem value="price-low">↑ Price: Low to High</SelectItem>
+                    <SelectItem value="price-high">↓ Price: High to Low</SelectItem>
+                    <SelectItem value="newest">🆕 Newest First</SelectItem>
+                    <SelectItem value="rating">🏆 Top Rated</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="mb-4 sm:mb-5 md:mb-6 rounded-xl sm:rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow duration-300">
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            {/* ── Search Bar ──────────────────────────────────────────── */}
+            <div className="mb-5 sm:mb-6 rounded-2xl border border-border/50 bg-card shadow-sm p-3 sm:p-4">
+              <div className="flex gap-2 sm:gap-3">
                 <div className="relative flex-1 min-w-0">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        applySearch();
-                      }
+                      if (e.key === "Enter") applySearch();
                     }}
-                    placeholder="Search products, brand, tags..."
-                    className="h-9 pl-8 pr-9 text-xs sm:text-sm"
+                    placeholder="Search by name, brand, tags…"
+                    className="h-10 pl-9 pr-9 text-sm border-border/50 bg-muted/30 focus:bg-background transition-colors"
                     aria-label="Search products"
                   />
                   {searchInput ? (
@@ -465,94 +471,99 @@ const Products = () => {
                       variant="ghost"
                       size="icon"
                       onClick={clearSearch}
-                      className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                      className="absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       aria-label="Clear search"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" />
                     </Button>
                   ) : null}
                 </div>
-                <Button type="button" variant="outline" className="h-9 px-4 text-xs sm:text-sm" onClick={applySearch}>
+                <Button
+                  type="button"
+                  className="h-10 px-5 text-sm font-semibold rounded-xl shrink-0"
+                  onClick={applySearch}
+                >
                   Search
                 </Button>
               </div>
 
+              {/* Active filter chips */}
               {activeFiltersCount > 0 ? (
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground mr-0.5">Active:</span>
                   {activeCategory ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 rounded-full px-2.5 text-[11px]"
+                    <button
+                      type="button"
                       onClick={() => setCategoryParam(null)}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/25 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors"
                     >
-                      Category: {pageTitle}
-                      <X className="ml-1 h-3.5 w-3.5" />
-                    </Button>
+                      {pageTitle}
+                      <X className="h-3 w-3" />
+                    </button>
                   ) : null}
                   {genderFilter !== "all" ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 rounded-full px-2.5 text-[11px]"
+                    <button
+                      type="button"
                       onClick={() => setGenderFilter("all")}
+                      className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-400/30 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 transition-colors"
                     >
-                      Gender: {genderFilter}
-                      <X className="ml-1 h-3.5 w-3.5" />
-                    </Button>
+                      {genderFilter}
+                      <X className="h-3 w-3" />
+                    </button>
                   ) : null}
                   {minRating != null ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 rounded-full px-2.5 text-[11px]"
+                    <button
+                      type="button"
                       onClick={() => setMinRating(null)}
+                      className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-400/30 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
                     >
-                      Rating: {minRating}+★
-                      <X className="ml-1 h-3.5 w-3.5" />
-                    </Button>
+                      {minRating}★+
+                      <X className="h-3 w-3" />
+                    </button>
                   ) : null}
                   {!isDefaultPriceRange ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 rounded-full px-2.5 text-[11px]"
+                    <button
+                      type="button"
                       onClick={() => setPriceRange([0, priceSliderMax])}
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-400/30 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                     >
-                      Price: ₹{priceCurrency.format(priceRange[0])} - ₹{priceCurrency.format(priceRange[1])}
-                      <X className="ml-1 h-3.5 w-3.5" />
-                    </Button>
+                      ₹{priceCurrency.format(priceRange[0])}–₹{priceCurrency.format(priceRange[1])}
+                      <X className="h-3 w-3" />
+                    </button>
                   ) : null}
                   {queryParam ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 rounded-full px-2.5 text-[11px]"
+                    <button
+                      type="button"
                       onClick={clearSearch}
+                      className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 border border-sky-400/30 px-2.5 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 transition-colors"
                     >
-                      Search: {queryParam}
-                      <X className="ml-1 h-3.5 w-3.5" />
-                    </Button>
+                      &ldquo;{queryParam}&rdquo;
+                      <X className="h-3 w-3" />
+                    </button>
                   ) : null}
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={clearFilters}>
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-400/30 px-2.5 py-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors ml-1"
+                  >
                     Clear all
-                  </Button>
+                  </button>
                 </div>
               ) : null}
             </div>
 
-            {recentlyViewed.length ? (
-              <section aria-label="Recently viewed" className="mb-5 sm:mb-6 md:mb-8 lg:mb-10">
-                <div className="flex items-end justify-between gap-2 sm:gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-sm xs:text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Recently viewed</h2>
-                    <p className="mt-0.5 text-[10px] xs:text-xs sm:text-sm text-muted-foreground">Quick access to products you opened</p>
+            {/* ── Recently Viewed ─────────────────────────────────────── */}
+            {recentlyViewed.length > 0 ? (
+              <section aria-label="Recently viewed" className="mb-6 sm:mb-8">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-foreground">Recently Viewed</h2>
+                    <p className="text-xs text-muted-foreground">Pick up where you left off</p>
                   </div>
                 </div>
-
-                <div className="mt-2.5 sm:mt-3 md:mt-4 flex gap-2 xs:gap-2.5 sm:gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide snap-x snap-mandatory">
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide snap-x snap-mandatory">
                   {recentlyViewed.slice(0, 6).map((p) => (
-                    <div key={p.id} className="min-w-[180px] xs:min-w-[200px] sm:min-w-[240px] md:min-w-[260px] max-w-[260px] sm:max-w-[300px] flex-shrink-0 snap-start">
+                    <div key={p.id} className="min-w-[180px] xs:min-w-[200px] sm:min-w-[220px] max-w-[220px] flex-shrink-0 snap-start">
                       <RecentlyViewedMiniCard
                         id={p.id}
                         name={p.name}
@@ -566,188 +577,221 @@ const Products = () => {
               </section>
             ) : null}
 
-            <div className="grid lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr] gap-4 sm:gap-5 lg:gap-8">
-              {/* Mobile filter overlay backdrop */}
-              {showFilters && (
-                <div 
-                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+            {/* ── Main Layout ──────────────────────────────────────────── */}
+            <div className="grid lg:grid-cols-[270px_1fr] xl:grid-cols-[290px_1fr] gap-5 lg:gap-7 xl:gap-8">
+
+              {/* Mobile overlay backdrop */}
+              {showFilters ? (
+                <div
+                  className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
                   onClick={() => setShowFilters(false)}
                   aria-hidden="true"
                 />
-              )}
-              <aside className={`
-                ${showFilters
-                  ? "fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-background p-4 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 lg:sticky lg:top-24 lg:inset-auto lg:z-20 lg:max-h-[calc(100vh-7.5rem)] lg:rounded-2xl lg:bg-transparent lg:p-0 lg:shadow-none lg:animate-none"
-                  : "hidden lg:block lg:sticky lg:top-24 lg:self-start"
-                }
-              `}>
-                <div className="rounded-2xl border border-border/60 bg-card/85 backdrop-blur-md p-3 sm:p-4 lg:p-4 shadow-lg shadow-primary/5">
-                  <div className="flex items-center justify-between lg:hidden mb-3">
-                    <h2 className="text-base font-semibold">Filters</h2>
-                    <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)} className="h-8 px-2">
-                      ✕ Close
-                    </Button>
-                  </div>
+              ) : null}
 
-                  <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background via-background to-muted/30 px-3 py-3 sm:px-4 sm:py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold tracking-tight">Refine products</h3>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">Narrow results with smart filters</p>
-                      </div>
-                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {activeFiltersCount} active
-                      </span>
+              {/* ── Filter Sidebar ─────────────────────────────────────── */}
+              <aside
+                className={
+                  showFilters
+                    ? "fixed inset-x-0 bottom-0 z-50 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-background shadow-2xl animate-in slide-in-from-bottom duration-300 lg:sticky lg:top-24 lg:inset-auto lg:z-20 lg:max-h-[calc(100vh-7.5rem)] lg:rounded-2xl lg:bg-transparent lg:shadow-none lg:animate-none"
+                    : "hidden lg:block lg:sticky lg:top-24 lg:self-start"
+                }
+              >
+                <div className="rounded-2xl border border-border/50 bg-card shadow-sm overflow-hidden">
+
+                  {/* Sidebar header */}
+                  <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/40 bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4 text-primary" />
+                      <span className="font-bold text-sm text-foreground">Filters</span>
+                      {activeFiltersCount > 0 ? (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1.5">
+                          {activeFiltersCount}
+                        </span>
+                      ) : null}
                     </div>
-                    {activeFiltersCount > 0 ? (
+                    <div className="flex items-center gap-2">
+                      {activeFiltersCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className="text-[11px] font-semibold text-muted-foreground hover:text-rose-500 transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      ) : null}
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="mt-2.5 h-7 px-2 text-[11px]"
-                        onClick={clearFilters}
+                        size="icon"
+                        className="h-7 w-7 lg:hidden rounded-full"
+                        onClick={() => setShowFilters(false)}
                       >
-                        Clear all filters
+                        <X className="h-4 w-4" />
                       </Button>
-                    ) : null}
+                    </div>
                   </div>
 
-                  <div className="mt-3 space-y-3 sm:space-y-4">
-                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h4>
-                        <span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{visibleCategories.length}</span>
-                      </div>
+                  <div className="p-4 space-y-5">
 
-                      <div className="mt-2.5 space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                        <div className={`flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors ${
-                          !activeCategory
-                            ? "border-primary/40 bg-primary/10"
-                            : "border-border/60 bg-background hover:bg-muted/30"
-                        }`}>
-                          <Checkbox
-                            id="category-all"
-                            checked={!activeCategory}
-                            onCheckedChange={(v) => {
-                              if (v) setCategoryParam(null);
-                            }}
-                          />
-                          <label
-                            htmlFor="category-all"
-                            className="flex w-full items-center justify-between gap-2 text-xs sm:text-sm font-medium cursor-pointer"
-                          >
-                            <span>All Products</span>
-                            <span className="text-[11px] text-muted-foreground">{publishedProducts.length}</span>
-                          </label>
+                    {/* ── Categories ── */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5 text-primary" />
+                          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Categories</h4>
                         </div>
+                        <span className="text-[10px] font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                          {visibleCategories.length}
+                        </span>
+                      </div>
+                      <div className="space-y-1 max-h-[300px] overflow-y-auto scrollbar-hide">
+                        {/* All Products */}
+                        <button
+                          type="button"
+                          onClick={() => setCategoryParam(null)}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                            !activeCategory
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-foreground hover:bg-muted/60"
+                          }`}
+                        >
+                          <span>All Products</span>
+                          <span
+                            className={`text-xs font-bold tabular-nums ${
+                              !activeCategory ? "text-primary-foreground/75" : "text-muted-foreground"
+                            }`}
+                          >
+                            {publishedProducts.length}
+                          </span>
+                        </button>
 
                         {visibleCategories.map((category) => {
                           const slug = getCategorySlug(category.name, category.slug);
-                          const checked = activeCategory === slug;
-                          const id = `category-${slug}`;
-
+                          const isActive = activeCategory === slug;
+                          const catImage = getCategoryImage(slug) || category.imageUrl;
+                          const displayName = (() => {
+                            const nameLower = String(category.name ?? "").toLowerCase().trim();
+                            const slugLower = String(category.slug ?? "").toLowerCase().trim();
+                            if (nameLower === "beauty" || slugLower === "beauty") return "Cosmetics";
+                            return category.name;
+                          })();
                           return (
-                            <div
+                            <button
                               key={category.id}
-                              className={`flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors ${
-                                checked
-                                  ? "border-primary/40 bg-primary/10"
-                                  : "border-border/60 bg-background hover:bg-muted/30"
+                              type="button"
+                              onClick={() => (isActive ? setCategoryParam(null) : setCategoryParam(slug))}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                                isActive
+                                  ? "bg-primary text-primary-foreground shadow-sm"
+                                  : "text-foreground hover:bg-muted/60"
                               }`}
                             >
-                              <Checkbox
-                                id={id}
-                                checked={checked}
-                                onCheckedChange={(v) => {
-                                  if (v) {
-                                    setCategoryParam(slug);
-                                  } else {
-                                    setCategoryParam(null);
-                                  }
-                                }}
-                              />
-                              <label
-                                htmlFor={id}
-                                className="flex items-center justify-between text-xs sm:text-sm font-medium cursor-pointer flex-1 min-w-0"
+                              {catImage ? (
+                                <img
+                                  src={catImage}
+                                  alt={displayName}
+                                  className="h-7 w-7 rounded-lg object-cover shrink-0 border border-white/20"
+                                />
+                              ) : (
+                                <div
+                                  className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                    isActive ? "bg-white/20" : "bg-muted"
+                                  }`}
+                                >
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                </div>
+                              )}
+                              <span className="flex-1 text-left truncate font-semibold">{displayName}</span>
+                              <span
+                                className={`text-xs font-bold tabular-nums shrink-0 ${
+                                  isActive ? "text-primary-foreground/75" : "text-muted-foreground"
+                                }`}
                               >
-                                <span className="flex items-center min-w-0">
-                                  {(() => {
-                                    const image = getCategoryImage(slug) || category.imageUrl;
-
-                                    return image ? (
-                                      <img
-                                        src={image}
-                                        alt={category.name}
-                                        className="h-8 w-8 rounded object-cover mr-2 border border-border"
-                                      />
-                                    ) : (
-                                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center mr-2 border border-border">
-                                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                    );
-                                  })()}
-                                  <span className="truncate">
-                                    {(() => {
-                                      const nameLower = String(category.name ?? "").toLowerCase().trim();
-                                      const slugLower = String(category.slug ?? "").toLowerCase().trim();
-                                      if (nameLower === "beauty" || slugLower === "beauty") {
-                                        return "Cosmetics";
-                                      }
-                                      return category.name;
-                                    })()}
-                                  </span>
-                                </span>
-                                <span className="ml-2 text-[11px] text-muted-foreground">{categoryProductCounts.get(slug) ?? 0}</span>
-                              </label>
-                            </div>
+                                {categoryProductCounts.get(slug) ?? 0}
+                              </span>
+                            </button>
                           );
                         })}
                       </div>
-                    </section>
+                    </div>
 
-                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gender</h4>
-                      <div className="mt-2.5 grid grid-cols-2 gap-2">
-                        {([
-                          { key: "all", label: "All" },
-                          { key: "male", label: "Male" },
-                          { key: "female", label: "Female" },
-                          { key: "unisex", label: "Unisex" },
-                        ] as const).map((option) => {
-                          const selected = genderFilter === option.key;
+                    <div className="h-px bg-border/40" />
+
+                    {/* ── Gender ── */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Users2 className="h-3.5 w-3.5 text-primary" />
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Gender</h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(
+                          [
+                            { key: "all", label: "All" },
+                            { key: "male", label: "Male" },
+                            { key: "female", label: "Female" },
+                            { key: "unisex", label: "Unisex" },
+                          ] as const
+                        ).map((opt) => {
+                          const selected = genderFilter === opt.key;
                           return (
-                            <Button
-                              key={option.key}
+                            <button
+                              key={opt.key}
                               type="button"
-                              variant={selected ? "default" : "outline"}
-                              className={`h-8 text-xs rounded-lg ${selected ? "shadow-sm" : ""}`}
-                              onClick={() => setGenderFilter(option.key)}
+                              onClick={() => setGenderFilter(opt.key)}
+                              className={`h-9 rounded-xl text-sm font-semibold border transition-all duration-150 ${
+                                selected
+                                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                  : "bg-background text-foreground border-border/60 hover:border-primary/40 hover:bg-muted/40"
+                              }`}
                             >
-                              {option.label}
-                            </Button>
+                              {opt.label}
+                            </button>
                           );
                         })}
                       </div>
-                    </section>
+                    </div>
 
-                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Price</h4>
+                    <div className="h-px bg-border/40" />
+
+                    {/* ── Price Range ── */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[13px] font-extrabold text-primary leading-none">₹</span>
+                          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Price Range</h4>
+                        </div>
                         {!isDefaultPriceRange ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[10px]"
+                          <button
+                            type="button"
                             onClick={() => setPriceRange([0, priceSliderMax])}
+                            className="text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors"
                           >
                             Reset
-                          </Button>
+                          </button>
                         ) : null}
                       </div>
 
-                      <div className="mt-2.5 grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label htmlFor="price-min" className="text-[10px] text-muted-foreground">
-                            Min
+                      {/* Price display */}
+                      <div className="rounded-xl border border-border/50 bg-muted/20 py-2.5 mb-3 text-center">
+                        <span className="text-sm font-extrabold text-foreground tabular-nums">
+                          ₹{priceCurrency.format(priceRange[0])}
+                          <span className="mx-2 text-muted-foreground font-medium text-xs">to</span>
+                          ₹{priceCurrency.format(priceRange[1])}
+                        </span>
+                      </div>
+
+                      <Slider
+                        value={priceRange}
+                        onValueChange={updatePriceFromSlider}
+                        max={priceSliderMax}
+                        step={priceStep}
+                        className="mb-4"
+                      />
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label htmlFor="price-min" className="text-[10px] text-muted-foreground block mb-1 font-semibold">
+                            Min (₹)
                           </label>
                           <Input
                             id="price-min"
@@ -760,16 +804,14 @@ const Products = () => {
                             onChange={(e) => setPriceInputMin(e.target.value)}
                             onBlur={commitMinPriceInput}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                (e.currentTarget as HTMLInputElement).blur();
-                              }
+                              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
                             }}
-                            className="h-8 text-xs"
+                            className="h-8 text-xs border-border/50"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <label htmlFor="price-max" className="text-[10px] text-muted-foreground">
-                            Max
+                        <div>
+                          <label htmlFor="price-max" className="text-[10px] text-muted-foreground block mb-1 font-semibold">
+                            Max (₹)
                           </label>
                           <Input
                             id="price-max"
@@ -782,105 +824,121 @@ const Products = () => {
                             onChange={(e) => setPriceInputMax(e.target.value)}
                             onBlur={commitMaxPriceInput}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                (e.currentTarget as HTMLInputElement).blur();
-                              }
+                              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
                             }}
-                            className="h-8 text-xs"
+                            className="h-8 text-xs border-border/50"
                           />
                         </div>
                       </div>
+                    </div>
 
-                      <Slider
-                        value={priceRange}
-                        onValueChange={updatePriceFromSlider}
-                        max={priceSliderMax}
-                        step={priceStep}
-                        className="mt-3 mb-3"
-                      />
+                    <div className="h-px bg-border/40" />
 
-                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2 text-[11px] xs:text-xs sm:text-sm">
-                        <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[0])}</span>
-                        <span className="font-medium text-foreground">to</span>
-                        <span className="text-muted-foreground">₹{priceCurrency.format(priceRange[1])}</span>
+                    {/* ── Rating ── */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Min. Rating</h4>
                       </div>
-                    </section>
-
-                    <section className="rounded-xl border border-border/60 bg-background/70 p-3">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rating</h4>
-                      <div className="mt-2.5 grid grid-cols-2 gap-2">
-                        {[4, 3, 2, 1].map((rating) => {
-                          const active = minRating === rating;
+                      <div className="grid grid-cols-2 gap-2">
+                        {[4, 3, 2, 1].map((r) => {
+                          const active = minRating === r;
                           return (
-                            <Button
-                              key={rating}
+                            <button
+                              key={r}
                               type="button"
-                              variant={active ? "default" : "outline"}
-                              className="h-8 text-xs rounded-lg"
-                              onClick={() => toggleMinRating(rating)}
+                              onClick={() => toggleMinRating(r)}
+                              className={`h-9 rounded-xl text-sm font-semibold border transition-all duration-150 flex items-center justify-center gap-1.5 ${
+                                active
+                                  ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                                  : "bg-background text-foreground border-border/60 hover:border-amber-400/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/20"
+                              }`}
                             >
-                              {rating}★+
-                            </Button>
+                              <Star
+                                className={`h-3 w-3 ${
+                                  active ? "fill-white text-white" : "fill-amber-400 text-amber-400"
+                                }`}
+                              />
+                              {r}+
+                            </button>
                           );
                         })}
                       </div>
-                    </section>
+                    </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-1 gap-2">
+                  {/* Sidebar footer */}
+                  <div className="px-4 pb-4 pt-3 border-t border-border/40 space-y-2">
+                    {activeFiltersCount > 0 ? (
+                      <Button
+                        variant="outline"
+                        className="w-full h-9 text-sm rounded-xl border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950/30 transition-all"
+                        onClick={clearFilters}
+                      >
+                        Clear Filters ({activeFiltersCount})
+                      </Button>
+                    ) : null}
                     <Button
-                      variant="outline"
-                      className="w-full h-9 text-sm rounded-xl border-border/50 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-300"
-                      onClick={clearFilters}
-                    >
-                      Clear Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
-                    </Button>
-                    <Button
-                      className="w-full lg:hidden h-10 text-sm rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-md shadow-primary/20"
+                      className="w-full lg:hidden h-10 text-sm font-bold rounded-xl"
                       onClick={() => setShowFilters(false)}
                     >
-                      Apply Filters ({filteredProducts.length} products)
+                      View {filteredProducts.length} Product{filteredProducts.length !== 1 ? "s" : ""}
                     </Button>
                   </div>
                 </div>
               </aside>
 
-              {loading ? (
-                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border/50 bg-card/50 backdrop-blur-sm p-5 sm:p-8 md:p-10 text-center">
-                  <h2 className="text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Loading products…</h2>
-                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">Fetching published products from the admin catalog.</p>
-                  <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4">
+              {/* ── Product Grid Area ────────────────────────────────── */}
+              <div className="min-w-0">
+                {loading ? (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4">
                     {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="aspect-[3/4] rounded-xl sm:rounded-2xl bg-gradient-to-br from-muted to-muted/50 animate-pulse" />
+                      <div key={i} className="rounded-2xl overflow-hidden border border-border/40 bg-card">
+                        <div className="aspect-[4/5] bg-muted animate-pulse" />
+                        <div className="p-3 sm:p-4 space-y-2.5">
+                          <div className="h-3.5 w-4/5 bg-muted rounded-lg animate-pulse" />
+                          <div className="h-3.5 w-3/5 bg-muted rounded-lg animate-pulse" />
+                          <div className="h-5 w-2/5 bg-muted rounded-lg animate-pulse mt-1" />
+                          <div className="h-9 w-full bg-muted rounded-xl animate-pulse mt-2" />
+                        </div>
+                      </div>
                     ))}
                   </div>
-                </div>
-              ) : loadError ? (
-                <div className="rounded-xl sm:rounded-2xl border border-dashed border-destructive/30 bg-destructive/5 backdrop-blur-sm p-5 sm:p-8 md:p-10 text-center">
-                  <h2 className="text-base sm:text-lg font-bold">Couldn't load products</h2>
-                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{loadError}</p>
-                </div>
-              ) : filteredProducts.length === 0 ? (
-                <div className="rounded-xl sm:rounded-2xl border border-dashed border-border/50 bg-card/50 backdrop-blur-sm p-5 sm:p-8 md:p-10 text-center">
-                  <h2 className="text-base sm:text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                    {products.length === 0 || !hasAnyPublishedProduct ? "Coming soon" : "No products found"}
-                  </h2>
-                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
-                    {products.length === 0
-                      ? "We're setting things up. Check back soon for new arrivals."
-                      : !hasAnyPublishedProduct
-                        ? "We're stocking the store right now. New products will be available soon."
-                        : "Nothing matches your filters right now. Try clearing filters or selecting a different category."}
-                  </p>
-                  {activeFiltersCount > 0 ? (
-                    <Button variant="outline" className="mt-4 h-9 text-sm rounded-xl" onClick={clearFilters}>
-                      Reset filters
-                    </Button>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="mx-auto w-full">
-                  <div className="grid grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                ) : loadError ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-destructive/30 bg-destructive/5 p-10 sm:p-16 text-center">
+                    <div className="h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                      <X className="h-7 w-7 text-destructive" />
+                    </div>
+                    <h2 className="text-lg font-bold text-foreground">Couldn&apos;t load products</h2>
+                    <p className="mt-2 text-sm text-muted-foreground max-w-xs">{loadError}</p>
+                  </div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 bg-card/60 p-10 sm:p-16 text-center">
+                    <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                      <Search className="h-8 w-8 text-muted-foreground/40" />
+                    </div>
+                    <h2 className="text-lg font-bold text-foreground">
+                      {products.length === 0 || !hasAnyPublishedProduct ? "Coming Soon" : "No Products Found"}
+                    </h2>
+                    <p className="mt-2 text-sm text-muted-foreground max-w-sm">
+                      {products.length === 0
+                        ? "We're setting things up. Check back soon for exciting new arrivals."
+                        : !hasAnyPublishedProduct
+                          ? "We're stocking the shelves right now. New products arriving very soon!"
+                          : "No products match your current filters. Try adjusting or clearing them."}
+                    </p>
+                    {activeFiltersCount > 0 ? (
+                      <Button
+                        variant="outline"
+                        className="mt-5 h-9 px-5 text-sm rounded-xl"
+                        onClick={clearFilters}
+                      >
+                        Clear all filters
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {filteredProducts.map((product) => (
                       <ProductCard
                         key={product.id}
@@ -895,8 +953,8 @@ const Products = () => {
                       />
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

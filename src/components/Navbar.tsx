@@ -376,11 +376,131 @@ const Navbar = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background/10 pointer-events-none" />
       
       <div className="container relative flex h-14 sm:h-16 items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
+
+        {/* Hamburger — left of logo, mobile/tablet only */}
+        <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="lg:hidden h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-full border-border/50 bg-background/40 transition-all duration-300 hover:bg-accent/40 hover:scale-105 hover:shadow-[0_0_12px_hsl(var(--primary)/0.15)] active:scale-95"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="flex w-[280px] xs:w-[320px] sm:w-[380px] flex-col overflow-hidden p-0">
+            <SheetHeader className="px-4 pt-4 pb-2 border-b">
+              <SheetTitle className="flex items-center gap-2">
+                <img src={logoImg} alt="TrendMix logo" className="h-8 w-8 rounded-full object-cover" />
+                <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  TrendMix
+                </span>
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+              {/* Quick Links — Wishlist + Account (Cart is always in the top navbar) */}
+              <div className="mb-4 pb-4 border-b">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Links</h3>
+                <div className="flex gap-2">
+                  <Link
+                    to="/wishlist"
+                    onClick={() => setMobileCategoriesOpen(false)}
+                    className="flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
+                  >
+                    <div className="relative">
+                      <Heart className="h-5 w-5" />
+                      {wishlistCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center">
+                          {wishlistCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium">Wishlist</span>
+                  </Link>
+                  <Link
+                    to="/account"
+                    onClick={() => setMobileCategoriesOpen(false)}
+                    className="flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
+                  >
+                    <div className="relative">
+                      <User className={cn("h-5 w-5", isAuthenticated && "text-primary")} />
+                      {isAuthenticated && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
+                      )}
+                    </div>
+                    <span className="text-xs font-medium">{isAuthenticated ? 'My Account' : 'Sign In'}</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Categories */}
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Categories</h3>
+              <nav className="flex flex-col gap-1">
+                {navItems.map((item) => {
+                  const active = isNavItemActive(item);
+                  const thumb = getCategoryThumb(item.category);
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.to}
+                      onClick={() => setMobileCategoriesOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                        "hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
+                        active && "bg-accent text-accent-foreground",
+                      )}
+                    >
+                      <span className="flex items-center gap-3">
+                        {item.category ? (
+                          thumb ? (
+                            <img
+                              src={thumb}
+                              alt=""
+                              className="h-8 w-8 rounded-lg border border-border object-cover"
+                              loading="eager"
+                              decoding="async"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                img.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span className="h-8 w-8 rounded-lg border border-border bg-muted" />
+                          )
+                        ) : (
+                          <span className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-muted">
+                            <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                          </span>
+                        )}
+                        <span>{item.label}</span>
+                      </span>
+                      {active ? <Check className="h-4 w-4 text-primary" /> : null}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Footer Links */}
+            <div className="px-4 py-3 border-t bg-muted/30">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <Link to="/about" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">About</Link>
+                <Link to="/contact" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">Contact</Link>
+                <Link to="/faq" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">FAQ</Link>
+                <Link to="/shipping" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">Shipping</Link>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* Logo */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <Link
+        <Link
             to="/"
-            className="group flex items-center gap-1.5 sm:gap-2 rounded-xl px-2 py-1.5 -mx-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 hover:bg-accent/10"
+            className="group flex items-center gap-1.5 sm:gap-2 rounded-xl px-2 py-1.5 -mx-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 hover:bg-accent/10 flex-shrink-0"
             aria-label="Go to home"
           >
             <span className="relative flex-shrink-0">
@@ -404,7 +524,6 @@ const Navbar = () => {
               </span>
             </div>
           </Link>
-        </div>
 
         {/* Desktop Search - hidden on mobile */}
         <div className="flex-1 flex items-center justify-center">
@@ -685,126 +804,6 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          {/* Mobile Menu Sheet */}
-          <Sheet open={mobileCategoriesOpen} onOpenChange={setMobileCategoriesOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="lg:hidden h-9 w-9 sm:h-10 sm:w-10 rounded-full border-border/50 bg-background/40 transition-all duration-300 hover:bg-accent/40 hover:scale-105 hover:shadow-[0_0_12px_hsl(var(--primary)/0.15)] active:scale-95"
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="flex w-[280px] xs:w-[320px] sm:w-[380px] flex-col overflow-hidden p-0">
-              <SheetHeader className="px-4 pt-4 pb-2 border-b">
-                <SheetTitle className="flex items-center gap-2">
-                  <img src={logoImg} alt="TrendMix logo" className="h-8 w-8 rounded-full object-cover" />
-                  <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    TrendMix
-                  </span>
-                </SheetTitle>
-              </SheetHeader>
-
-              <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-                {/* Quick Links — Wishlist + Theme (Cart/Account are always in the top navbar) */}
-                <div className="mb-4 pb-4 border-b">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Links</h3>
-                  <div className="flex gap-2">
-                    <Link
-                      to="/wishlist"
-                      onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
-                    >
-                      <div className="relative">
-                        <Heart className="h-5 w-5" />
-                        {wishlistCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center">
-                            {wishlistCount}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs font-medium">Wishlist</span>
-                    </Link>
-                    <Link
-                      to="/account"
-                      onClick={() => setMobileCategoriesOpen(false)}
-                      className="flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg bg-accent/30 transition-all duration-300 hover:bg-accent hover:scale-105 hover:shadow-md active:scale-95"
-                    >
-                      <div className="relative">
-                        <User className={cn("h-5 w-5", isAuthenticated && "text-primary")} />
-                        {isAuthenticated && (
-                          <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
-                        )}
-                      </div>
-                      <span className="text-xs font-medium">{isAuthenticated ? 'My Account' : 'Sign In'}</span>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Categories */}
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Categories</h3>
-                <nav className="flex flex-col gap-1">
-                  {navItems.map((item) => {
-                    const active = isNavItemActive(item);
-                    const thumb = getCategoryThumb(item.category);
-                    return (
-                      <Link
-                        key={item.label}
-                        to={item.to}
-                        onClick={() => setMobileCategoriesOpen(false)}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                          "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
-                          active && "bg-accent text-accent-foreground",
-                        )}
-                      >
-                        <span className="flex items-center gap-3">
-                          {item.category ? (
-                            thumb ? (
-                              <img
-                                src={thumb}
-                                alt=""
-                                className="h-8 w-8 rounded-lg border border-border object-cover"
-                                loading="eager"
-                                decoding="async"
-                                referrerPolicy="no-referrer"
-                                onError={(e) => {
-                                  const img = e.currentTarget;
-                                  img.style.display = "none";
-                                }}
-                              />
-                            ) : (
-                              <span className="h-8 w-8 rounded-lg border border-border bg-muted" />
-                            )
-                          ) : (
-                            <span className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-muted">
-                              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                            </span>
-                          )}
-                          <span>{item.label}</span>
-                        </span>
-                        {active ? <Check className="h-4 w-4 text-primary" /> : null}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-
-              {/* Footer Links */}
-              <div className="px-4 py-3 border-t bg-muted/30">
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <Link to="/about" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">About</Link>
-                  <Link to="/contact" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">Contact</Link>
-                  <Link to="/faq" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">FAQ</Link>
-                  <Link to="/shipping" onClick={() => setMobileCategoriesOpen(false)} className="transition-all duration-200 hover:text-primary hover:translate-x-0.5">Shipping</Link>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
 
           {/* Vertical divider before action icons (desktop only) */}
           <div className="hidden lg:block w-px h-5 bg-border/50 mx-1" aria-hidden="true" />

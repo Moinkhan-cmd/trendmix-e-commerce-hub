@@ -19,6 +19,7 @@ import {
   X,
   ShieldCheck,
   Crown,
+  Ban,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -40,6 +41,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/auth/AuthProvider";
 import { getOrdersByEmail, formatCurrency, formatOrderDate } from "@/lib/orders";
 import type { OrderDoc } from "@/lib/models";
+import { cancelOrder } from "@/lib/shiprocket";
+import { toast } from "@/components/ui/sonner";
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Name must be at least 2 characters"),
@@ -71,6 +74,7 @@ export default function Account() {
   const [orders, setOrders] = useState<Array<OrderDoc & { id: string }>>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
   const {
     register,
@@ -177,6 +181,29 @@ export default function Account() {
         pincode: profile.address?.pincode || "",
         country: profile.address?.country || "India",
       });
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string, orderNumber: string) => {
+    if (!confirm(`Cancel order ${orderNumber}? This cannot be undone.`)) return;
+    setCancellingOrderId(orderId);
+    try {
+      const result = await cancelOrder(orderId);
+      if (result.success) {
+        toast.success(result.message || "Order cancelled successfully");
+        // Update order in local state
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId ? { ...o, status: "Cancelled" as const, shipment_status: "cancelled" as const } : o
+          )
+        );
+      } else {
+        toast.error(result.message || "Failed to cancel order");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel order");
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -605,12 +632,28 @@ export default function Account() {
                             )}
                           </div>
 
-                          <div className="pt-2">
+                          <div className="pt-2 flex flex-col sm:flex-row gap-2">
                             <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                               <Link to={`/order-tracking?orderNumber=${order.orderNumber}`}>
                                 Track Order
                               </Link>
                             </Button>
+                            {order.status !== "Cancelled" && order.status !== "Delivered" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-800"
+                                disabled={cancellingOrderId === order.id}
+                                onClick={() => handleCancelOrder(order.id, order.orderNumber)}
+                              >
+                                {cancellingOrderId === order.id ? (
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Ban className="mr-1.5 h-3.5 w-3.5" />
+                                )}
+                                Cancel Order
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}

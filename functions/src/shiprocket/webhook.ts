@@ -116,11 +116,11 @@ export interface WebhookHandleResult {
 }
 
 /**
- * Validate the optional shared-secret query param.
- * Returns true if validation passes (or is not configured).
+ * Validate the x-api-key header against SHIPROCKET_WEBHOOK_SECRET.
+ * Returns true if validation passes (or if no secret is configured).
  */
 export function validateWebhookSecret(
-  querySecret: string | undefined
+  apiKeyHeader: string | undefined
 ): boolean {
   const configuredSecret = process.env.SHIPROCKET_WEBHOOK_SECRET
     ?.trim()
@@ -129,7 +129,7 @@ export function validateWebhookSecret(
   // If no secret is configured, skip the check
   if (!configuredSecret) return true;
 
-  return querySecret === configuredSecret;
+  return apiKeyHeader === configuredSecret;
 }
 
 /**

@@ -1370,11 +1370,11 @@ export const cancelShiprocketOrder = functions.https.onRequest((req, res) => {
 //
 // Configure in Shiprocket dashboard:
 //   Settings → API → Webhook URL
-//   → https://<region>-<project-id>.cloudfunctions.net/shiprocketWebhook
-//     ?secret=<SHIPROCKET_WEBHOOK_SECRET>
+//   → https://us-central1-trendmix-admin.cloudfunctions.net/shiprocketWebhook
+//   Set custom header: x-api-key = <SHIPROCKET_WEBHOOK_SECRET>
 //
 // Security:
-//   The optional ?secret= query param is validated against
+//   The x-api-key HTTP header is validated against
 //   process.env.SHIPROCKET_WEBHOOK_SECRET. If that env var is not set,
 //   the check is skipped (not recommended for production).
 //
@@ -1384,19 +1384,24 @@ export const cancelShiprocketOrder = functions.https.onRequest((req, res) => {
 // ═════════════════════════════════════════════════════════════
 export const shiprocketWebhook = functions.https.onRequest(async (req, res) => {
   try {
+    // ── GET = health check (no auth required) ──────────────
+    if (req.method === "GET") {
+      res.status(200).json({ success: true, message: "Webhook endpoint active" });
+      return;
+    }
+
     if (req.method !== "POST") {
       res.status(405).json({ success: false, error: "Method not allowed" });
       return;
     }
 
-    // ── Validate shared secret (if configured) ─────────────
-    const querySecret = normalizeText(
-      (req.query as Record<string, unknown>).secret,
-      256
-    ) || undefined;
+    // ── Validate x-api-key header (if configured) ──────────
+    const apiKey = typeof req.headers["x-api-key"] === "string"
+      ? req.headers["x-api-key"].trim()
+      : undefined;
 
-    if (!validateWebhookSecret(querySecret)) {
-      console.warn("Shiprocket webhook: invalid secret");
+    if (!validateWebhookSecret(apiKey)) {
+      console.warn("Shiprocket webhook: invalid or missing x-api-key header");
       res.status(401).json({ success: false, error: "Unauthorized" });
       return;
     }

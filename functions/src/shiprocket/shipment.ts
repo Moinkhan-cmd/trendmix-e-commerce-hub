@@ -158,16 +158,15 @@ function extractShiprocketData(response: GenericRecord): {
   trackingUrl: string;
 } {
   // Shiprocket's order_id is their order identifier; shipment_id may be an array or scalar
+  // These may be numbers, so convert to string explicitly
   const shiprocketOrderId =
-    asString(response.order_id) ||
-    asString(response.orderId) ||
-    "";
+    String(response.order_id ?? response.orderId ?? "").trim() || "";
 
   // shipment_id can be an array like [12345] or a plain number/string
   const rawShipmentId = Array.isArray(response.shipment_id)
     ? response.shipment_id[0]
     : response.shipment_id;
-  const shipmentId = asString(rawShipmentId);
+  const shipmentId = String(rawShipmentId ?? "").trim() || "";
 
   const awbCode = asString(response.awb_code);
   const courierName = asString(response.courier_name || response.courier_company_name);
@@ -186,6 +185,8 @@ async function createShiprocketAdhocOrder(orderId: string, orderData: GenericRec
   const token = await getShiprocketBearerToken();
   const payload = getShiprocketPayload(orderId, orderData);
   const paymentStatus = derivePaymentStatus(orderData);
+
+  console.info("Shiprocket create order payload:", JSON.stringify(payload).slice(0, 1000));
 
   const response = await fetch(SHIPROCKET_CREATE_ADHOC_ORDER_URL, {
     method: "POST",
@@ -210,8 +211,11 @@ async function createShiprocketAdhocOrder(orderId: string, orderData: GenericRec
     );
   }
 
+  console.info("Shiprocket create order response:", bodyText.slice(0, 1000));
+
   const extracted = extractShiprocketData(parsedResponse);
   if (!extracted.shiprocketOrderId && !extracted.shipmentId) {
+    console.error("Shiprocket response missing identifiers. Full response:", bodyText.slice(0, 2000));
     throw new Error("Shiprocket response did not include order/shipment identifier.");
   }
 

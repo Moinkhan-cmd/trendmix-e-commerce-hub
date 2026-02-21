@@ -21,6 +21,7 @@ import {
   Minus,
   Plus,
   Trash2,
+  XCircle,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
@@ -61,6 +62,7 @@ import { initiateRazorpayPayment } from "@/lib/razorpay";
 import { getRecaptchaToken, isRecaptchaConfigured } from "@/lib/recaptcha";
 import { disableGuestCheckout, enableGuestCheckout, isGuestCheckoutEnabled } from "@/lib/checkout-session";
 import { validateCheckoutCoupon } from "@/lib/coupon";
+import { checkPincodeServiceability, type ServiceabilityResult } from "@/lib/shiprocket";
 
 const checkoutSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -128,6 +130,7 @@ export default function Checkout() {
     errorMessage?: string;
     orderNumber?: string;
     amountPaid?: number;
+    usedPaymentMethod?: PaymentMethod;
   }>({});
   const [checkoutSummarySnapshot, setCheckoutSummarySnapshot] = useState<{
     items: typeof cartItems;
@@ -146,6 +149,11 @@ export default function Checkout() {
   const [guestCheckout, setGuestCheckout] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [resendingVerification, setResendingVerification] = useState(false);
+
+  // Pincode serviceability state
+  const [pincodeChecking, setPincodeChecking] = useState(false);
+  const [pincodeResult, setPincodeResult] = useState<ServiceabilityResult | null>(null);
+  const [pincodeChecked, setPincodeChecked] = useState("");
 
   const isPaymentBlocked =
     (isAuthenticated && !isEmailVerified) ||
@@ -564,6 +572,7 @@ export default function Checkout() {
           transactionId: paymentResponse.transactionId,
           orderNumber: orderResult.orderNumber,
           amountPaid: finalTotal,
+          usedPaymentMethod: paymentMethod,
         });
 
         // Clear cart
@@ -951,9 +960,85 @@ export default function Checkout() {
                           <FormItem>
                             <FormLabel>Pincode *</FormLabel>
                             <FormControl>
-                              <Input placeholder="400001" {...field} />
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="400001"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    // Reset result when pincode changes
+                                    if (e.target.value !== pincodeChecked) {
+                                      setPincodeResult(null);
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={pincodeChecking || !/^\d{6}$/.test(field.value)}
+                                  className="shrink-0"
+                                  onClick={async () => {
+                                    if (!/^\d{6}$/.test(field.value)) return;
+                                    setPincodeChecking(true);
+                                    setPincodeResult(null);
+                                    try {
+                                      const result = await checkPincodeServiceability(
+                                        field.value,
+                                        0.5,
+                                        paymentMethod === "cod"
+                                      );
+                                      setPincodeResult(result);
+                                      setPincodeChecked(field.value);
+                                      if (!result.is_serviceable) {
+                                        toast.error("Delivery not available at this pincode");
+                                      }
+                                    } catch (err) {
+                                      toast.error(err instanceof Error ? err.message : "Serviceability check failed");
+                                    } finally {
+                                      setPincodeChecking(false);
+                                    }
+                                  }}
+                                >
+                                  {pincodeChecking ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "Check"
+                                  )}
+                                </Button>
+                              </div>
                             </FormControl>
                             <FormMessage />
+                            {/* Serviceability result */}
+                            {pincodeResult && (
+                              <div className={`text-sm mt-1.5 p-2.5 rounded-md ${
+                                pincodeResult.is_serviceable
+                                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+                              }`}>
+                                {pincodeResult.is_serviceable ? (
+                                  <>
+                                    <p className="flex items-center gap-1.5 font-medium">
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                      Delivery available!
+                                    </p>
+                                    {pincodeResult.estimated_delivery_days && (
+                                      <p className="text-xs mt-0.5">
+                                        Estimated delivery: {pincodeResult.estimated_delivery_days} day{pincodeResult.estimated_delivery_days !== 1 ? "s" : ""}
+                                      </p>
+                                    )}
+                                    {pincodeResult.cod_available && (
+                                      <p className="text-xs mt-0.5">Cash on Delivery available</p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="flex items-center gap-1.5 font-medium">
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    Delivery not available at this pincode
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </FormItem>
                         )}
                       />
@@ -1286,7 +1371,7 @@ export default function Checkout() {
         open={paymentModalOpen}
         onOpenChange={setPaymentModalOpen}
         status={paymentModalStatus}
-        paymentMethod={paymentMethod}
+        paymentMethod={paymentResult.usedPaymentMethod ?? paymentMethod}
         amount={paymentResult.amountPaid ?? finalTotal}
         transactionId={paymentResult.transactionId}
         errorMessage={paymentResult.errorMessage}

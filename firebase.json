@@ -58,6 +58,10 @@
     ],
     "rewrites": [
       {
+        "source": "/webhook/tracking",
+        "function": "shiprocketWebhook"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

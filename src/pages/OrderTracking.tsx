@@ -16,6 +16,7 @@ import {
   Mail,
   ArrowLeft,
   MapPin,
+  ExternalLink,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
@@ -469,18 +470,48 @@ function OrderCard({ order }: { order: OrderWithId }) {
         </div>
 
         {/* Tracking Info */}
-        {order.trackingNumber && (
+        {(order.trackingNumber || order.awb_code) && (
           <>
             <Separator />
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-2">
               <h4 className="font-medium mb-1">Shipment Tracking</h4>
               <p className="text-sm">
-                <span className="text-muted-foreground">Carrier:</span> {order.shippingCarrier || "Standard Shipping"}
+                <span className="text-muted-foreground">Carrier:</span>{" "}
+                {order.courier_name || order.shippingCarrier || "Standard Shipping"}
               </p>
-              <p className="text-sm">
-                <span className="text-muted-foreground">Tracking Number:</span>{" "}
-                <span className="font-mono font-medium">{order.trackingNumber}</span>
-              </p>
+              {(order.awb_code || order.trackingNumber) && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">AWB / Tracking #:</span>{" "}
+                  <span className="font-mono font-medium">{order.awb_code || order.trackingNumber}</span>
+                </p>
+              )}
+              {order.shipment_status && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Shipment Status:</span>{" "}
+                  <span className="capitalize font-medium">{order.shipment_status.replace(/_/g, " ")}</span>
+                </p>
+              )}
+              {order.last_location && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Last Location:</span> {order.last_location}
+                </p>
+              )}
+              {order.delivery_date && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Delivery Date:</span> {order.delivery_date}
+                </p>
+              )}
+              {order.tracking_url && (
+                <a
+                  href={order.tracking_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline mt-1"
+                >
+                  Track on Shiprocket
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
             </div>
           </>
         )}

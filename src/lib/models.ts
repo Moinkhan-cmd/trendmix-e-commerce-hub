@@ -113,10 +113,16 @@ export type OrderDoc = {
   timeline?: OrderTimelineEvent[];
   payment?: Omit<PaymentInfo, 'status'> & { status: "pending" | "completed" | "failed" };
   shiprocket_order_id?: string;
+  shiprocket_shipment_id?: string;
   awb_code?: string;
   courier_name?: string;
   tracking_url?: string;
-  shipment_status?: "created" | "creation_failed";
+  shipment_status?: "created" | "creation_failed" | "pickup_scheduled" | "pickup_failed" | "in_transit" | "out_for_delivery" | "delivered" | "cancelled" | "rto_initiated" | "rto_delivered" | "lost" | "damaged";
+  delivery_date?: string;
+  last_location?: string;
+  last_tracking_update?: Timestamp;
+  pickup_scheduled_date?: string;
+  pickup_token_number?: string;
   payment_status?: string;
   trackingNumber?: string;
   shippingCarrier?: string;

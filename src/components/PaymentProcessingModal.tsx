@@ -7,6 +7,7 @@ import {
   Smartphone,
   Shield,
   RefreshCw,
+  Banknote,
 } from "lucide-react";
 
 import {
@@ -43,6 +44,13 @@ const PROCESSING_MESSAGES = [
   "Confirming payment...",
 ];
 
+const COD_PROCESSING_MESSAGES = [
+  "Verifying order details...",
+  "Checking item availability...",
+  "Placing your order...",
+  "Almost done...",
+];
+
 export default function PaymentProcessingModal({
   open,
   onOpenChange,
@@ -74,15 +82,18 @@ export default function PaymentProcessingModal({
       });
     }, 500);
 
+    const activeMessages = paymentMethod === "cod" ? COD_PROCESSING_MESSAGES : PROCESSING_MESSAGES;
     const messageInterval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % PROCESSING_MESSAGES.length);
+      setMessageIndex((prev) => (prev + 1) % activeMessages.length);
     }, 1500);
 
     return () => {
       clearInterval(progressInterval);
       clearInterval(messageInterval);
     };
-  }, [status]);
+  }, [status, paymentMethod]);
+
+  const isCod = paymentMethod === "cod";
 
   const getPaymentMethodIcon = () => {
     switch (paymentMethod) {
@@ -92,6 +103,8 @@ export default function PaymentProcessingModal({
         return <Smartphone className="h-6 w-6" />;
       case "razorpay":
         return <Shield className="h-6 w-6" />;
+      case "cod":
+        return <Banknote className="h-6 w-6" />;
       default:
         return <Shield className="h-6 w-6" />;
     }
@@ -129,24 +142,29 @@ export default function PaymentProcessingModal({
                   </div>
                 </div>
               </div>
-              <DialogTitle className="text-xl">Processing Payment</DialogTitle>
+              <DialogTitle className="text-xl">
+                {isCod ? "Placing Order" : "Processing Payment"}
+              </DialogTitle>
               <DialogDescription className="text-base">
-                Please wait while we process your payment of{" "}
-                <strong className="text-foreground">{formatCurrency(amount)}</strong>
+                {isCod
+                  ? "Please wait while we confirm your order..."
+                  : <>Please wait while we process your payment of{" "}
+                      <strong className="text-foreground">{formatCurrency(amount)}</strong>
+                    </>}
               </DialogDescription>
             </DialogHeader>
 
             <div className="mt-4 space-y-3">
               <Progress value={progress} className="h-2" />
               <p className="text-center text-sm text-muted-foreground animate-pulse">
-                {PROCESSING_MESSAGES[messageIndex]}
+                {(isCod ? COD_PROCESSING_MESSAGES : PROCESSING_MESSAGES)[messageIndex]}
               </p>
             </div>
 
             <div className="mt-4 p-3 bg-muted/50 rounded-lg text-center">
               <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
-                <Shield className="h-3 w-3" />
-                Your payment is secure and encrypted
+                {isCod ? <Banknote className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                {isCod ? "Your order details are being securely saved" : "Your payment is secure and encrypted"}
               </p>
             </div>
           </>
@@ -160,12 +178,18 @@ export default function PaymentProcessingModal({
                 <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400 animate-[scale-in_0.3s_ease-out]" />
               </div>
               <DialogTitle className="text-xl text-green-700 dark:text-green-300">
-                Payment Successful!
+                {isCod ? "Order Confirmed!" : "Payment Successful!"}
               </DialogTitle>
               <DialogDescription className="text-base">
-                Your payment of{" "}
-                <strong className="text-foreground">{formatCurrency(amount)}</strong>{" "}
-                has been processed successfully.
+                {isCod
+                  ? <>Your order has been placed. Pay{" "}
+                      <strong className="text-foreground">{formatCurrency(amount)}</strong>{" "}
+                      on delivery.
+                    </>
+                  : <>Your payment of{" "}
+                      <strong className="text-foreground">{formatCurrency(amount)}</strong>{" "}
+                      has been processed successfully.
+                    </>}
               </DialogDescription>
             </DialogHeader>
 
@@ -187,7 +211,9 @@ export default function PaymentProcessingModal({
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Amount Paid</span>
+                  <span className="text-muted-foreground">
+                    {isCod ? "Amount Payable on Delivery" : "Amount Paid"}
+                  </span>
                   <span className="font-bold text-green-600">{formatCurrency(amount)}</span>
                 </div>
               </div>
