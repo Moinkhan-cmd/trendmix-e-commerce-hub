@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import {
   BadgeDollarSign,
   Boxes,
+  FileText,
   FolderKanban,
   LayoutDashboard,
   LogOut,
@@ -66,6 +67,7 @@ const navItems: NavItem[] = [
   { to: "/admin/profile", label: "Profile", icon: UserCircle },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/notifications", label: "Notifications", icon: Bell },
+  { to: "/admin/about", label: "About Page", icon: FileText },
 ];
 
 function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {

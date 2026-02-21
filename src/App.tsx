@@ -43,6 +43,7 @@ const AdminUsers = lazyWithRetry(() => import('@/admin/pages/AdminUsers'));
 const AdminSettings = lazyWithRetry(() => import('@/admin/pages/AdminSettings'));
 const AdminProfile = lazyWithRetry(() => import('@/admin/pages/AdminProfile'));
 const AdminNotificationSettings = lazyWithRetry(() => import('@/admin/pages/AdminNotificationSettings'));
+const AdminAboutPage = lazyWithRetry(() => import('@/admin/pages/AdminAboutPage'));
 import AppErrorBoundary from '@/components/AppErrorBoundary';
 
 const queryClient = new QueryClient();
@@ -160,6 +161,7 @@ const App = () => (
                       <Route path="profile" element={<AdminProfile />} />
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="notifications" element={<AdminNotificationSettings />} />
+                      <Route path="about" element={<AdminAboutPage />} />
                     </Route>
                   </Route>
 

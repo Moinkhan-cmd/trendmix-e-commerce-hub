@@ -208,6 +208,40 @@ function buildCustomerDeliveredEmail(orderId: string, ctx: ParsedOrderEmailConte
   };
 }
 
+function statusEmailKey(status: string): string {
+  return status.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function buildCustomerGenericStatusEmail(
+  orderId: string,
+  status: string,
+  ctx: ParsedOrderEmailContext
+): OutgoingEmail {
+  const heading = status === "Cancelled"
+    ? "Your order has been cancelled."
+    : `Your order status is now: ${status}.`;
+
+  return {
+    subject: `Order update (${status}): ${ctx.orderNumber}`,
+    text: [
+      `Hi ${ctx.customerName},`,
+      "",
+      heading,
+      "",
+      `Order Number: ${ctx.orderNumber}`,
+      `Order ID: ${orderId}`,
+      `Current Status: ${status}`,
+      `Shipping Carrier: ${ctx.shippingCarrier}`,
+      `Tracking Number: ${ctx.trackingNumber}`,
+      "",
+      `Order Total: ${ctx.totalText}`,
+      "",
+      "Thanks,",
+      "TrendMix Team",
+    ].join("\n"),
+  };
+}
+
 // ─── Razorpay Instance ──────────────────────────────────────
 // Credentials are loaded from functions/.env (see .env.example)
 function getRazorpayInstance(): Razorpay {
@@ -1165,18 +1199,17 @@ export const onOrderStatusChangedSendCustomerEmail = functions
       return null;
     }
 
-    const shouldHandleStatus = currentStatus === "Shipped" || currentStatus === "Delivered";
-    if (!shouldHandleStatus) {
-      return null;
-    }
-
     const statusEmails =
       (typeof afterData.customerStatusEmails === "object" && afterData.customerStatusEmails !== null
         ? (afterData.customerStatusEmails as Record<string, unknown>)
         : {}) as Record<string, unknown>;
 
-    if ((currentStatus === "Shipped" && statusEmails.shipped === true) ||
-        (currentStatus === "Delivered" && statusEmails.delivered === true)) {
+    const statusKey = statusEmailKey(currentStatus);
+    if (!statusKey) {
+      return null;
+    }
+
+    if (statusEmails[statusKey] === true) {
       return null;
     }
 
@@ -1197,7 +1230,9 @@ export const onOrderStatusChangedSendCustomerEmail = functions
     const emailBody =
       currentStatus === "Shipped"
         ? buildCustomerShippedEmail(orderId, parsed)
-        : buildCustomerDeliveredEmail(orderId, parsed);
+        : currentStatus === "Delivered"
+          ? buildCustomerDeliveredEmail(orderId, parsed)
+          : buildCustomerGenericStatusEmail(orderId, currentStatus, parsed);
 
     sgMail.setApiKey(apiKey);
 
@@ -1214,7 +1249,7 @@ export const onOrderStatusChangedSendCustomerEmail = functions
 
       const updatedStatusEmails: Record<string, unknown> = {
         ...statusEmails,
-        [currentStatus === "Shipped" ? "shipped" : "delivered"]: true,
+        [statusKey]: true,
       };
 
       await change.after.ref.set(
