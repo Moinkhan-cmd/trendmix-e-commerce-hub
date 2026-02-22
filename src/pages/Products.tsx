@@ -647,26 +647,32 @@ const Products = () => {
                       </div>
                       <div className="space-y-1 max-h-[300px] overflow-y-auto scrollbar-hide">
                         {/* All Products */}
-                        <button
-                          type="button"
-                          onClick={() => setCategoryParam(null)}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                            !activeCategory
-                              ? "bg-primary text-primary-foreground shadow-sm"
-                              : "text-foreground hover:bg-muted/60"
-                          }`}
+                        <motion.div
+                          initial={{ opacity: 0, x: -16 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
                         >
-                          <span>All Products</span>
-                          <span
-                            className={`text-xs font-bold tabular-nums ${
-                              !activeCategory ? "text-primary-foreground/75" : "text-muted-foreground"
+                          <button
+                            type="button"
+                            onClick={() => setCategoryParam(null)}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                              !activeCategory
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "text-foreground hover:bg-muted/60"
                             }`}
                           >
-                            {publishedProducts.length}
-                          </span>
-                        </button>
+                            <span>All Products</span>
+                            <span
+                              className={`text-xs font-bold tabular-nums ${
+                                !activeCategory ? "text-primary-foreground/75" : "text-muted-foreground"
+                              }`}
+                            >
+                              {publishedProducts.length}
+                            </span>
+                          </button>
+                        </motion.div>
 
-                        {visibleCategories.map((category) => {
+                        {visibleCategories.map((category, catIndex) => {
                           const slug = getCategorySlug(category.name, category.slug);
                           const isActive = activeCategory === slug;
                           const catImage = getCategoryImage(slug) || category.imageUrl;
@@ -677,40 +683,50 @@ const Products = () => {
                             return category.name;
                           })();
                           return (
-                            <button
+                            <motion.div
                               key={category.id}
-                              type="button"
-                              onClick={() => (isActive ? setCategoryParam(null) : setCategoryParam(slug))}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
-                                isActive
-                                  ? "bg-primary text-primary-foreground shadow-sm"
-                                  : "text-foreground hover:bg-muted/60"
-                              }`}
+                              initial={{ opacity: 0, x: -16 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{
+                                duration: 0.3,
+                                delay: Math.min((catIndex + 1) * 0.05, 0.4),
+                                ease: [0.25, 0.46, 0.45, 0.94],
+                              }}
                             >
-                              {catImage ? (
-                                <img
-                                  src={catImage}
-                                  alt={displayName}
-                                  className="h-7 w-7 rounded-lg object-cover shrink-0 border border-white/20"
-                                />
-                              ) : (
-                                <div
-                                  className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                    isActive ? "bg-white/20" : "bg-muted"
-                                  }`}
-                                >
-                                  <ImageIcon className="h-3.5 w-3.5" />
-                                </div>
-                              )}
-                              <span className="flex-1 text-left truncate font-semibold">{displayName}</span>
-                              <span
-                                className={`text-xs font-bold tabular-nums shrink-0 ${
-                                  isActive ? "text-primary-foreground/75" : "text-muted-foreground"
+                              <button
+                                type="button"
+                                onClick={() => (isActive ? setCategoryParam(null) : setCategoryParam(slug))}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                                  isActive
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "text-foreground hover:bg-muted/60"
                                 }`}
                               >
-                                {categoryProductCounts.get(slug) ?? 0}
-                              </span>
-                            </button>
+                                {catImage ? (
+                                  <img
+                                    src={catImage}
+                                    alt={displayName}
+                                    className="h-7 w-7 rounded-lg object-cover shrink-0 border border-white/20"
+                                  />
+                                ) : (
+                                  <div
+                                    className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                      isActive ? "bg-white/20" : "bg-muted"
+                                    }`}
+                                  >
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                  </div>
+                                )}
+                                <span className="flex-1 text-left truncate font-semibold">{displayName}</span>
+                                <span
+                                  className={`text-xs font-bold tabular-nums shrink-0 ${
+                                    isActive ? "text-primary-foreground/75" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {categoryProductCounts.get(slug) ?? 0}
+                                </span>
+                              </button>
+                            </motion.div>
                           );
                         })}
                       </div>
