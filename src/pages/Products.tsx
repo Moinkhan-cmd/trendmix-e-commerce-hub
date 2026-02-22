@@ -748,21 +748,31 @@ const Products = () => {
                             { key: "female", label: "Female" },
                             { key: "unisex", label: "Unisex" },
                           ] as const
-                        ).map((opt) => {
+                        ).map((opt, gIdx) => {
                           const selected = genderFilter === opt.key;
                           return (
-                            <button
+                            <motion.div
                               key={opt.key}
-                              type="button"
-                              onClick={() => setGenderFilter(opt.key)}
-                              className={`h-9 rounded-xl text-sm font-semibold border transition-all duration-150 ${
-                                selected
-                                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                                  : "bg-background text-foreground border-border/60 hover:border-primary/40 hover:bg-muted/40"
-                              }`}
+                              initial={{ opacity: 0, x: -12 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{
+                                duration: 0.3,
+                                delay: Math.min(gIdx * 0.05, 0.3),
+                                ease: [0.25, 0.46, 0.45, 0.94],
+                              }}
                             >
-                              {opt.label}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => setGenderFilter(opt.key)}
+                                className={`w-full h-9 rounded-xl text-sm font-semibold border transition-all duration-150 ${
+                                  selected
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "bg-background text-foreground border-border/60 hover:border-primary/40 hover:bg-muted/40"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            </motion.div>
                           );
                         })}
                       </div>
@@ -858,26 +868,36 @@ const Products = () => {
                         <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Min. Rating</h4>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        {[4, 3, 2, 1].map((r) => {
+                        {[4, 3, 2, 1].map((r, rIdx) => {
                           const active = minRating === r;
                           return (
-                            <button
+                            <motion.div
                               key={r}
-                              type="button"
-                              onClick={() => toggleMinRating(r)}
-                              className={`h-9 rounded-xl text-sm font-semibold border transition-all duration-150 flex items-center justify-center gap-1.5 ${
-                                active
-                                  ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                                  : "bg-background text-foreground border-border/60 hover:border-amber-400/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/20"
-                              }`}
+                              initial={{ opacity: 0, x: -12 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{
+                                duration: 0.3,
+                                delay: Math.min(rIdx * 0.05, 0.3),
+                                ease: [0.25, 0.46, 0.45, 0.94],
+                              }}
                             >
-                              <Star
-                                className={`h-3 w-3 ${
-                                  active ? "fill-white text-white" : "fill-amber-400 text-amber-400"
+                              <button
+                                type="button"
+                                onClick={() => toggleMinRating(r)}
+                                className={`w-full h-9 rounded-xl text-sm font-semibold border transition-all duration-150 flex items-center justify-center gap-1.5 ${
+                                  active
+                                    ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                                    : "bg-background text-foreground border-border/60 hover:border-amber-400/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/20"
                                 }`}
-                              />
-                              {r}+
-                            </button>
+                              >
+                                <Star
+                                  className={`h-3 w-3 ${
+                                    active ? "fill-white text-white" : "fill-amber-400 text-amber-400"
+                                  }`}
+                                />
+                                {r}+
+                              </button>
+                            </motion.div>
                           );
                         })}
                       </div>
