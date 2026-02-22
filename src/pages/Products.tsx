@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
@@ -939,18 +940,28 @@ const Products = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {filteredProducts.map((product) => (
-                      <ProductCard
+                    {filteredProducts.map((product, index) => (
+                      <motion.div
                         key={product.id}
-                        id={product.id}
-                        name={product.name}
-                        price={Number(product.price ?? 0)}
-                        originalPrice={typeof product.compareAtPrice === "number" ? product.compareAtPrice : undefined}
-                        image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
-                        badges={Array.isArray(product.badges) ? product.badges : undefined}
-                        rating={Number(product.rating ?? 0)}
-                        reviews={Number(product.reviews ?? 0)}
-                      />
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.4,
+                          delay: Math.min(index * 0.06, 0.6),
+                          ease: [0.25, 0.46, 0.45, 0.94],
+                        }}
+                      >
+                        <ProductCard
+                          id={product.id}
+                          name={product.name}
+                          price={Number(product.price ?? 0)}
+                          originalPrice={typeof product.compareAtPrice === "number" ? product.compareAtPrice : undefined}
+                          image={Array.isArray(product.imageUrls) ? product.imageUrls[0] : undefined}
+                          badges={Array.isArray(product.badges) ? product.badges : undefined}
+                          rating={Number(product.rating ?? 0)}
+                          reviews={Number(product.reviews ?? 0)}
+                        />
+                      </motion.div>
                     ))}
                   </div>
                 )}
