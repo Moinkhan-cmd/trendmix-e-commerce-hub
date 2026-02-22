@@ -1,4 +1,5 @@
 import { Check, ChevronDown, Heart, LayoutGrid, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -498,7 +499,8 @@ const Navbar = () => {
         </Sheet>
 
         {/* Logo */}
-        <Link
+        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+          <Link
             to="/"
             className="group flex items-center gap-1.5 sm:gap-2 rounded-xl px-2 py-1.5 -mx-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 hover:bg-accent/10 flex-shrink-0"
             aria-label="Go to home"
@@ -512,7 +514,6 @@ const Navbar = () => {
                 decoding="async"
               />
               <span className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-primary/0 transition-all duration-500 group-hover:ring-primary/40 group-hover:scale-110 group-hover:rotate-3" />
-              {/* Subtle glow behind logo */}
               <span className="pointer-events-none absolute -inset-1 rounded-xl bg-primary/0 blur-md transition-all duration-500 group-hover:bg-primary/20" />
             </span>
             <div className="hidden sm:flex flex-col">
@@ -524,6 +525,7 @@ const Navbar = () => {
               </span>
             </div>
           </Link>
+        </motion.div>
 
         {/* Desktop Search - hidden on mobile */}
         <div className="flex-1 flex items-center justify-center">
@@ -714,15 +716,17 @@ const Navbar = () => {
           <div className="hidden lg:block">
             <DropdownMenu open={desktopCategoryDropdownOpen} onOpenChange={setDesktopCategoryDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-9 lg:h-10 rounded-full border-border/50 bg-background/40 px-3 lg:px-4 font-medium transition-all duration-300 hover:bg-accent/40 hover:scale-[1.02] hover:shadow-[0_0_12px_hsl(var(--primary)/0.15)] active:scale-[0.98]"
-                >
-                  <span className="truncate max-w-[120px] lg:max-w-[140px]">
-                    {activeCategoryLabel ?? "Categories"}
-                  </span>
-                  <ChevronDown className="ml-1.5 lg:ml-2 h-4 w-4 text-muted-foreground" />
-                </Button>
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+                  <Button
+                    variant="outline"
+                    className="h-9 lg:h-10 rounded-full border-border/50 bg-background/40 px-3 lg:px-4 font-medium transition-all duration-300 hover:bg-accent/40 hover:shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                  >
+                    <span className="truncate max-w-[120px] lg:max-w-[140px]">
+                      {activeCategoryLabel ?? "Categories"}
+                    </span>
+                    <ChevronDown className="ml-1.5 lg:ml-2 h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </motion.div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[320px] lg:w-[360px] p-2">
                 <DropdownMenuLabel className="px-2">Categories</DropdownMenuLabel>
@@ -809,40 +813,44 @@ const Navbar = () => {
           <div className="hidden lg:block w-px h-5 bg-border/50 mx-1" aria-hidden="true" />
 
           {/* Cart — always visible */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 inline-flex group"
-            aria-label={`Cart${cartCount > 0 ? ` (${cartCount} items)` : ''}`}
-            asChild
-          >
-            <Link to="/cart">
-              <ShoppingCart className="h-[18px] w-[18px] sm:h-5 sm:w-5 transition-all duration-300 group-hover:rotate-[-8deg] group-hover:text-primary" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[9px] sm:text-[10px] font-bold flex items-center justify-center shadow-md shadow-primary/40 animate-in zoom-in duration-200">
-                  {cartCount > 99 ? '99+' : cartCount}
-                </span>
-              )}
-            </Link>
-          </Button>
+          <motion.div whileHover={{ scale: 1.12, rotate: -4 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 inline-flex group"
+              aria-label={`Cart${cartCount > 0 ? ` (${cartCount} items)` : ''}`}
+              asChild
+            >
+              <Link to="/cart">
+                <ShoppingCart className="h-[18px] w-[18px] sm:h-5 sm:w-5 transition-colors duration-300 group-hover:text-primary" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[9px] sm:text-[10px] font-bold flex items-center justify-center shadow-md shadow-primary/40 animate-in zoom-in duration-200">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
+          </motion.div>
 
           {/* Wishlist — visible on sm+ */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 hidden sm:inline-flex group"
-            aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} saved)` : ''}`}
-            asChild
-          >
-            <Link to="/wishlist">
-              <Heart className="h-[18px] w-[18px] sm:h-5 sm:w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary group-hover:fill-primary/20" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[9px] sm:text-[10px] font-bold flex items-center justify-center shadow-md shadow-primary/40 animate-in zoom-in duration-200">
-                  {wishlistCount > 99 ? '99+' : wishlistCount}
-                </span>
-              )}
-            </Link>
-          </Button>
+          <motion.div whileHover={{ scale: 1.12 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 15 }} className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 group"
+              aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} saved)` : ''}`}
+              asChild
+            >
+              <Link to="/wishlist">
+                <Heart className="h-[18px] w-[18px] sm:h-5 sm:w-5 transition-colors duration-300 group-hover:text-primary group-hover:fill-primary/20" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-[9px] sm:text-[10px] font-bold flex items-center justify-center shadow-md shadow-primary/40 animate-in zoom-in duration-200">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
+          </motion.div>
 
           {/* Theme toggle — visible on sm+ */}
           <div className="hidden sm:block flex-shrink-0">
@@ -850,27 +858,28 @@ const Navbar = () => {
           </div>
 
           {/* Account — always visible; ring when logged in */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 hover:scale-110 active:scale-95 inline-flex group",
-              isAuthenticated && "ring-2 ring-primary/30 hover:ring-primary/50"
-            )}
-            aria-label="My Account"
-            asChild
-          >
-            <Link to="/account">
-              <User className={cn(
-                "h-[18px] w-[18px] sm:h-5 sm:w-5 transition-all duration-300 group-hover:scale-110 group-hover:text-primary",
-                isAuthenticated && "text-primary"
-              )} />
-              {/* Online indicator when logged in */}
-              {isAuthenticated && (
-                <span className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
+          <motion.div whileHover={{ scale: 1.12 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "relative h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 rounded-xl transition-all duration-300 hover:bg-primary/10 inline-flex group",
+                isAuthenticated && "ring-2 ring-primary/30 hover:ring-primary/50"
               )}
-            </Link>
-          </Button>
+              aria-label="My Account"
+              asChild
+            >
+              <Link to="/account">
+                <User className={cn(
+                  "h-[18px] w-[18px] sm:h-5 sm:w-5 transition-colors duration-300 group-hover:text-primary",
+                  isAuthenticated && "text-primary"
+                )} />
+                {isAuthenticated && (
+                  <span className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
+                )}
+              </Link>
+            </Button>
+          </motion.div>
         </div>
       </div>
 
