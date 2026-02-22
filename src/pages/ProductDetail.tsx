@@ -485,8 +485,14 @@ const ProductDetail = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 pb-24 sm:pb-28 md:pb-10">
-        <div className="container px-0 sm:px-4 md:px-6 py-0 sm:py-6 md:py-10">
+      <main className="flex-1 pb-24 sm:pb-28 md:pb-10 relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute top-1/3 -right-32 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-40 left-1/4 w-72 h-72 bg-primary/3 rounded-full blur-3xl" />
+        </div>
+        <div className="container relative px-0 sm:px-4 md:px-6 py-0 sm:py-6 md:py-10">
         {loading ? (
           <div className="px-3 sm:px-0 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-4">
@@ -505,7 +511,7 @@ const ProductDetail = () => {
             </div>
           </div>
         ) : loadError ? (
-          <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
+          <div className="rounded-2xl border border-dashed border-border/50 bg-card/50 backdrop-blur-sm p-10 text-center">
             <h1 className="text-2xl font-semibold">Couldn’t load product</h1>
             <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
             <div className="mt-6">
@@ -515,8 +521,8 @@ const ProductDetail = () => {
             </div>
           </div>
         ) : !product ? (
-          <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
-            <h1 className="text-2xl font-semibold">Product not found</h1>
+          <div className="rounded-2xl border border-dashed border-border/50 bg-card/50 backdrop-blur-sm p-10 text-center glass-card">
+            <h1 className="text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Product not found</h1>
             <p className="mt-2 text-sm text-muted-foreground">This product isn’t available.</p>
             <div className="mt-6 flex items-center justify-center gap-3">
               <Button asChild variant="outline">
@@ -557,11 +563,11 @@ const ProductDetail = () => {
               />
 
               {/* Right: Product Info */}
-              <section className="space-y-3 sm:space-y-4 lg:space-y-5 px-3 sm:px-0" aria-label="Product information">
+               <section className="space-y-3 sm:space-y-4 lg:space-y-5 px-3 sm:px-0" aria-label="Product information">
                 <header className="space-y-1.5 sm:space-y-2">
                   <div className="flex items-start justify-between gap-2 sm:gap-4">
                     <div className="min-w-0 flex-1">
-                      <h1 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight leading-snug">
+                      <h1 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight leading-snug bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
                         {product.name}
                       </h1>
                       {product.brand ? (
@@ -582,7 +588,7 @@ const ProductDetail = () => {
                           image: selectedImage ?? imageUrl,
                         })
                       }
-                      className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 transition-transform active:scale-[0.98]"
+                      className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-xl border-border/50 bg-background/80 backdrop-blur-sm transition-all hover:scale-105 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.98]"
                       aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
                       title={wished ? "Wishlisted" : "Add to wishlist"}
                     >
@@ -647,7 +653,7 @@ const ProductDetail = () => {
                   </div>
 
                   <div className="flex flex-wrap items-end gap-2 sm:gap-3 pt-0.5 sm:pt-1">
-                    <div className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{priceText}</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">{priceText}</div>
                     {compareAtText ? (
                       <div className="flex items-center gap-1.5 sm:gap-2 pb-0.5 sm:pb-1">
                         <span className="text-xs sm:text-sm text-muted-foreground line-through">{compareAtText}</span>
@@ -659,10 +665,10 @@ const ProductDetail = () => {
                   </div>
                 </header>
 
-                <Card>
+                <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-primary/5">
                   <CardContent className="p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
                     <div>
-                      <h2 className="text-xs sm:text-sm font-semibold">Highlights</h2>
+                      <h2 className="text-xs sm:text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Highlights</h2>
                       <ul className="mt-1.5 sm:mt-2 space-y-1 sm:space-y-1.5 text-xs sm:text-sm text-muted-foreground list-disc pl-4 sm:pl-5">
                         {product.tags?.length ? (
                           product.tags.slice(0, 5).map((t) => <li key={t}>{t}</li>)
@@ -768,11 +774,13 @@ const ProductDetail = () => {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-primary/5">
                   <CardContent className="p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                       <div className="flex items-center gap-2">
-                        <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                        <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+                          <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                        </div>
                         <div>
                           <p className="text-xs sm:text-sm font-semibold">Delivery</p>
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Check estimate by pincode</p>
@@ -800,22 +808,28 @@ const ProductDetail = () => {
                     <Separator />
 
                     <div className="grid gap-2 sm:gap-3 grid-cols-1 xs:grid-cols-3 sm:grid-cols-3">
-                      <div className="flex items-start gap-1.5 sm:gap-2">
-                        <BadgeCheck className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      <div className="flex items-start gap-1.5 sm:gap-2 rounded-xl border border-border/30 bg-background/60 backdrop-blur-sm p-2.5 sm:p-3 transition-all hover:shadow-md hover:border-primary/20">
+                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-emerald-500/10 flex-shrink-0">
+                          <BadgeCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                         <div>
                           <p className="text-[11px] sm:text-sm font-medium">Cash on Delivery</p>
                           <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Available on eligible pincodes</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-1.5 sm:gap-2">
-                        <Truck className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                      <div className="flex items-start gap-1.5 sm:gap-2 rounded-xl border border-border/30 bg-background/60 backdrop-blur-sm p-2.5 sm:p-3 transition-all hover:shadow-md hover:border-primary/20">
+                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+                          <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                        </div>
                         <div>
                           <p className="text-[11px] sm:text-sm font-medium">Easy Returns</p>
                           <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Simple pickup & refund</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-1.5 sm:gap-2">
-                        <ShieldCheck className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                      <div className="flex items-start gap-1.5 sm:gap-2 rounded-xl border border-border/30 bg-background/60 backdrop-blur-sm p-2.5 sm:p-3 transition-all hover:shadow-md hover:border-primary/20">
+                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+                          <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                        </div>
                         <div>
                           <p className="text-[11px] sm:text-sm font-medium">Secure Payments</p>
                           <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Protected checkout</p>
@@ -837,11 +851,11 @@ const ProductDetail = () => {
             </div>
 
             {/* Tabs: Description / Specs / How to Use / Reviews */}
-            <section aria-label="Product details" className="space-y-3 sm:space-y-4 px-3 sm:px-0">
+           <section aria-label="Product details" className="space-y-3 sm:space-y-4 px-3 sm:px-0">
               <div ref={reviewsAnchorRef} />
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
                 <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
-                  <TabsList className="w-full xs:w-auto h-8 xs:h-9 sm:h-10 p-0.5 xs:p-1 grid grid-cols-4 xs:flex">
+                  <TabsList className="w-full xs:w-auto h-8 xs:h-9 sm:h-10 p-0.5 xs:p-1 grid grid-cols-4 xs:flex bg-muted/50 backdrop-blur-sm border border-border/30 rounded-xl">
                     <TabsTrigger value="description" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">Description</TabsTrigger>
                     <TabsTrigger value="specs" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">Specs</TabsTrigger>
                     <TabsTrigger value="how" className="text-[9px] xs:text-[10px] sm:text-sm px-1.5 xs:px-2 sm:px-3 h-7 xs:h-8">How to Use</TabsTrigger>
@@ -850,7 +864,7 @@ const ProductDetail = () => {
                 </div>
 
                 <TabsContent value="description">
-                  <Card>
+                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-primary/5">
                     <CardContent className="p-3 xs:p-4 sm:p-5">
                       {product.description ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -864,7 +878,7 @@ const ProductDetail = () => {
                 </TabsContent>
 
                 <TabsContent value="specs">
-                  <Card>
+                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-primary/5">
                     <CardContent className="p-3 xs:p-4 sm:p-5">
                       <div className="grid gap-2.5 xs:gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2">
                         <div className="rounded-lg border bg-background p-3 xs:p-4">
@@ -926,7 +940,7 @@ const ProductDetail = () => {
                 </TabsContent>
 
                 <TabsContent value="how">
-                  <Card>
+                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-primary/5">
                     <CardContent className="p-3 xs:p-4 sm:p-5">
                       <div className="space-y-2 xs:space-y-3">
                         <p className="text-xs xs:text-sm text-muted-foreground">
@@ -944,7 +958,7 @@ const ProductDetail = () => {
                 </TabsContent>
 
                 <TabsContent value="reviews">
-                  <Card>
+                  <Card className="border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-primary/5">
                     <CardContent className="p-3 xs:p-4 sm:p-5">
                       <div className="grid gap-3 sm:gap-4 lg:grid-cols-[240px_1fr] xl:grid-cols-[260px_1fr]">
                         <div className="rounded-lg sm:rounded-xl border bg-background p-3 xs:p-4">
@@ -1100,7 +1114,10 @@ const ProductDetail = () => {
               <section aria-label="Recently viewed" className="space-y-3 xs:space-y-4 px-3 sm:px-0">
                 <div className="flex items-end justify-between gap-2 xs:gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-sm xs:text-base sm:text-lg font-semibold tracking-tight">Recently viewed</h2>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 border border-secondary/20 px-3 py-1 text-[10px] xs:text-xs font-medium text-secondary mb-2">
+                      👀 Recently Browsed
+                    </span>
+                    <h2 className="text-sm xs:text-base sm:text-lg font-semibold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Recently viewed</h2>
                     <p className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">Pick up where you left off</p>
                   </div>
                   <Button asChild variant="outline" size="sm" className="h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm px-2 xs:px-3">
